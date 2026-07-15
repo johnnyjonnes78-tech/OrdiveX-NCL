@@ -978,7 +978,47 @@ function _syncLotExpiryToProduct(productId) {
   }, 200); // Delai court pour regrouper les appels lors d'une vente multi-articles
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GARDES DE PERMISSIONS — Bloque les écritures non autorisées en IndexedDB
+// ═══════════════════════════════════════════════════════════════════════════════
+let _isSystemOp = false; // Drapeau pour les opérations système (sync, seed, dedup)
+
+const _DB_WRITE_GUARDS = {
+  // store → { add: perm, put: perm, delete: perm }
+  products:        { add: 'stock_product_create', put: 'stock_product_edit', delete: 'stock_product_delete' },
+  lots:            { add: 'stock_lot_edit',       put: 'stock_lot_edit',     delete: 'stock_lot_edit' },
+  stock:           { add: 'stock_adjust',         put: 'stock_adjust',       delete: 'stock_adjust' },
+  sales:           { add: 'sales_create',         put: 'sales_edit',         delete: 'sales_delete' },
+  saleItems:       { add: 'sales_create',         put: 'sales_edit',         delete: 'sales_delete' },
+  purchaseOrders:  { add: 'achats_create',        put: 'achats_edit',        delete: 'achats_delete' },
+  suppliers:       { add: 'achats_supplier_edit',  put: 'achats_supplier_edit', delete: 'achats_supplier_delete' },
+  patients:        { add: 'patients_create',      put: 'patients_edit',      delete: 'patients_delete' },
+  insurances:      { add: 'patients_assurance_edit', put: 'patients_assurance_edit', delete: 'patients_assurance_edit' },
+  users:           { add: 'settings_users',       put: 'settings_users',     delete: 'settings_users' },
+  inventories:     { add: 'inventory_create',     put: 'inventory_edit',     delete: 'inventory_delete' },
+};
+
+function _checkWritePermission(storeName, op) {
+  if (_isSystemOp) return; // Opérations système autorisées (sync, seed, etc.)
+  const guard = _DB_WRITE_GUARDS[storeName];
+  if (!guard) return; // Pas de garde sur ce store
+  const requiredPerm = guard[op];
+  if (!requiredPerm) return;
+  // Vérifier si Auth est disponible et si l'utilisateur a la permission
+  if (typeof Auth !== 'undefined' && typeof Auth.can === 'function') {
+    if (!Auth.can(requiredPerm)) {
+      const msg = `Cette action nécessite une autorisation que votre profil ne possède pas actuellement.`;
+      console.warn(`[DB Guard] Écriture bloquée sur ${storeName} (${op}) — permission requise : ${requiredPerm}`);
+      if (typeof UI !== 'undefined' && UI.toast) {
+        UI.toast(msg, 'warning', 3000);
+      }
+      throw new Error(msg);
+    }
+  }
+}
+
 async function dbAdd(storeName, data) {
+  _checkWritePermission(storeName, 'add');
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
@@ -1007,6 +1047,7 @@ async function dbAdd(storeName, data) {
 }
 
 async function dbPut(storeName, data) {
+  _checkWritePermission(storeName, 'put');
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
@@ -1182,6 +1223,7 @@ async function dbCountProducts() {
 }
 
 async function dbDelete(storeName, id) {
+  _checkWritePermission(storeName, 'delete');
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
@@ -1295,6 +1337,8 @@ async function writeAudit(action, entity, entityId, details, userId) {
 
 // Initialisation des paramètres de base (aucune donnée de test)
 async function seedDemoData() {
+  _isSystemOp = true;
+  try {
   // Vérifier si déjà initialisé
   const settings = await dbGetAll('settings');
   const alreadySeeded = settings.find(s => s.key === 'seeded');
@@ -1306,7 +1350,7 @@ async function seedDemoData() {
   await dbPut('settings', { key: 'currency', value: 'GNF' });
   await dbPut('settings', { key: 'seeded', value: true });
 
-
+  } finally { _isSystemOp = false; }
 }
 
 async function trackInstallation() {
@@ -1751,7 +1795,8 @@ async function pullFromSupabase(isManual = false) {
 async function _internalPullFromSupabase(isManual = false) {
   if (_isPulling) return;
   _isPulling = true;
-  const _pullLockTimeout = setTimeout(() => { _isPulling = false; }, 45000);
+  _isSystemOp = true;
+  const _pullLockTimeout = setTimeout(() => { _isPulling = false; _isSystemOp = false; }, 45000);
   let hasChanges = false;
   let totalItemsPulled = 0;
   try {
@@ -2062,6 +2107,7 @@ async function _internalPullFromSupabase(isManual = false) {
   } finally {
     clearTimeout(_pullLockTimeout);
     _isPulling = false;
+    _isSystemOp = false;
   }
 }
 
@@ -2380,4 +2426,5 @@ if (typeof indexedDB !== 'undefined') {
 
 const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
+Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
 window.DB = _DBExports;

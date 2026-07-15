@@ -1,5 +1,5 @@
 {
-  "version": "9.7.73",
+  "version": "9.7.74",
   "date": "2026-07-15",
-  "changelog": "v9.7.73 : Renforcement strict des permissions sur tous les modules (dashboard, ventes, caisse, stock, catalogue, commandes, inventaires). Grille d'édition en lot interactive avec calcul de marge en temps réel. Normalisation Title Case des textes de formulaires. Correction de la transmission du réapprovisionnement et nettoyage automatique des doublons du catalogue."
+  "changelog": "v9.7.74 : Refonte ERP du système de permissions — 78 droits fins répartis en 10 catégories. Gardes de sécurité IndexedDB sur toutes les écritures sensibles (dbAdd/dbPut/dbDelete). Interface d'administration arborescente avec accordéons dépliables, barres de progression par catégorie, recherche en temps réel, et boutons tout cocher/décocher par module. Messages de blocage reformulés poliment."
 }

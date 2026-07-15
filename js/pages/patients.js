@@ -28,7 +28,7 @@ async function renderPatients(container) {
     </div>
 
     <div class="privacy-banner">
-      <i data-lucide="lock"></i> <strong>Données de santé protégées</strong> — Accès restreint au personnel soignant habilité. Archivage conforme DNPM.
+      <i data-lucide="lock"></i> <strong>Données de santé protégées</strong> — Réservé au personnel soignant habilité. Archivage conforme DNPM.
     </div>
 
     <div class="filter-bar">

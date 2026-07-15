@@ -53,7 +53,7 @@ async function renderSales(container) {
       <div class="kpi-card kpi-blue">
         <div class="kpi-icon"><i data-lucide="banknote"></i></div>
         <div class="kpi-content">
-          <div class="kpi-value">${Auth.can('sales_view_ca') ? UI.formatCurrency(netRevMonth) : '<span style="font-size:14px;opacity:.5">Accès restreint</span>'}</div>
+          <div class="kpi-value">${Auth.can('sales_view_ca') ? UI.formatCurrency(netRevMonth) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
           <div class="kpi-label">CA du mois (Net)</div>
           <div class="kpi-sub">${monthSales.length} ventes · ${monthReturns.length} retours</div>
         </div>
@@ -70,7 +70,7 @@ async function renderSales(container) {
       <div class="kpi-card kpi-orange">
         <div class="kpi-icon"><i data-lucide="shopping-bag"></i></div>
         <div class="kpi-content">
-          <div class="kpi-value">${Auth.can('sales_view_ca') ? (monthSales.length > 0 ? UI.formatCurrency(netRevMonth / monthSales.length) : '—') : '<span style="font-size:14px;opacity:.5">Accès restreint</span>'}</div>
+          <div class="kpi-value">${Auth.can('sales_view_ca') ? (monthSales.length > 0 ? UI.formatCurrency(netRevMonth / monthSales.length) : '—') : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
           <div class="kpi-label">Panier moyen (Net)</div>
           <div class="kpi-sub">Ce mois</div>
         </div>
