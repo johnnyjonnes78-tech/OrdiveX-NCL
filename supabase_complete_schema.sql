@@ -538,3 +538,6 @@ ALTER TABLE IF EXISTS public."hr_attendance"        DISABLE ROW LEVEL SECURITY;
 -- ✅ Script terminé — Aucune donnée supprimée ou modifiée
 -- ──────────────────────────────────────────────────────────
 SELECT 'OrdiveX schema v9 camelCase installé avec succès' AS result;
+-- Ajouter les colonnes de prix manquantes dans la table lots
+ALTER TABLE public.lots ADD COLUMN IF NOT EXISTS "purchasePrice" NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE public.lots ADD COLUMN IF NOT EXISTS "salePrice" NUMERIC(15,2) DEFAULT 0;
