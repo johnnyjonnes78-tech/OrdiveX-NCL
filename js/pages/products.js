@@ -2,8 +2,119 @@
  * OrdiveX — Catalogue Produits
  */
 
+async function deduplicateProducts() {
+  try {
+    const products = await DB.dbGetAll('products');
+    const nameGroups = {};
+    
+    // Regrouper par nom insensible à la casse et aux espaces superflus
+    products.forEach(p => {
+      if (!p.name) return;
+      const key = p.name.trim().toLowerCase();
+      if (!nameGroups[key]) nameGroups[key] = [];
+      nameGroups[key].push(p);
+    });
+    
+    let hasChanges = false;
+    
+    for (const key in nameGroups) {
+      const group = nameGroups[key];
+      if (group.length <= 1) continue;
+      
+      // Calculer le score de complétion pour chaque produit du groupe
+      const scored = group.map(p => {
+        let score = 0;
+        const fields = [
+          'code', 'genericName', 'brand', 'form', 'category', 'subcategory',
+          'purchasePrice', 'salePrice', 'expiryDate', 'barcode', 'minStock',
+          'maxStock', 'location', 'supplier', 'lab', 'requiresPrescription',
+          'isControlled', 'notes', 'image'
+        ];
+        fields.forEach(f => {
+          if (p[f] !== undefined && p[f] !== null && p[f] !== '' && p[f] !== 0 && p[f] !== false) {
+            score++;
+          }
+        });
+        return { product: p, score: score };
+      });
+      
+      // Trier par score décroissant
+      scored.sort((a, b) => b.score - a.score);
+      
+      const master = scored[0].product;
+      const slaves = scored.slice(1).map(s => s.product);
+      
+      for (const slave of slaves) {
+        console.log(`[Deduplication] Fusion de ${slave.name} (ID: ${slave.id}) vers Master ${master.name} (ID: ${master.id})`);
+        
+        // 1. Lots
+        const slaveLots = await DB.dbGetAll('lots', 'productId', slave.id);
+        for (const lot of slaveLots) {
+          lot.productId = master.id;
+          await DB.dbPut('lots', lot);
+        }
+        
+        // 2. Mouvements
+        const slaveMovements = await DB.dbGetAll('movements', 'productId', slave.id);
+        for (const mov of slaveMovements) {
+          mov.productId = master.id;
+          await DB.dbPut('movements', mov);
+        }
+        
+        // 3. Stock
+        const slaveStock = await DB.dbGet('stock', slave.id);
+        if (slaveStock) {
+          const masterStock = await DB.dbGet('stock', master.id) || { productId: master.id, quantity: 0, reservedQuantity: 0 };
+          masterStock.quantity = (masterStock.quantity || 0) + (slaveStock.quantity || 0);
+          masterStock.reservedQuantity = (masterStock.reservedQuantity || 0) + (slaveStock.reservedQuantity || 0);
+          await DB.dbPut('stock', masterStock);
+          await DB.dbDelete('stock', slave.id);
+        }
+        
+        // 4. SaleItems
+        const saleItems = await DB.dbGetAll('saleItems');
+        const slaveSaleItems = saleItems.filter(si => si.productId === slave.id);
+        for (const si of slaveSaleItems) {
+          si.productId = master.id;
+          await DB.dbPut('saleItems', si);
+        }
+        
+        // 5. PurchaseOrders
+        const purchaseOrders = await DB.dbGetAll('purchaseOrders');
+        for (const po of purchaseOrders) {
+          let poChanged = false;
+          if (po.items && Array.isArray(po.items)) {
+            po.items.forEach(it => {
+              if (it.productId === slave.id) {
+                it.productId = master.id;
+                poChanged = true;
+              }
+            });
+          }
+          if (poChanged) {
+            await DB.dbPut('purchaseOrders', po);
+          }
+        }
+        
+        // 6. Supprimer le produit esclave
+        await DB.dbDelete('products', slave.id);
+        hasChanges = true;
+      }
+    }
+    if (hasChanges) {
+      console.log('[Deduplication] Doublons résolus avec succès.');
+    }
+  } catch (err) {
+    console.error('[Deduplication] Erreur lors de la déduplication :', err);
+  }
+}
+
 async function renderProducts(container) {
   UI.loading(container, 'Chargement des produits...');
+  
+  // Nettoyer les doublons d'abord
+  await deduplicateProducts();
+
   const [products, stockData, lotsAll] = await Promise.all([
     DB.dbGetAll('products'),
     DB.dbGetAll('stock'),
@@ -40,27 +151,29 @@ async function renderProducts(container) {
         <p class="page-subtitle">${products.length} produits référencés</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>
-        <button class="btn btn-secondary" onclick="exportProductsPDF()"><i data-lucide="printer"></i> PDF</button>
-        <button class="btn btn-secondary" onclick="exportProducts()"><i data-lucide="download"></i> CSV</button>
-        <button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>
+        ${Auth.can('stock_edit') ? `<button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>` : ''}
+        ${Auth.can('stock_export') ? `
+          <button class="btn btn-secondary" onclick="exportProductsPDF()"><i data-lucide="printer"></i> PDF</button>
+          <button class="btn btn-secondary" onclick="exportProducts()"><i data-lucide="download"></i> CSV</button>
+        ` : ''}
+        ${Auth.can('stock_edit') ? `<button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>` : ''}
       </div>
     </div>
 
     <!-- Dashboard Inventaire KPIs -->
     <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 16px;">
-      <div class="kpi-card">
+      ${Auth.can('stock_view_purchase_price') ? `<div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(46,134,193,0.1);color:#2E86C1"><i data-lucide="package"></i></div>
         <div class="kpi-info"><div class="kpi-value">${UI.formatCurrency(valAchat)}</div><div class="kpi-label">Valeur Stock (Achat)</div></div>
-      </div>
+      </div>` : ''}
       <div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(30,132,73,0.1);color:#1E8449"><i data-lucide="banknote"></i></div>
         <div class="kpi-info"><div class="kpi-value">${UI.formatCurrency(valVente)}</div><div class="kpi-label">Valeur Stock (Vente)</div></div>
       </div>
-      <div class="kpi-card">
+      ${Auth.can('stock_view_profit') ? `<div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(142,68,173,0.1);color:#8E44AD"><i data-lucide="trending-up"></i></div>
         <div class="kpi-info"><div class="kpi-value">${UI.formatCurrency(profit)}</div><div class="kpi-label">Profit Potentiel</div></div>
-      </div>
+      </div>` : ''}
       <div class="kpi-card">
         <div class="kpi-icon" style="background:${rupture > 0 ? 'rgba(214,59,59,0.1)' : 'rgba(30,132,73,0.1)'};color:${rupture > 0 ? '#D63B3B' : '#1E8449'}"><i data-lucide="alert-circle"></i></div>
         <div class="kpi-info"><div class="kpi-value" style="color:${rupture > 0 ? 'var(--danger)' : 'inherit'}">${rupture}</div><div class="kpi-label">En Rupture</div></div>
@@ -347,29 +460,82 @@ async function bulkReactivateProducts() {
 }
 
 // ── Édition en lot ────────────────────────────────────────────────────
-function bulkEditProducts() {
+async function bulkEditProducts() {
   const ids = [...(window._selectedProductIds || [])];
   if (!ids.length) return;
 
+  const [suppliers, products] = await Promise.all([
+    DB.dbGetAll('suppliers'),
+    Promise.all(ids.map(id => DB.dbGet('products', id)))
+  ]);
+
   const FIELDS = [
-    { value: 'category',             label: 'Categorie' },
-    { value: 'form',                 label: 'Forme galenique' },
+    { value: 'category',             label: 'Catégorie' },
+    { value: 'form',                 label: 'Forme galénique' },
     { value: 'salePrice',            label: 'Prix de vente' },
     { value: 'purchasePrice',        label: "Prix d'achat" },
     { value: 'minStock',             label: 'Seuil minimum de stock' },
-    { value: 'expiryDate',           label: 'Date de peremption' },
+    { value: 'expiryDate',           label: 'Date de péremption' },
     { value: 'requiresPrescription', label: 'Ordonnance requise (Rx/OTC)' },
     { value: 'status',               label: 'Statut (actif/inactif)' },
     { value: 'brand',                label: 'Marque / Laboratoire' },
     { value: 'tva',                  label: 'TVA (%)' },
-    { value: 'unit',                 label: 'Unite de vente' },
+    { value: 'unit',                 label: 'Unité de vente' },
   ];
+
+  const categoryGroups = window._PHARMA_CATEGORIES || [];
+  const allCats = categoryGroups.flatMap(g => g.items || []);
+  const allForms = ['Comprimé','Gélule','Sirop','Suspension','Solution injectable','Pommade','Crème','Gel','Suppositoire','Ovule','Gouttes','Spray','Inhalateur','Patch','Sachet','Granulé','Lyophilisat'];
+
+  // Template des options pour les selects
+  const supplierOptions = `<option value="">— Aucun —</option>` + suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  const catOptions = `<option value="">— Choisir —</option>` + allCats.map(c => `<option value="${c}">${c}</option>`).join('');
+  const formOptions = `<option value="">— Choisir —</option>` + allForms.map(f => `<option value="${f}">${f}</option>`).join('');
+
+  const gridRows = products.filter(Boolean).map(p => {
+    const margin = p.salePrice && p.purchasePrice ? ((p.salePrice - p.purchasePrice) / p.salePrice * 100).toFixed(1) : 0;
+    return `
+      <tr id="bulk-row-${p.id}">
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${p.name}</strong></td>
+        <td><input type="number" id="bulk-row-pa-${p.id}" value="${p.purchasePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="updateBulkRowMargin(${p.id})"></td>
+        <td><input type="number" id="bulk-row-pv-${p.id}" value="${p.salePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="updateBulkRowMargin(${p.id})"></td>
+        <td><strong id="bulk-row-marge-${p.id}" style="color:var(--primary);">${margin}%</strong></td>
+        <td><input type="number" id="bulk-row-min-${p.id}" value="${p.minStock || 10}" class="form-input" style="width:70px;padding:4px 8px;"></td>
+        <td><input type="date" id="bulk-row-exp-${p.id}" value="${p.expiryDate || ''}" class="form-input" style="width:125px;padding:4px 8px;"></td>
+        <td>
+          <select id="bulk-row-cat-${p.id}" class="form-select" style="width:130px;padding:4px 8px;">
+            <option value="">— Choisir —</option>
+            ${allCats.map(c => `<option value="${c}" ${p.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select id="bulk-row-form-${p.id}" class="form-select" style="width:110px;padding:4px 8px;">
+            <option value="">— Choisir —</option>
+            ${allForms.map(f => `<option value="${f}" ${(p.form || p.forme) === f ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select id="bulk-row-sup-${p.id}" class="form-select" style="width:120px;padding:4px 8px;">
+            <option value="">— Aucun —</option>
+            ${suppliers.map(s => `<option value="${s.id}" ${p.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+          </select>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   UI.modal(
     `<i data-lucide="layers" class="modal-icon-inline"></i> Modification en lot — ${ids.length} produit${ids.length > 1 ? 's' : ''}`,
-    `<div class="form-grid">
+    `
+    <div class="tabs-bar" style="margin-bottom:15px;display:flex;gap:4px;">
+      <button class="tab-btn active" id="bulk-tab-identical-btn" onclick="switchBulkTab('identical')"><i data-lucide="equal"></i> Modification identique</button>
+      <button class="tab-btn" id="bulk-tab-grid-btn" onclick="switchBulkTab('grid')"><i data-lucide="table"></i> Grille d'édition individuelle</button>
+    </div>
+
+    <!-- Mode Identique -->
+    <div id="bulk-identical-panel" class="form-grid">
       <div class="form-group" style="grid-column:1/-1">
-        <label class="form-label">Champ à modifier</label>
+        <label class="form-label">Champ à modifier globalement</label>
         <select id="bulk-field" class="form-select" onchange="renderBulkEditInput()">
           <option value="">— Choisir un champ —</option>
           ${FIELDS.map(f => `<option value="${f.value}">${f.label}</option>`).join('')}
@@ -377,18 +543,87 @@ function bulkEditProducts() {
       </div>
       <div id="bulk-value-container" style="grid-column:1/-1"></div>
       <div style="grid-column:1/-1;padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:13px;color:var(--text-muted)">
-        ℹ️ Cette modification s'appliquera à <strong>${ids.length} produit${ids.length > 1 ? 's' : ''}</strong>. Toutes les valeurs existantes seront remplacées.
+        ℹ️ Cette modification globale appliquera la même valeur aux <strong>${ids.length} produits</strong> sélectionnés.
       </div>
-    </div>`,
+    </div>
+
+    <!-- Mode Grille -->
+    <div id="bulk-grid-panel" style="display:none;">
+      <div style="overflow-x:auto; max-height:400px; border:1px solid var(--border); border-radius:8px; margin-bottom:12px;">
+        <table class="data-table" style="font-size:12px; min-width:1100px;">
+          <thead>
+            <tr>
+              <th>Désignation</th>
+              <th>P. Achat</th>
+              <th>P. Vente</th>
+              <th>Marge</th>
+              <th>Seuil Min</th>
+              <th>Péremption</th>
+              <th>Catégorie</th>
+              <th>Forme</th>
+              <th>Fournisseur</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${gridRows}
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:13px;color:var(--text-muted)">
+        ℹ️ Ajustez les valeurs individuellement pour chaque produit de la grille avant de sauvegarder.
+      </div>
+    </div>
+    `,
     {
+      size: 'large',
       footer: `
         <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-        <button class="btn btn-primary" onclick="applyBulkEdit()"><i data-lucide="check"></i> Appliquer à ${ids.length} produit${ids.length > 1 ? 's' : ''}</button>
+        <button class="btn btn-primary" id="bulk-save-btn" onclick="applyBulkEdit()"><i data-lucide="check"></i> Enregistrer les modifications</button>
       `
     }
   );
-  setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 100);
+  if (window.lucide) lucide.createIcons();
+  
+  // Stocker l'état actuel de l'onglet actif
+  window._bulkActiveTab = 'identical';
+  window._bulkSelectedIds = ids;
 }
+
+window.switchBulkTab = function(tab) {
+  window._bulkActiveTab = tab;
+  const identicalPanel = document.getElementById('bulk-identical-panel');
+  const gridPanel = document.getElementById('bulk-grid-panel');
+  const identicalBtn = document.getElementById('bulk-tab-identical-btn');
+  const gridBtn = document.getElementById('bulk-tab-grid-btn');
+  const saveBtn = document.getElementById('bulk-save-btn');
+
+  if (tab === 'identical') {
+    if (identicalPanel) identicalPanel.style.display = 'grid';
+    if (gridPanel) gridPanel.style.display = 'none';
+    identicalBtn?.classList.add('active');
+    gridBtn?.classList.remove('active');
+    if (saveBtn) saveBtn.setAttribute('onclick', 'applyBulkEdit()');
+  } else {
+    if (identicalPanel) identicalPanel.style.display = 'none';
+    if (gridPanel) gridPanel.style.display = 'block';
+    identicalBtn?.classList.remove('active');
+    gridBtn?.classList.add('active');
+    if (saveBtn) saveBtn.setAttribute('onclick', 'applyBulkEditGrid()');
+  }
+};
+
+window.updateBulkRowMargin = function(id) {
+  const paInput = document.getElementById(`bulk-row-pa-${id}`);
+  const pvInput = document.getElementById(`bulk-row-pv-${id}`);
+  const marginSpan = document.getElementById(`bulk-row-marge-${id}`);
+  if (!paInput || !pvInput || !marginSpan) return;
+
+  const pa = parseFloat(paInput.value) || 0;
+  const pv = parseFloat(pvInput.value) || 0;
+  
+  const margin = pv > 0 ? ((pv - pa) / pv * 100).toFixed(1) : 0;
+  marginSpan.innerText = `${margin}%`;
+};
 
 function renderBulkEditInput() {
   const field = document.getElementById('bulk-field')?.value;
@@ -489,21 +724,18 @@ async function applyBulkEdit() {
   if (field === 'requiresPrescription') value = (rawValue === 'true');
   else if (['salePrice','purchasePrice','minStock','tva'].includes(field)) value = parseFloat(rawValue) || 0;
 
-  const ids = [...(window._selectedProductIds || [])];
+  const ids = window._bulkSelectedIds || [];
   let done = 0;
 
-  // ── Champs à propager en cascade vers les lots actifs ──
   const lotCascadeFields = { salePrice: 'salePrice', purchasePrice: 'purchasePrice', expiryDate: 'expiryDate' };
 
   for (const id of ids) {
     const p = await DB.dbGet('products', id).catch(() => null);
     if (!p) continue;
 
-    // Mise à jour du produit
     await DB.dbPut('products', { ...p, [field]: value, updatedAt: Date.now() });
     done++;
 
-    // ── Propagation en cascade vers les lots actifs ──
     if (lotCascadeFields[field]) {
       const allLots = await DB.dbGetAll('lots').catch(() => []);
       const productLots = allLots.filter(l => l.productId === id && l.status === 'active');
@@ -516,9 +748,73 @@ async function applyBulkEdit() {
   await DB.writeAudit('BULK_EDIT', 'products', null, { ids, field, value, count: done });
   UI.closeModal();
   window._selectedProductIds = new Set();
-  UI.toast(`Champ "${field}" mis à jour sur ${done} produit${done > 1 ? 's' : ''} (et leurs lots).`, 'success');
+  UI.toast(`Champ "${field}" mis à jour sur ${done} produits (et leurs lots).`, 'success');
   Router.navigate('products');
 }
+
+window.applyBulkEditGrid = async function() {
+  const ids = window._bulkSelectedIds || [];
+  if (!ids.length) return;
+
+  let done = 0;
+
+  for (const id of ids) {
+    const p = await DB.dbGet('products', id).catch(() => null);
+    if (!p) continue;
+
+    const pa = parseFloat(document.getElementById(`bulk-row-pa-${id}`)?.value) || 0;
+    const pv = parseFloat(document.getElementById(`bulk-row-pv-${id}`)?.value) || 0;
+    const min = parseInt(document.getElementById(`bulk-row-min-${id}`)?.value) || 10;
+    const exp = document.getElementById(`bulk-row-exp-${id}`)?.value || '';
+    const cat = document.getElementById(`bulk-row-cat-${id}`)?.value || '';
+    const form = document.getElementById(`bulk-row-form-${id}`)?.value || '';
+    const supId = parseInt(document.getElementById(`bulk-row-sup-${id}`)?.value) || null;
+
+    // Récupérer le nom du fournisseur si sélectionné
+    let supName = '';
+    if (supId) {
+      const sObj = await DB.dbGet('suppliers', supId);
+      if (sObj) supName = sObj.name;
+    }
+
+    // Mettre à jour le produit
+    const updatedProd = {
+      ...p,
+      purchasePrice: pa,
+      salePrice: pv,
+      minStock: min,
+      expiryDate: exp || null,
+      category: cat,
+      form: form,
+      supplierId: supId,
+      supplier: supName || null,
+      updatedAt: Date.now()
+    };
+
+    await DB.dbPut('products', updatedProd);
+    done++;
+
+    // Mettre à jour en cascade dans les lots actifs
+    const allLots = await DB.dbGetAll('lots').catch(() => []);
+    const productLots = allLots.filter(l => l.productId === id && l.status === 'active');
+    for (const lot of productLots) {
+      await DB.dbPut('lots', {
+        ...lot,
+        purchasePrice: pa,
+        salePrice: pv,
+        expiryDate: exp || null,
+        supplier: supName || null,
+        updatedAt: Date.now()
+      });
+    }
+  }
+
+  await DB.writeAudit('BULK_EDIT_GRID', 'products', null, { count: done });
+  UI.closeModal();
+  window._selectedProductIds = new Set();
+  UI.toast(`Grille enregistrée avec succès. ${done} produits mis à jour.`, 'success');
+  Router.navigate('products');
+};
 
 async function viewProduct(id) {
   const p = await DB.dbGet('products', id);

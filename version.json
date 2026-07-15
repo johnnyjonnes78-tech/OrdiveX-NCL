@@ -1,5 +1,5 @@
 {
-  "version": "9.7.72",
-  "date": "2026-07-13",
-  "changelog": "v9.7.72 : Correction export ventes (PDF/CSV utilise les ventes filtrées). Refonte onglet Permissions : sélecteur d'utilisateur + cases à cocher par catégorie (Modules, Financier, Commercial, Stock, Admin). Correction filtrage par date timezone-safe. Permissions de module incluses dans les défauts de chaque rôle. Priorité permissions individuelles > rôle dans le menu."
+  "version": "9.7.73",
+  "date": "2026-07-15",
+  "changelog": "v9.7.73 : Renforcement strict des permissions sur tous les modules (dashboard, ventes, caisse, stock, catalogue, commandes, inventaires). Grille d'édition en lot interactive avec calcul de marge en temps réel. Normalisation Title Case des textes de formulaires. Correction de la transmission du réapprovisionnement et nettoyage automatique des doublons du catalogue."
 }

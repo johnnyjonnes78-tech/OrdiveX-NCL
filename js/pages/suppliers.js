@@ -842,10 +842,12 @@ async function renderPurchaseOrders(container) {
       </div>
       <div class="header-actions">
         <button class="btn btn-secondary" onclick="Router.navigate('suppliers')"><i data-lucide="factory"></i> Fournisseurs</button>
-        <button class="btn btn-secondary" onclick="exportOrdersPDF()"><i data-lucide="printer"></i> PDF</button>
-        <button class="btn btn-secondary" onclick="exportAllOrders()"><i data-lucide="download"></i> Exporter CSV</button>
-        <label class="btn btn-secondary" style="cursor:pointer"><i data-lucide="upload"></i> Importer<input type="file" accept=".json,.csv" style="display:none" onchange="importOrdersFile(this.files[0])"></label>
-        <button class="btn btn-primary" onclick="showNewOrderForm()"><i data-lucide="plus"></i> Nouvelle Commande</button>
+        ${Auth.can('stock_export') ? `
+          <button class="btn btn-secondary" onclick="exportOrdersPDF()"><i data-lucide="printer"></i> PDF</button>
+          <button class="btn btn-secondary" onclick="exportAllOrders()"><i data-lucide="download"></i> Exporter CSV</button>
+          <label class="btn btn-secondary" style="cursor:pointer"><i data-lucide="upload"></i> Importer<input type="file" accept=".json,.csv" style="display:none" onchange="importOrdersFile(this.files[0])"></label>
+        ` : ''}
+        ${Auth.can('achats_create') ? `<button class="btn btn-primary" onclick="showNewOrderForm()"><i data-lucide="plus"></i> Nouvelle Commande</button>` : ''}
       </div>
     </div>
 
@@ -875,8 +877,22 @@ async function renderPurchaseOrders(container) {
 
   window._ordersData = sorted;
   window._ordersSupplierMap = supplierMap;
-  window._ordersProducts = products;
   filterOrders();
+
+  if (window._pendingOrderData) {
+    const pending = window._pendingOrderData;
+    window._pendingOrderData = null;
+    setTimeout(function() {
+      showNewOrder(pending.supplierId, null, pending.items);
+      // Remplir également la note si fournie
+      setTimeout(function() {
+        var noteInput = document.querySelector('textarea[name="note"]');
+        if (noteInput && pending.note) {
+          noteInput.value = pending.note;
+        }
+      }, 200);
+    }, 150);
+  }
 }
 
 function filterOrders() {
@@ -919,9 +935,9 @@ function filterOrders() {
       label: 'Actions', render: r => `
       <div class="actions-cell">
         <button class="btn btn-xs btn-primary" onclick="viewOrder(${r.id})"><i data-lucide="eye"></i> Voir</button>
-        ${r.status === 'pending' ? `<button class="btn btn-xs btn-secondary" onclick="sendOrder(${r.id})"><i data-lucide="send"></i> Envoyer</button>` : ''}
-        ${['sent', 'partial'].includes(r.status) ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
-        ${['pending', 'sent'].includes(r.status) ? `<button class="btn btn-xs btn-danger" onclick="cancelOrder(${r.id})" title="Annuler cette commande"><i data-lucide="x-circle"></i> Annuler</button>` : ''}
+        ${r.status === 'pending' && Auth.can('achats_create') ? `<button class="btn btn-xs btn-secondary" onclick="sendOrder(${r.id})"><i data-lucide="send"></i> Envoyer</button>` : ''}
+        ${['sent', 'partial'].includes(r.status) && Auth.can('stock_edit') ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
+        ${['pending', 'sent'].includes(r.status) && Auth.can('achats_cancel') ? `<button class="btn btn-xs btn-danger" onclick="cancelOrder(${r.id})" title="Annuler cette commande"><i data-lucide="x-circle"></i> Annuler</button>` : ''}
       </div>` },
   ], data, { emptyMessage: 'Aucune commande', emptyIcon: 'file-text', pageSize: 100 });
   if (window.lucide) lucide.createIcons();
@@ -976,37 +992,49 @@ async function showNewOrder(supplierId, supplierName, preselectedProductId) {
   window._orderItemCounter = 0;
   window._allProducts = products;
 
-  // Auto-ajouter le produit pré-sélectionné s'il est fourni
+  // Auto-ajouter le produit pré-sélectionné s'il est fourni (ou liste de produits)
   if (preselectedProductId) {
-    // preselectedProductId peut être un objet produit complet ou un ID
-    var preProduct = (typeof preselectedProductId === 'object') ? preselectedProductId : null;
-    var pid = preProduct ? preProduct.id : parseInt(preselectedProductId);
+    if (Array.isArray(preselectedProductId)) {
+      preselectedProductId.forEach(item => {
+        addOrderItem({
+          productId: item.id || item.productId,
+          productName: item.name || item.productName,
+          quantity: item.qty || item.quantity || 1,
+          unitPrice: item.price || item.purchasePrice || 0
+        });
+      });
+      updateOrderTotal();
+    } else {
+      var preProduct = (typeof preselectedProductId === 'object') ? preselectedProductId : null;
+      var pid = preProduct ? preProduct.id : parseInt(preselectedProductId);
 
+      addOrderItem();
+
+      setTimeout(function() {
+        var searchInput = document.getElementById('order-search-0');
+        var hiddenInput = document.getElementById('order-prod-0');
+        var priceInput = document.getElementById('order-price-0');
+
+        if (!preProduct && window._allProducts) {
+          preProduct = window._allProducts.find(function(p) { return p.id === pid; });
+        }
+
+        if (preProduct && searchInput) {
+          searchInput.value = preProduct.name || '';
+          if (hiddenInput) {
+            hiddenInput.value = pid;
+            hiddenInput.dataset.name = preProduct.name || '';
+            hiddenInput.dataset.price = preProduct.purchasePrice || 0;
+          }
+          if (priceInput && preProduct.purchasePrice) {
+            priceInput.value = preProduct.purchasePrice;
+          }
+          updateOrderTotal();
+        }
+      }, 150);
+    }
+  } else {
     addOrderItem();
-
-    setTimeout(function() {
-      // Remplir le champ de recherche avec le nom du produit
-      var searchInput = document.getElementById('order-search-0');
-      var hiddenInput = document.getElementById('order-prod-0');
-      var priceInput = document.getElementById('order-price-0');
-
-      if (!preProduct && window._allProducts) {
-        preProduct = window._allProducts.find(function(p) { return p.id === pid; });
-      }
-
-      if (preProduct && searchInput) {
-        searchInput.value = preProduct.name || '';
-        if (hiddenInput) {
-          hiddenInput.value = pid;
-          hiddenInput.dataset.name = preProduct.name || '';
-          hiddenInput.dataset.price = preProduct.purchasePrice || 0;
-        }
-        if (priceInput && preProduct.purchasePrice) {
-          priceInput.value = preProduct.purchasePrice;
-        }
-        updateOrderTotal();
-      }
-    }, 150);
   }
 }
 
@@ -1014,7 +1042,7 @@ function showNewOrderForm() {
   showNewOrder(null, null);
 }
 
-function addOrderItem() {
+function addOrderItem(item = null) {
   const listEl = document.getElementById('order-items-list');
   if (!listEl) return;
   listEl.querySelector('.rx-empty-items')?.remove();
@@ -1024,18 +1052,24 @@ function addOrderItem() {
   const div = document.createElement('div');
   div.className = 'rx-item-row';
   div.id = `order-item-${idx}`;
+  
+  const pId = item ? item.productId : '';
+  const pName = item ? item.productName : '';
+  const qty = item ? item.quantity : 1;
+  const price = item ? item.unitPrice : '';
+
   div.innerHTML = `
     <div class="rx-item-fields">
       <div class="form-group flex-grow" style="position:relative">
-        <input type="text" class="form-control" id="order-search-${idx}" placeholder="Rechercher un produit..." autocomplete="off" oninput="orderProductSearch(${idx})">
-        <input type="hidden" id="order-prod-${idx}">
+        <input type="text" class="form-control" id="order-search-${idx}" placeholder="Rechercher un produit..." autocomplete="off" oninput="orderProductSearch(${idx})" value="${pName}">
+        <input type="hidden" id="order-prod-${idx}" value="${pId}" data-name="${pName}" data-price="${price || 0}">
         <div id="order-dropdown-${idx}" class="order-product-dropdown" style="display:none"></div>
       </div>
       <div class="form-group" style="width:100px">
-        <input type="number" class="form-control" id="order-qty-${idx}" placeholder="Qté" min="1" value="1" oninput="updateOrderTotal()">
+        <input type="number" class="form-control" id="order-qty-${idx}" placeholder="Qté" min="1" value="${qty}" oninput="updateOrderTotal()">
       </div>
       <div class="form-group" style="width:140px">
-        <input type="number" class="form-control" id="order-price-${idx}" placeholder="Prix unit." min="0" oninput="updateOrderTotal()">
+        <input type="number" class="form-control" id="order-price-${idx}" placeholder="Prix unit." min="0" value="${price}" oninput="updateOrderTotal()">
       </div>
       <button type="button" class="btn btn-xs btn-danger" onclick="removeOrderItem(${idx})"><i data-lucide="trash-2"></i></button>
     </div>`;

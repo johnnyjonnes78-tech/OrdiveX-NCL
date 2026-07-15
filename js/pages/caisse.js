@@ -168,17 +168,17 @@ async function renderCaisse(container) {
       </div>
       <div class="header-actions">
         <button class="btn btn-secondary" onclick="exportCaissePDF()"><i data-lucide="printer"></i> PDF</button>
-        <button class="btn btn-secondary" onclick="openAddCashEntry()"><i data-lucide="plus"></i> Entrée/Sortie manuelle</button>
-        ${['admin', 'pharmacien'].includes(DB.AppState.currentUser?.role)
-      ? (!todayClosure
-        ? `<button class="btn btn-primary" onclick="openCaisseClose()"><i data-lucide="lock"></i> Clôturer la journée</button>`
-        : `<span class="badge badge-success" style="padding:8px 16px"><i data-lucide="check-circle"></i> Journée clôturée</span>`
-      )
-      : (todayClosure
-        ? `<span class="badge badge-success" style="padding:8px 16px"><i data-lucide="check-circle"></i> Journée clôturée</span>`
-        : `<span class="badge badge-warning" style="padding:8px 16px"><i data-lucide="lock"></i> Clôture : pharmacien uniquement</span>`
-      )
-    }
+        ${Auth.can('caisse_depot_retrait') ? `<button class="btn btn-secondary" onclick="openAddCashEntry()"><i data-lucide="plus"></i> Entrée/Sortie manuelle</button>` : ''}
+        ${Auth.can('caisse_cloture')
+          ? (!todayClosure
+            ? `<button class="btn btn-primary" onclick="openCaisseClose()"><i data-lucide="lock"></i> Clôturer la journée</button>`
+            : `<span class="badge badge-success" style="padding:8px 16px"><i data-lucide="check-circle"></i> Journée clôturée</span>`
+          )
+          : (todayClosure
+            ? `<span class="badge badge-success" style="padding:8px 16px"><i data-lucide="check-circle"></i> Journée clôturée</span>`
+            : `<span class="badge badge-warning" style="padding:8px 16px"><i data-lucide="lock"></i> Clôture non autorisée</span>`
+          )
+        }
       </div>
     </div>
 
@@ -188,7 +188,7 @@ async function renderCaisse(container) {
     <div class="tabs-bar" style="margin-bottom: 20px; display:flex; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;">
       <style>.tabs-bar::-webkit-scrollbar { display: none; }</style>
       <button class="tab-btn active" style="flex-shrink:0" onclick="switchCaisseTab(this,'main')"><i data-lucide="banknote"></i> Ventes du jour</button>
-      ${DB.AppState.currentUser?.role !== 'caissier' ? `
+      ${Auth.can('caisse_voir_historique') ? `
       <button class="tab-btn" style="flex-shrink:0" onclick="switchCaisseTab(this,'detail')"><i data-lucide="calculator"></i> Détail du calcul</button>
       <button class="tab-btn" style="flex-shrink:0" onclick="switchCaisseTab(this,'stats')"><i data-lucide="bar-chart-3"></i> Statistiques & Clôtures</button>
       ` : ''}

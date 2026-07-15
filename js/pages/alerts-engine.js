@@ -569,7 +569,6 @@ async function submitBulkOrder(status) {
   var suggestions = window._reorderSuggestions || [];
   var selected = suggestions.filter(function(s) { return s.selected; });
   var supplierId = parseInt(document.getElementById('bulk-order-supplier')?.value);
-  var expectedDate = document.getElementById('bulk-order-date')?.value || '';
   var note = document.getElementById('bulk-order-note')?.value || '';
 
   if (!supplierId) { UI.toast('Sélectionnez un fournisseur', 'error'); return; }
@@ -580,27 +579,19 @@ async function submitBulkOrder(status) {
       productId: s.product.id,
       productName: s.product.name,
       quantity: s.suggestedQtyToOrder || s.suggestedQty,
-      unitPrice: s.product.purchasePrice || 0,
-      receivedQty: 0
+      unitPrice: s.product.purchasePrice || 0
     };
   });
 
-  var totalAmount = items.reduce(function(a, i) { return a + i.quantity * i.unitPrice; }, 0);
-  var orderId = await DB.dbAdd('purchaseOrders', {
-    supplierId: supplierId,
-    orderNumber: 'BC-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5),
-    date: new Date().toISOString().split('T')[0],
-    expectedDate: expectedDate,
-    items: items,
-    totalAmount: totalAmount,
-    status: status,
-    note: note || 'Commande groupée depuis le réapprovisionnement (' + items.length + ' produits)',
-    createdBy: DB.AppState.currentUser?.id,
-  });
-
-  await DB.writeAudit('CREATE_BULK_ORDER', 'purchaseOrders', orderId, { itemCount: items.length, totalAmount: totalAmount });
   UI.closeModal();
-  UI.toast('Bon de commande créé — ' + items.length + ' produits — ' + UI.formatCurrency(totalAmount), 'success', 4000);
+
+  // Stocker dans la variable globale de transfert
+  window._pendingOrderData = {
+    supplierId: supplierId,
+    items: items,
+    note: note
+  };
+
   Router.navigate('purchase-orders');
 }
 

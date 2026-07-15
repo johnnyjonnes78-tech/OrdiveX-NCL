@@ -470,11 +470,12 @@
       if (!password) { UI.toast('Le mot de passe ERP est obligatoire', 'error'); return; }
     }
 
+    const normalizedNom = UI.normalizeText(nom);
     const data = {
-      nom,
-      name: nom,
-      poste: document.getElementById('hr-emp-poste')?.value?.trim() || '',
-      department: document.getElementById('hr-emp-dept')?.value?.trim() || '',
+      nom: normalizedNom,
+      name: normalizedNom,
+      poste: UI.normalizeText(document.getElementById('hr-emp-poste')?.value),
+      department: UI.normalizeText(document.getElementById('hr-emp-dept')?.value),
       dateEmbauche: document.getElementById('hr-emp-embauche')?.value || '',
       dateNaissance: document.getElementById('hr-emp-naissance')?.value || '',
       salaire: parseFloat(document.getElementById('hr-emp-salaire')?.value) || 0,
@@ -482,8 +483,8 @@
       dateFinContrat: document.getElementById('hr-emp-fincontrat')?.value || '',
       telephone: document.getElementById('hr-emp-tel')?.value?.trim() || '',
       cni: document.getElementById('hr-emp-cni')?.value?.trim() || '',
-      adresse: document.getElementById('hr-emp-adresse')?.value?.trim() || '',
-      contactUrgence: document.getElementById('hr-emp-contact')?.value?.trim() || '',
+      adresse: UI.normalizeText(document.getElementById('hr-emp-adresse')?.value),
+      contactUrgence: UI.normalizeText(document.getElementById('hr-emp-contact')?.value),
       status: document.getElementById('hr-emp-status')?.value || 'actif',
       active: (document.getElementById('hr-emp-status')?.value || 'actif') === 'actif',
       notes: document.getElementById('hr-emp-notes')?.value?.trim() || '',

@@ -480,9 +480,10 @@ function renderFullPOSUI(container) {
             <button class="pay-btn" data-m="assurance" onclick="selectPay(this)">
               <i data-lucide="shield-plus"></i><span>Assurance</span>
             </button>
+            ${Auth.can('sales_credit') ? `
             <button class="pay-btn" data-m="credit" onclick="selectPay(this)">
               <i data-lucide="file-clock"></i><span>Crédit</span>
-            </button>
+            </button>` : ''}
           </div>
 
           <div id="pay-cash" class="pay-detail">

@@ -18,8 +18,7 @@ const UI = {
     if (!str) return '';
     const trimmed = str.trim();
     if (!trimmed) return '';
-    // Règle : Première lettre en majuscule, le reste en minuscules
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    return trimmed.toLowerCase().replace(/(^|\s|[-'\/\(\)\.\,])(\S)/g, (m, sep, c) => sep + c.toUpperCase());
   },
 
   // ─── Format de date configurable — lit window._appSettings.date_format ───

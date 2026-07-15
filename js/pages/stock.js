@@ -1154,15 +1154,27 @@ window._softRefreshStock = async function() {
 
 window.exportStockPDF = function() {
   if (!window.PDFExport) return UI.toast("Module PDF non chargé", "error");
-  const data = (window._stockData || []).map(p => [
-    p.code,
-    p.name,
-    p.currentStock.toString(),
-    p.qtyRayon.toString(),
-    p.qtyReserve.toString(),
-    UI.formatCurrency(p.purchasePrice || 0)
-  ]);
-  const headers = ["Code", "Produit", "Stock Total", "Rayon", "Réserve", "Prix Achat"];
+  const showBuyPrice = Auth.can('stock_view_purchase_price');
+  
+  const data = (window._stockData || []).map(p => {
+    const row = [
+      p.code,
+      p.name,
+      p.currentStock.toString(),
+      p.qtyRayon.toString(),
+      p.qtyReserve.toString()
+    ];
+    if (showBuyPrice) {
+      row.push(UI.formatCurrency(p.purchasePrice || p.prixAchat || 0));
+    }
+    return row;
+  });
+  
+  const headers = ["Code", "Produit", "Stock Total", "Rayon", "Réserve"];
+  if (showBuyPrice) {
+    headers.push("Prix Achat");
+  }
+  
   window.PDFExport.generate("État du Stock Global", headers, data);
 };
 

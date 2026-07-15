@@ -104,9 +104,9 @@ function renderHistoryView(container) {
         <p class="page-subtitle">Réalisez des inventaires complets ou ciblés et pilotez les ajustements de stock</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-primary" onclick="_inventoryPageState.view = 'create'; _refreshInventoryDOM();">
+        ${Auth.can('inventory_create') ? `<button class="btn btn-primary" onclick="_inventoryPageState.view = 'create'; _refreshInventoryDOM();">
           <i data-lucide="plus-circle"></i> Nouvel Inventaire
-        </button>
+        </button>` : ''}
       </div>
     </div>
 

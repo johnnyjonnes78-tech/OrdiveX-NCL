@@ -335,3 +335,10 @@ const Router = {
 
 window.Auth = Auth;
 window.Router = Router;
+
+window.normalizeText = function(str) {
+  if (!str) return '';
+  return str.trim()
+    .toLowerCase()
+    .replace(/(^|\s|[-'\/\(\)\.\,])(\S)/g, (m, sep, c) => sep + c.toUpperCase());
+};
