@@ -689,7 +689,7 @@ async function confirmCaisseClose() {
   window._caisseCloseEnCours = true;
   // Restriction : permission caisse_cloture ou rôle admin/pharmacien
   const role = DB.AppState.currentUser?.role;
-  const canClose = (window.Auth && Auth.can('caisse_cloture')) || ['admin', 'pharmacien'].includes(role);
+  const canClose = window.Auth ? Auth.can('caisse_cloture') : ['admin', 'pharmacien'].includes(role);
   if (!canClose) {
     UI.toast('Vous n\'avez pas la permission de clôturer la caisse. Contactez le responsable.', 'error', 5000);
     UI.closeModal();

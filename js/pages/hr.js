@@ -519,7 +519,37 @@
     }
   };
 
-  window.hrOpenEmployeDetail = async function (id) {
+  // Helper pour lire les données RH du champ notes
+  function getHRData(notesStr) {
+    try {
+      if (notesStr && notesStr.trim().startsWith('{')) {
+        const data = JSON.parse(notesStr);
+        return {
+          textNotes: data.textNotes || '',
+          contracts: data.contracts || [],
+          evaluations: data.evaluations || [],
+          sanctions: data.sanctions || [],
+          documents: data.documents || []
+        };
+      }
+    } catch(e) {}
+    return {
+      textNotes: notesStr || '',
+      contracts: [],
+      evaluations: [],
+      sanctions: [],
+      documents: []
+    };
+  }
+
+  // Helper pour sauvegarder les données RH
+  function saveHRData(oldNotesStr, updates) {
+    const current = getHRData(oldNotesStr);
+    const updated = { ...current, ...updates };
+    return JSON.stringify(updated);
+  }
+
+  window.hrOpenEmployeDetail = async function (id, activeTab = 'general') {
     let rawE = await DB.dbGet('users', id);
     if (!rawE) return;
     const e = {
@@ -527,20 +557,35 @@
       nom: rawE.nom || rawE.name || rawE.username || '',
       status: rawE.status || (rawE.active !== false ? 'actif' : 'inactif')
     };
-    // Afficher les avances et historique de paie
+
+    const hrData = getHRData(e.notes);
+
+    // Charger les avances et historique de paie
     const advances = (await DB.dbGetAll('hr_advances')).filter(a => a.employeeId === id);
     const payroll = (await DB.dbGetAll('hr_payroll')).filter(p => p.employeeId === id).slice(-6).reverse();
     const badgeClass = { actif:'emp-badge-actif', inactif:'emp-badge-inactif', conge:'emp-badge-conge', suspendu:'emp-badge-suspendu' };
     const badgeLabel = { actif:'Actif', inactif:'Inactif', conge:'En Congé', suspendu:'Suspendu' };
-    UI.openModal({
-      title: `Dossier — ${e.nom}`,
-      size: 'large',
-      body: `
+
+    // HTML des onglets
+    const tabsHtml = `
+      <div class="hr-tabs" style="margin-bottom:15px; border-bottom:1px solid var(--border)">
+        <button class="hr-tab-btn ${activeTab==='general'?'active':''}" onclick="hrSwitchDetailTab(${id}, 'general')">Général</button>
+        <button class="hr-tab-btn ${activeTab==='contracts'?'active':''}" onclick="hrSwitchDetailTab(${id}, 'contracts')">Contrats (${hrData.contracts.length})</button>
+        <button class="hr-tab-btn ${activeTab==='evaluations'?'active':''}" onclick="hrSwitchDetailTab(${id}, 'evaluations')">Évaluations (${hrData.evaluations.length})</button>
+        <button class="hr-tab-btn ${activeTab==='sanctions'?'active':''}" onclick="hrSwitchDetailTab(${id}, 'sanctions')">Sanctions (${hrData.sanctions.length})</button>
+        <button class="hr-tab-btn ${activeTab==='documents'?'active':''}" onclick="hrSwitchDetailTab(${id}, 'documents')">Documents (${hrData.documents.length})</button>
+      </div>
+    `;
+
+    let bodyHtml = tabsHtml;
+
+    if (activeTab === 'general') {
+      bodyHtml += `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
           <div><div class="payslip-emp-label">Poste</div><div class="payslip-emp-value">${e.poste||'—'}</div></div>
           <div><div class="payslip-emp-label">Service</div><div class="payslip-emp-value">${e.department||'—'}</div></div>
           <div><div class="payslip-emp-label">Date embauche</div><div class="payslip-emp-value">${dateLabel(e.dateEmbauche)}</div></div>
-          <div><div class="payslip-emp-label">Contrat</div><div class="payslip-emp-value">${e.typeContrat||'—'} ${e.dateFinContrat ? '(jusqu\'au '+dateLabel(e.dateFinContrat)+')' : ''}</div></div>
+          <div><div class="payslip-emp-label">Contrat Actuel</div><div class="payslip-emp-value">${e.typeContrat||'—'} ${e.dateFinContrat ? '(jusqu\'au '+dateLabel(e.dateFinContrat)+')' : ''}</div></div>
           <div><div class="payslip-emp-label">Salaire de base</div><div class="payslip-emp-value">${fmt(e.salaire)}</div></div>
           <div><div class="payslip-emp-label">Statut</div><div class="payslip-emp-value"><span class="emp-badge ${badgeClass[e.status]||''}">${badgeLabel[e.status]||e.status}</span></div></div>
           <div><div class="payslip-emp-label">Téléphone</div><div class="payslip-emp-value">${e.telephone||'—'}</div></div>
@@ -553,7 +598,7 @@
         ` : ''}
         ${payroll.length > 0 ? `
           <h4 style="font-size:.85rem;font-weight:700;margin-bottom:8px">Derniers bulletins de paie</h4>
-          <table class="hr-payroll-table" style="font-size:.8rem">
+          <table class="hr-payroll-table" style="font-size:.8rem; margin-bottom:15px">
             <thead><tr><th>Période</th><th>Net à Payer</th><th>Statut</th><th></th></tr></thead>
             <tbody>
               ${payroll.map(p => `
@@ -561,20 +606,400 @@
                   <td>${p.period||'—'}</td>
                   <td class="amount">${fmt(p.netAPayer)}</td>
                   <td><span class="emp-badge ${p.status==='paye'?'emp-badge-actif':'emp-badge-inactif'}">${p.status==='paye'?'Payé':'En attente'}</span></td>
-                  <td><button class="btn btn-sm btn-secondary" onclick="hrPrintPayslip(${p.id})">PDF</button></td>
+                  <td><button class="btn btn-xs btn-secondary" onclick="hrPrintPayslip(${p.id})">PDF</button></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        ` : '<p style="color:var(--text-muted);font-size:.83rem">Aucun bulletin de paie enregistré.</p>'}
-        ${e.notes ? `<div style="margin-top:16px;padding:12px;background:var(--surface-alt);border-radius:8px;font-size:.83rem">${e.notes}</div>` : ''}
-      `,
+        ` : '<p style="color:var(--text-muted);font-size:.83rem;margin-bottom:15px">Aucun bulletin de paie enregistré.</p>'}
+        ${hrData.textNotes ? `
+          <div style="margin-top:16px;">
+            <div class="payslip-emp-label">Notes de suivi</div>
+            <div style="padding:12px;background:var(--surface-alt);border-radius:8px;font-size:.83rem;white-space:pre-line;">${hrData.textNotes}</div>
+          </div>
+        ` : ''}
+      `;
+    } else if (activeTab === 'contracts') {
+      bodyHtml += `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h4 style="margin:0;font-size:.9rem;font-weight:700">Historique des Contrats</h4>
+          <button class="btn btn-xs btn-primary" onclick="hrAddContractModal(${id})"><i data-lucide="plus"></i> Ajouter un contrat</button>
+        </div>
+        <table class="hr-payroll-table" style="font-size:.8rem">
+          <thead><tr><th>Type</th><th>Début</th><th>Fin</th><th>Salaire de base</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${hrData.contracts.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Aucun contrat enregistré.</td></tr>' : ''}
+            ${hrData.contracts.map(c => `
+              <tr>
+                <td><strong>${c.type}</strong></td>
+                <td>${dateLabel(c.dateDebut)}</td>
+                <td>${c.dateFin ? dateLabel(c.dateFin) : 'Indéterminé'}</td>
+                <td class="amount">${fmt(c.salaire)}</td>
+                <td><span class="emp-badge ${c.status==='actif'?'emp-badge-actif':'emp-badge-inactif'}">${c.status==='actif'?'Actif':'Terminé'}</span></td>
+                <td>
+                  <button class="btn btn-xs btn-danger" onclick="hrDeleteContract(${id}, ${c.id})"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } else if (activeTab === 'evaluations') {
+      bodyHtml += `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h4 style="margin:0;font-size:.9rem;font-weight:700">Évaluations de performance</h4>
+          <button class="btn btn-xs btn-primary" onclick="hrAddEvaluationModal(${id})"><i data-lucide="plus"></i> Nouvelle évaluation</button>
+        </div>
+        <table class="hr-payroll-table" style="font-size:.8rem">
+          <thead><tr><th>Date</th><th>Note / Évaluation</th><th>Commentaires</th><th>Évaluateur</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${hrData.evaluations.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Aucune évaluation enregistrée.</td></tr>' : ''}
+            ${hrData.evaluations.map(ev => `
+              <tr>
+                <td>${dateLabel(ev.date)}</td>
+                <td><span class="badge badge-success">${ev.rating}</span></td>
+                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${ev.comment || '—'}</td>
+                <td>${ev.evaluator}</td>
+                <td>
+                  <button class="btn btn-xs btn-danger" onclick="hrDeleteEvaluation(${id}, ${ev.id})"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } else if (activeTab === 'sanctions') {
+      bodyHtml += `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h4 style="margin:0;font-size:.9rem;font-weight:700">Mesures & Sanctions Disciplinaires</h4>
+          <button class="btn btn-xs btn-primary" onclick="hrAddSanctionModal(${id})"><i data-lucide="plus"></i> Ajouter une sanction</button>
+        </div>
+        <table class="hr-payroll-table" style="font-size:.8rem">
+          <thead><tr><th>Date</th><th>Type</th><th>Motif</th><th>Statut/Décision</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${hrData.sanctions.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Aucune sanction disciplinaire.</td></tr>' : ''}
+            ${hrData.sanctions.map(s => `
+              <tr>
+                <td>${dateLabel(s.date)}</td>
+                <td><span class="badge badge-danger">${s.type}</span></td>
+                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${s.reason}</td>
+                <td>${s.status || 'Appliquée'}</td>
+                <td>
+                  <button class="btn btn-xs btn-danger" onclick="hrDeleteSanction(${id}, ${s.id})"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    } else if (activeTab === 'documents') {
+      bodyHtml += `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h4 style="margin:0;font-size:.9rem;font-weight:700">Documents numériques de l'employé</h4>
+          <button class="btn btn-xs btn-primary" onclick="hrAddDocumentModal(${id})"><i data-lucide="plus"></i> Ajouter un document</button>
+        </div>
+        <table class="hr-payroll-table" style="font-size:.8rem">
+          <thead><tr><th>Nom du document</th><th>Lien / Fichier</th><th>Ajouté le</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${hrData.documents.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Aucun document enregistré.</td></tr>' : ''}
+            ${hrData.documents.map(d => `
+              <tr>
+                <td><strong>${d.name}</strong></td>
+                <td><a href="${d.url}" target="_blank" class="text-primary" style="text-decoration:underline"><i data-lucide="external-link" style="width:12px;height:12px"></i> Consulter</a></td>
+                <td>${dateLabel(d.dateAdded)}</td>
+                <td>
+                  <button class="btn btn-xs btn-danger" onclick="hrDeleteDocument(${id}, ${d.id})"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    UI.openModal({
+      title: `Dossier Individuel — ${e.nom}`,
+      size: 'large',
+      body: bodyHtml,
       buttons: [
         { label: 'Fermer', class: 'btn-secondary', action: 'close' },
-        { label: 'Modifier', class: 'btn-primary', action: () => { UI.closeModal(); hrOpenEmployeForm(id); } }
+        { label: 'Modifier Fiche', class: 'btn-primary', action: () => { UI.closeModal(); hrOpenEmployeForm(id); } }
       ]
     });
     if (window.lucide) lucide.createIconsGlobal ? lucide.createIconsGlobal() : lucide.createIcons();
+  };
+
+  // Switch d'onglets dans le détail
+  window.hrSwitchDetailTab = function (id, tab) {
+    UI.closeModal();
+    hrOpenEmployeDetail(id, tab);
+  };
+
+  // Modals d'ajout de données RH complexes
+  window.hrAddContractModal = function (employeeId) {
+    UI.openModal({
+      title: 'Nouveau Contrat',
+      body: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Type de contrat</label>
+            <select id="new-c-type" class="form-control">
+              <option value="CDI">CDI</option>
+              <option value="CDD">CDD</option>
+              <option value="Stagiaire">Stagiaire</option>
+              <option value="Freelance">Freelance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date de début</label>
+            <input type="date" id="new-c-debut" class="form-control" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div class="form-group">
+            <label>Date de fin (CDD)</label>
+            <input type="date" id="new-c-fin" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Salaire de base (GNF)</label>
+            <input type="number" id="new-c-salaire" class="form-control" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label>Statut</label>
+            <select id="new-c-status" class="form-control">
+              <option value="actif">Actif</option>
+              <option value="termine">Terminé</option>
+            </select>
+          </div>
+        </div>
+      `,
+      buttons: [
+        { label: 'Annuler', class: 'btn-secondary', action: () => hrOpenEmployeDetail(employeeId, 'contracts') },
+        { label: 'Ajouter', class: 'btn-primary', action: () => hrSaveNewContract(employeeId) }
+      ]
+    });
+  };
+
+  window.hrSaveNewContract = async function (employeeId) {
+    const type = document.getElementById('new-c-type').value;
+    const dateDebut = document.getElementById('new-c-debut').value;
+    const dateFin = document.getElementById('new-c-fin').value;
+    const salaire = parseFloat(document.getElementById('new-c-salaire').value) || 0;
+    const status = document.getElementById('new-c-status').value;
+
+    if (!dateDebut) { UI.toast('La date de début est obligatoire', 'error'); return; }
+
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+
+    const hrData = getHRData(rawE.notes);
+    const newId = Date.now();
+    hrData.contracts.push({ id: newId, type, dateDebut, dateFin, salaire, status });
+
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Contrat ajouté avec succès', 'success');
+    hrOpenEmployeDetail(employeeId, 'contracts');
+  };
+
+  window.hrDeleteContract = async function (employeeId, contractId) {
+    if (!confirm('Supprimer ce contrat de l\'historique ?')) return;
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+    const hrData = getHRData(rawE.notes);
+    hrData.contracts = hrData.contracts.filter(c => c.id !== contractId);
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Contrat supprimé', 'success');
+    hrOpenEmployeDetail(employeeId, 'contracts');
+  };
+
+  // Évaluations
+  window.hrAddEvaluationModal = function (employeeId) {
+    UI.openModal({
+      title: 'Nouvelle Évaluation',
+      body: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Date de l'évaluation</label>
+            <input type="date" id="new-ev-date" class="form-control" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div class="form-group">
+            <label>Note / Évaluation globale</label>
+            <select id="new-ev-rating" class="form-control">
+              <option value="Excellent (A)">Excellent (A)</option>
+              <option value="Très Bon (B)">Très Bon (B)</option>
+              <option value="Satisfaisant (C)">Satisfaisant (C)</option>
+              <option value="Insuffisant (D)">Insuffisant (D)</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1/-1">
+            <label>Commentaires détaillés</label>
+            <textarea id="new-ev-comment" class="form-control" rows="3" placeholder="Points forts, axes d'amélioration..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Évaluateur</label>
+            <input type="text" id="new-ev-evaluator" class="form-control" placeholder="Nom de l'évaluateur">
+          </div>
+        </div>
+      `,
+      buttons: [
+        { label: 'Annuler', class: 'btn-secondary', action: () => hrOpenEmployeDetail(employeeId, 'evaluations') },
+        { label: 'Enregistrer', class: 'btn-primary', action: () => hrSaveNewEvaluation(employeeId) }
+      ]
+    });
+  };
+
+  window.hrSaveNewEvaluation = async function (employeeId) {
+    const date = document.getElementById('new-ev-date').value;
+    const rating = document.getElementById('new-ev-rating').value;
+    const comment = document.getElementById('new-ev-comment').value.trim();
+    const evaluator = document.getElementById('new-ev-evaluator').value.trim() || 'Directeur';
+
+    if (!date) { UI.toast('La date est obligatoire', 'error'); return; }
+
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+
+    const hrData = getHRData(rawE.notes);
+    hrData.evaluations.push({ id: Date.now(), date, rating, comment, evaluator });
+
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Évaluation enregistrée', 'success');
+    hrOpenEmployeDetail(employeeId, 'evaluations');
+  };
+
+  window.hrDeleteEvaluation = async function (employeeId, evId) {
+    if (!confirm('Supprimer cette évaluation ?')) return;
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+    const hrData = getHRData(rawE.notes);
+    hrData.evaluations = hrData.evaluations.filter(e => e.id !== evId);
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Évaluation supprimée', 'success');
+    hrOpenEmployeDetail(employeeId, 'evaluations');
+  };
+
+  // Sanctions
+  window.hrAddSanctionModal = function (employeeId) {
+    UI.openModal({
+      title: 'Déclarer une mesure disciplinaire',
+      body: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Date de l'incident / décision</label>
+            <input type="date" id="new-s-date" class="form-control" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div class="form-group">
+            <label>Type de sanction</label>
+            <select id="new-s-type" class="form-control">
+              <option value="Avertissement verbal">Avertissement verbal</option>
+              <option value="Avertissement écrit">Avertissement écrit</option>
+              <option value="Blâme">Blâme</option>
+              <option value="Mise à pied temporaire">Mise à pied temporaire</option>
+              <option value="Licenciement">Licenciement</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1/-1">
+            <label>Motif de la sanction</label>
+            <textarea id="new-s-reason" class="form-control" rows="3" placeholder="Détaillez les faits reprochés..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Statut / Mesure prise</label>
+            <input type="text" id="new-s-status" class="form-control" placeholder="Ex: Appliquée, En attente de signature">
+          </div>
+        </div>
+      `,
+      buttons: [
+        { label: 'Annuler', class: 'btn-secondary', action: () => hrOpenEmployeDetail(employeeId, 'sanctions') },
+        { label: 'Appliquer', class: 'btn-primary', action: () => hrSaveNewSanction(employeeId) }
+      ]
+    });
+  };
+
+  window.hrSaveNewSanction = async function (employeeId) {
+    const date = document.getElementById('new-s-date').value;
+    const type = document.getElementById('new-s-type').value;
+    const reason = document.getElementById('new-s-reason').value.trim();
+    const status = document.getElementById('new-s-status').value.trim() || 'Appliquée';
+
+    if (!date || !reason) { UI.toast('La date et le motif sont obligatoires', 'error'); return; }
+
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+
+    const hrData = getHRData(rawE.notes);
+    hrData.sanctions.push({ id: Date.now(), date, type, reason, status });
+
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Mesure disciplinaire enregistrée', 'success');
+    hrOpenEmployeDetail(employeeId, 'sanctions');
+  };
+
+  window.hrDeleteSanction = async function (employeeId, sId) {
+    if (!confirm('Supprimer cette sanction ?')) return;
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+    const hrData = getHRData(rawE.notes);
+    hrData.sanctions = hrData.sanctions.filter(s => s.id !== sId);
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Sanction supprimée', 'success');
+    hrOpenEmployeDetail(employeeId, 'sanctions');
+  };
+
+  // Documents
+  window.hrAddDocumentModal = function (employeeId) {
+    UI.openModal({
+      title: 'Attacher un Document',
+      body: `
+        <div class="form-grid">
+          <div class="form-group" style="grid-column: 1/-1">
+            <label>Nom du document</label>
+            <input type="text" id="new-d-name" class="form-control" placeholder="Ex: Copie de la CNI, Contrat signé, Diplôme">
+          </div>
+          <div class="form-group" style="grid-column: 1/-1">
+            <label>Lien ou URL du document (Google Drive, Dropbox, Cloud...)</label>
+            <input type="url" id="new-d-url" class="form-control" placeholder="https://drive.google.com/...">
+          </div>
+        </div>
+      `,
+      buttons: [
+        { label: 'Annuler', class: 'btn-secondary', action: () => hrOpenEmployeDetail(employeeId, 'documents') },
+        { label: 'Ajouter', class: 'btn-primary', action: () => hrSaveNewDocument(employeeId) }
+      ]
+    });
+  };
+
+  window.hrSaveNewDocument = async function (employeeId) {
+    const name = document.getElementById('new-d-name').value.trim();
+    const url = document.getElementById('new-d-url').value.trim();
+
+    if (!name || !url) { UI.toast('Tous les champs sont obligatoires', 'error'); return; }
+
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+
+    const hrData = getHRData(rawE.notes);
+    hrData.documents.push({ id: Date.now(), name, url, dateAdded: new Date().toISOString().slice(0,10) });
+
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Document enregistré', 'success');
+    hrOpenEmployeDetail(employeeId, 'documents');
+  };
+
+  window.hrDeleteDocument = async function (employeeId, dId) {
+    if (!confirm('Supprimer ce document ?')) return;
+    const rawE = await DB.dbGet('users', employeeId);
+    if (!rawE) return;
+    const hrData = getHRData(rawE.notes);
+    hrData.documents = hrData.documents.filter(d => d.id !== dId);
+    rawE.notes = JSON.stringify(hrData);
+    await DB.dbPut('users', rawE);
+    UI.toast('Document supprimé', 'success');
+    hrOpenEmployeDetail(employeeId, 'documents');
   };
 
   // ═══════════════════════════════════════════════════════════════════════

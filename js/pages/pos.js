@@ -444,7 +444,7 @@ function renderFullPOSUI(container) {
         <!-- TOTAUX -->
         <div class="pos-totals-block">
           <div class="totals-row"><span>Sous-total</span><span id="pos-subtotal">0 GNF</span></div>
-          <div class="totals-row"><span>Remise</span><input id="pos-discount" type="number" class="disc-input" value="0" min="0" oninput="refreshTotals()"></div>
+          <div class="totals-row"><span>Remise</span><input id="pos-discount" type="number" class="disc-input" value="0" min="0" oninput="refreshTotals()" ${!Auth.can('sales_discount') ? 'disabled title="Autorisation requise"' : ''}></div>
           <div class="totals-row totals-total"><span>TOTAL À PAYER</span><span id="pos-total">0 GNF</span></div>
           <div id="assur-split-banner" style="display:none; margin-top:10px; padding:14px; border-radius:12px; background:#FFFFFF; border:2px solid #E8E8E8; box-shadow:0 2px 8px rgba(0,0,0,0.06)">
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
@@ -2100,8 +2100,8 @@ async function _validerVenteLogic() {
     UI.toast('⛔ Les remises sont désactivées dans les paramètres.', 'error', 5000);
     return;
   }
-  // ── Contrôle: remise autorisée par permission utilisateur ? ──
-  if (disc > 0 && !Auth.can('appliquer_remise') && DB.AppState.currentUser?.role !== 'admin') {
+  // ── Contrôle: remise autorisée par permission utilisateur ──
+  if (disc > 0 && !Auth.can('sales_discount') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission d\'appliquer une remise.', 'error', 5000);
     return;
   }
@@ -2192,7 +2192,7 @@ async function _validerVenteLogic() {
 
   if (method === 'credit') {
     // Vérifier la permission de vente à crédit
-    if (window.Auth && !Auth.can('pos_allow_credit') && DB.AppState.currentUser?.role !== 'admin') {
+    if (window.Auth && !Auth.can('sales_credit') && DB.AppState.currentUser?.role !== 'admin') {
       UI.toast('⛔ Vous n\'avez pas la permission d\'effectuer des ventes à crédit. Contactez le responsable.', 'error', 5000);
       return;
     }
