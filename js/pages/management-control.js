@@ -76,7 +76,7 @@ async function mcLoadData() {
       DB.dbGetAll('lots'),
       DB.dbGetAll('stock'),
       DB.dbGetAll('patients'),
-      DB.dbGetAll('app_users').catch(() => []),
+      DB.dbGetAll('users').catch(() => []),
     ]);
 
     // Charger uniquement les saleItems des ventes de la periode pour eviter un dbGetAll massif
