@@ -20,7 +20,8 @@ async function renderManagementControl(container) {
         <p class="page-subtitle">Centre de decision — Vue unifiee de l'activite</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" onclick="mcExportPDF()"><i data-lucide="printer"></i> Imprimer / PDF</button>
+        <button class="btn btn-secondary" onclick="window.print()"><i data-lucide="printer"></i> Imprimer la page</button>
+        <button class="btn btn-primary" onclick="mcExportPDF()"><i data-lucide="download"></i> Exporter PDF</button>
       </div>
     </div>
 
@@ -63,41 +64,27 @@ async function mcLoadData() {
     const from = window._mcDateFrom;
     const to = window._mcDateTo;
 
-    // Charger les donnees en parallele
-    const [allSales, allSaleItems, products, lots, stockAll, movements, allReturns, patients, appUsers] = await Promise.all([
-      DB.dbGetAll('sales'),
-      DB.dbGetAll('saleItems'),
+    // Plage de recherche par date (ISO String standard)
+    const range = IDBKeyRange.bound(from, to + 'z');
+
+    // Charger les tables transactionnelles par index (tres performant !)
+    const [sales, periodMovements, periodReturns, products, lots, stockAll, patients, appUsers] = await Promise.all([
+      DB.dbGetAll('sales', 'date', range),
+      DB.dbGetAll('movements', 'date', range),
+      DB.dbGetAll('returns', 'date', range),
       DB.dbGetAll('products'),
       DB.dbGetAll('lots'),
       DB.dbGetAll('stock'),
-      DB.dbGetAll('movements'),
-      DB.dbGetAll('returns'),
       DB.dbGetAll('patients'),
       DB.dbGetAll('app_users').catch(() => []),
     ]);
 
-    // Filtrer les ventes par periode
-    const sales = allSales.filter(s => {
-      if (!s.date) return false;
-      const d = s.date.slice(0, 10);
-      return d >= from && d <= to;
-    });
-    const saleIds = new Set(sales.map(s => s.id));
-    const saleItems = allSaleItems.filter(si => saleIds.has(si.saleId));
-
-    // Filtrer les mouvements par periode
-    const periodMovements = movements.filter(m => {
-      if (!m.date) return false;
-      const d = m.date.slice(0, 10);
-      return d >= from && d <= to;
-    });
-
-    // Filtrer les retours par periode
-    const periodReturns = allReturns.filter(r => {
-      if (!r.date) return false;
-      const d = r.date.slice(0, 10);
-      return d >= from && d <= to && r.status === 'approved';
-    });
+    // Charger uniquement les saleItems des ventes de la periode pour eviter un dbGetAll massif
+    let saleItems = [];
+    if (sales.length > 0) {
+      const itemsNested = await Promise.all(sales.map(s => DB.dbGetAll('saleItems', 'saleId', s.id)));
+      saleItems = itemsNested.flat();
+    }
 
     // Index rapides
     const productMap = {};
@@ -113,8 +100,8 @@ async function mcLoadData() {
     // Stocker en memoire pour les onglets
     window._mcData = {
       sales, saleItems, products: activeProducts, productMap, lots, stockAll, stockMap,
-      movements: periodMovements, allMovements: movements, returns: periodReturns, allReturns,
-      userMap, patientMap, from, to, allSales, allSaleItems,
+      movements: periodMovements, returns: periodReturns,
+      userMap, patientMap, from, to, allSales: sales, allSaleItems: saleItems
     };
 
     mcRenderCurrentTab();
@@ -737,69 +724,262 @@ function mcRenderReorder(contentEl) {
 // 7. EXPORT PDF / IMPRESSION
 // ══════════════════════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════════════════════
+// 7. EXPORT PDF PROFESSIONNEL (UTILISE PDFEXPORT.GENERATE)
+// ══════════════════════════════════════════════════════════════════════
+
 async function mcExportPDF() {
   if (!window.PDFExport) {
     UI.toast("Le module PDF n'est pas charge", "error");
     return;
   }
 
-  const { sales, saleItems, productMap, stockMap, products } = window._mcData || {};
-  if (!sales) { UI.toast('Aucune donnee chargee', 'warning'); return; }
-
-  const totalCA = sales.reduce((a, s) => a + (s.total || 0), 0);
-  const nbVentes = sales.length;
-  const nbArticles = saleItems.reduce((a, si) => a + (si.quantity || 0), 0);
-  const totalCOGS = saleItems.reduce((a, si) => {
-    const prod = productMap[si.productId];
-    return a + ((si.purchasePrice || prod?.purchasePrice || 0) * (si.quantity || 0));
-  }, 0);
-  const benefice = totalCA - totalCOGS;
-  const ruptures = products.filter(p => (stockMap[p.id]?.quantity || 0) === 0);
-  const lowStock = products.filter(p => {
-    const qty = stockMap[p.id]?.quantity || 0;
-    return qty > 0 && qty <= (p.minStock || 10);
-  });
+  const dataObj = window._mcData;
+  if (!dataObj) { UI.toast('Aucune donnee chargee', 'warning'); return; }
 
   const from = window._mcDateFrom;
   const to = window._mcDateTo;
   const periodLabel = from === to ? UI.formatDate(from) : `${UI.formatDate(from)} au ${UI.formatDate(to)}`;
 
-  const content = `
-    <div style="text-align:center;margin-bottom:30px;">
-      <h1 style="font-size:22px;margin:0;">Rapport de Pilotage</h1>
-      <p style="color:#666;margin:4px 0 0;">${periodLabel}</p>
-    </div>
+  const activeTab = window._mcTab || 'dashboard';
 
-    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-      <tr>
-        <td style="padding:12px;border:1px solid #ddd;text-align:center;"><strong style="font-size:18px;">${UI.formatCurrency(totalCA)}</strong><br><span style="font-size:11px;color:#888;">CA</span></td>
-        <td style="padding:12px;border:1px solid #ddd;text-align:center;"><strong style="font-size:18px;">${UI.formatCurrency(benefice)}</strong><br><span style="font-size:11px;color:#888;">Benefice</span></td>
-        <td style="padding:12px;border:1px solid #ddd;text-align:center;"><strong style="font-size:18px;">${nbVentes}</strong><br><span style="font-size:11px;color:#888;">Ventes</span></td>
-        <td style="padding:12px;border:1px solid #ddd;text-align:center;"><strong style="font-size:18px;">${nbArticles}</strong><br><span style="font-size:11px;color:#888;">Articles</span></td>
-        <td style="padding:12px;border:1px solid #ddd;text-align:center;"><strong style="font-size:18px;color:#e74c3c;">${ruptures.length}</strong><br><span style="font-size:11px;color:#888;">Ruptures</span></td>
-        <td style="padding:12px;border:1px solid #ddd;text-align:center;"><strong style="font-size:18px;color:#f39c12;">${lowStock.length}</strong><br><span style="font-size:11px;color:#888;">Stock bas</span></td>
-      </tr>
-    </table>
+  if (activeTab === 'dashboard') {
+    // ── Onglet 1 : Tableau de bord quotidien ──
+    const { sales, saleItems, productMap, stockMap, products, movements, returns } = dataObj;
 
-    <h2 style="font-size:15px;border-bottom:2px solid #333;padding-bottom:4px;margin-top:24px;">Produits en Rupture (${ruptures.length})</h2>
-    ${ruptures.length === 0 ? '<p style="color:#999;">Aucune rupture</p>' : `
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:#f5f5f5;"><th style="padding:6px;border:1px solid #ddd;text-align:left;">Produit</th><th style="padding:6px;border:1px solid #ddd;text-align:left;">Categorie</th></tr></thead>
-      <tbody>${ruptures.slice(0, 40).map(p => `<tr><td style="padding:4px 6px;border:1px solid #eee;">${p.name}</td><td style="padding:4px 6px;border:1px solid #eee;">${p.category || '—'}</td></tr>`).join('')}</tbody>
-    </table>`}
+    const totalCA = sales.reduce((a, s) => a + (s.total || 0), 0);
+    const nbVentes = sales.length;
+    const nbArticles = saleItems.reduce((a, si) => a + (si.quantity || 0), 0);
+    const clientIds = new Set(sales.filter(s => s.patientId).map(s => s.patientId));
+    const nbClients = clientIds.size;
 
-    <h2 style="font-size:15px;border-bottom:2px solid #333;padding-bottom:4px;margin-top:24px;">Stock Bas (${lowStock.length})</h2>
-    ${lowStock.length === 0 ? '<p style="color:#999;">Aucun</p>' : `
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr style="background:#f5f5f5;"><th style="padding:6px;border:1px solid #ddd;text-align:left;">Produit</th><th style="padding:6px;border:1px solid #ddd;text-align:right;">Stock</th><th style="padding:6px;border:1px solid #ddd;text-align:right;">Seuil</th></tr></thead>
-      <tbody>${lowStock.slice(0, 40).map(p => `<tr><td style="padding:4px 6px;border:1px solid #eee;">${p.name}</td><td style="padding:4px 6px;border:1px solid #eee;text-align:right;">${stockMap[p.id]?.quantity || 0}</td><td style="padding:4px 6px;border:1px solid #eee;text-align:right;">${p.minStock || 10}</td></tr>`).join('')}</tbody>
-    </table>`}
-  `;
+    const totalCOGS = saleItems.reduce((a, si) => {
+      const prod = productMap[si.productId];
+      const costPrice = si.purchasePrice || (prod ? prod.purchasePrice : 0) || 0;
+      return a + costPrice * (si.quantity || 0);
+    }, 0);
+    const benefice = totalCA - totalCOGS;
 
-  PDFExport.generateFromHTML(content, `pilotage_${from}_${to}.pdf`, {
-    title: 'Rapport de Pilotage — ' + periodLabel,
-    orientation: 'landscape',
-  });
+    const stockValue = products.reduce((a, p) => a + ((stockMap[p.id]?.quantity || 0) * (p.purchasePrice || 0)), 0);
+    const stockSaleValue = products.reduce((a, p) => a + ((stockMap[p.id]?.quantity || 0) * (p.salePrice || 0)), 0);
+
+    const entries = movements.filter(m => m.type === 'ENTRY');
+    const exits = movements.filter(m => m.type === 'EXIT' || m.type === 'SALE');
+    const nbRetours = returns.length;
+    const montantRetours = returns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+
+    const headers = ["Indicateur", "Valeur"];
+    const rows = [
+      ["Chiffre d'Affaires", UI.formatCurrency(totalCA)],
+      ["Benefice estime", UI.formatCurrency(benefice)],
+      ["Marge brute globale", (totalCA > 0 ? (benefice / totalCA * 100).toFixed(1) : 0) + "%"],
+      ["Nombre de ventes", nbVentes.toString()],
+      ["Nombre d'articles vendus", nbArticles.toString()],
+      ["Nombre de clients uniques", nbClients.toString()],
+      ["Valeur du stock restant (Achat)", UI.formatCurrency(stockValue)],
+      ["Valeur du stock restant (Vente)", UI.formatCurrency(stockSaleValue)],
+      ["Nombre d'entrees de stock", entries.length.toString()],
+      ["Nombre de sorties de stock", exits.length.toString()],
+      ["Nombre de retours valides", `${nbRetours} (${UI.formatCurrency(montantRetours)})`],
+    ];
+
+    await PDFExport.generate(
+      "Rapport de Pilotage — Tableau de bord",
+      headers,
+      rows,
+      {
+        orientation: 'portrait',
+        subHeader: [
+          `Periode : ${periodLabel}`,
+          "Resume complet des indicateurs cles de la pharmacie"
+        ]
+      }
+    );
+
+  } else if (activeTab === 'detail') {
+    // ── Onglet 2 : Rapport detaille des ventes ──
+    const { saleItems, sales, productMap, stockMap, userMap, patientMap } = dataObj;
+
+    const saleMap = {};
+    sales.forEach(s => { saleMap[s.id] = s; });
+
+    let detailData = saleItems.map(si => {
+      const sale = saleMap[si.saleId] || {};
+      const prod = productMap[si.productId] || {};
+      const costPrice = si.purchasePrice || prod.purchasePrice || 0;
+      const sellPrice = si.price || prod.salePrice || 0;
+      const profit = (sellPrice - costPrice) * (si.quantity || 0);
+      const user = userMap[sale.userId];
+      const patient = sale.patientId ? patientMap[sale.patientId] : null;
+
+      return {
+        name: prod.name || si.productName || 'Inconnu',
+        form: prod.form || '—',
+        category: prod.category || '—',
+        brand: prod.brand || '—',
+        qty: si.quantity || 0,
+        stockQty: stockMap[si.productId]?.quantity ?? '—',
+        costPrice,
+        sellPrice,
+        profit,
+        date: sale.date || '—',
+        seller: user?.name || user?.username || '—',
+        client: patient?.name || (sale.patientName || '—'),
+      };
+    });
+
+    // Appliquer les memes filtres que l'affichage
+    const fCat = window._mcFilterCat || '';
+    const fForm = window._mcFilterForm || '';
+    const fBrand = window._mcFilterBrand || '';
+    const fSeller = window._mcFilterSeller || '';
+    const fSearch = (window._mcFilterSearch || '').toLowerCase();
+
+    if (fCat) detailData = detailData.filter(d => d.category === fCat);
+    if (fForm) detailData = detailData.filter(d => d.form === fForm);
+    if (fBrand) detailData = detailData.filter(d => d.brand === fBrand);
+    if (fSeller) detailData = detailData.filter(d => d.seller === fSeller);
+    if (fSearch) detailData = detailData.filter(d => d.name.toLowerCase().includes(fSearch));
+
+    detailData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const headers = ["Medicament", "Forme", "Categorie", "Qte", "Stock Rest.", "P. Achat", "P. Vente", "Benefice", "Date & Heure", "Vendeur"];
+    const rows = detailData.map(d => [
+      d.name,
+      d.form,
+      d.category,
+      d.qty.toString(),
+      d.stockQty.toString(),
+      UI.formatCurrency(d.costPrice),
+      UI.formatCurrency(d.sellPrice),
+      UI.formatCurrency(d.profit),
+      UI.formatDateTime(d.date),
+      d.seller
+    ]);
+
+    const totalQty = detailData.reduce((a, d) => a + d.qty, 0);
+    const totalRevenue = detailData.reduce((a, d) => a + d.sellPrice * d.qty, 0);
+    const totalProfit = detailData.reduce((a, d) => a + d.profit, 0);
+
+    await PDFExport.generate(
+      "Rapport detaille des ventes",
+      headers,
+      rows,
+      {
+        orientation: 'landscape',
+        subHeader: [
+          `Periode : ${periodLabel}`,
+          `Filtres appliques : ${fSearch ? 'Recherche: "' + fSearch + '" ' : ''}${fCat ? 'Categorie: ' + fCat + ' ' : ''}${fForm ? 'Forme: ' + fForm : ''}`
+        ],
+        summaryBlocks: [
+          { label: "Volume total des ventes", value: `${totalQty} articles vendus` },
+          { label: "Chiffre d'Affaires total", value: UI.formatCurrency(totalRevenue) },
+          { label: "Benefice net estime", value: UI.formatCurrency(totalProfit) }
+        ]
+      }
+    );
+
+  } else if (activeTab === 'reorder') {
+    // ── Onglet 3 : Aide a la commande fournisseur ──
+    const { products, stockMap, allSales, allSaleItems } = dataObj;
+
+    const now = new Date();
+    const d30Ago = new Date(now);
+    d30Ago.setDate(d30Ago.getDate() - 30);
+    const d30Str = d30Ago.toISOString().split('T')[0];
+
+    const recentSales = allSales.filter(s => s.date && s.date.slice(0, 10) >= d30Str);
+    const recentSaleIds = new Set(recentSales.map(s => s.id));
+    const recentItems = allSaleItems.filter(si => recentSaleIds.has(si.saleId));
+
+    const consumption = {};
+    recentItems.forEach(si => {
+      consumption[si.productId] = (consumption[si.productId] || 0) + (si.quantity || 0);
+    });
+
+    const nbDays = 30;
+
+    let recommendations = products.map(p => {
+      const currentStock = stockMap[p.id]?.quantity || 0;
+      const totalConsumed = consumption[p.id] || 0;
+      const cmq = totalConsumed / nbDays;
+      const coverageDays = cmq > 0 ? Math.floor(currentStock / cmq) : (currentStock > 0 ? 999 : 0);
+
+      let priority, priorityLabel, justification;
+      if (currentStock === 0 || (cmq > 0 && coverageDays < 2)) {
+        priority = 1;
+        priorityLabel = 'Critique';
+      } else if (currentStock <= (p.minStock || 10)) {
+        priority = 2;
+        priorityLabel = 'Elevee';
+      } else if (cmq > 0 && coverageDays < 15) {
+        priority = 3;
+        priorityLabel = 'Moyenne';
+      } else if (cmq > 0 && coverageDays < 30) {
+        priority = 4;
+        priorityLabel = 'Faible';
+      } else {
+        priority = 5;
+        priorityLabel = null;
+      }
+
+      const targetStock = Math.ceil(cmq * 30);
+      const suggestedQty = Math.max(0, targetStock - currentStock);
+
+      return {
+        name: p.name,
+        category: p.category || '—',
+        currentStock,
+        cmq,
+        coverageDays: cmq > 0 ? coverageDays : null,
+        priority,
+        priorityLabel,
+        suggestedQty,
+        justification: currentStock === 0 ? 'Rupture' : `${coverageDays}j de couverture`,
+        purchasePrice: p.purchasePrice || 0,
+      };
+    }).filter(r => r.priorityLabel !== null);
+
+    recommendations.sort((a, b) => a.priority - b.priority || b.cmq - a.cmq);
+
+    // Appliquer les filtres
+    const fPriority = window._mcReorderPriority || '';
+    const fSearchReorder = (window._mcReorderSearch || '').toLowerCase();
+    if (fPriority) recommendations = recommendations.filter(r => r.priorityLabel === fPriority);
+    if (fSearchReorder) recommendations = recommendations.filter(r => r.name.toLowerCase().includes(fSearchReorder));
+
+    const headers = ["Medicament", "Categorie", "Stock Actuel", "CMQ", "Couverture", "Priorite", "Qte Suggeree", "Cout Estime", "Detail"];
+    const rows = recommendations.map(r => [
+      r.name,
+      r.category,
+      r.currentStock.toString(),
+      r.cmq.toFixed(1) + "/j",
+      r.coverageDays !== null ? r.coverageDays + "j" : "—",
+      r.priorityLabel,
+      r.suggestedQty.toString(),
+      UI.formatCurrency(r.suggestedQty * r.purchasePrice),
+      r.justification
+    ]);
+
+    const totalReorderCost = recommendations.reduce((a, r) => a + r.suggestedQty * r.purchasePrice, 0);
+
+    await PDFExport.generate(
+      "Suggestions de Reapprovisionnement Fournisseur",
+      headers,
+      rows,
+      {
+        orientation: 'landscape',
+        subHeader: [
+          `Genere le : ${UI.formatDate(new Date())}`,
+          `Filtre prioritaire : ${fPriority || 'Toutes priorites'}`
+        ],
+        summaryBlocks: [
+          { label: "Nombre de produits a commander", value: `${recommendations.length} medicaments` },
+          { label: "Budget de commande estime", value: UI.formatCurrency(totalReorderCost) }
+        ]
+      }
+    );
+  }
 }
 
 
