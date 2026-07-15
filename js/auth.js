@@ -46,6 +46,22 @@ const Auth = {
     return DB.AppState.currentUser;
   },
 
+  async loadPermissions() {
+    const user = DB.AppState.currentUser;
+    if (!user) return;
+    try {
+      const rec = await DB.dbGetByKey('settings', `user_permissions_${user.id}`).catch(() => null);
+      if (rec && rec.value) {
+        user.permissions = JSON.parse(rec.value);
+      } else {
+        user.permissions = {};
+      }
+    } catch (e) {
+      console.error('[Auth] Error loading permissions:', e);
+      user.permissions = {};
+    }
+  },
+
   async logout() {
     if (DB.AppState.currentUser) {
       await DB.writeAudit('LOGOUT', 'session', null, {}, DB.AppState.currentUser.id);
