@@ -222,19 +222,28 @@ function renderProductsTable(data) {
       if (r.expiryDate) return '<span class="text-muted" title="Aucun stock actif — date historique">' + (UI.expiryBadge ? UI.expiryBadge(r.expiryDate) : r.expiryDate) + ' ⊘</span>';
       return '<span class="text-muted">—</span>';
     }},
-    { label: 'Prix Achat', render: r => UI.formatCurrency(r.purchasePrice) },
-    { label: 'Marge', render: r => {
+  ];
+
+  if (Auth.can('stock_view_purchase_price')) {
+    columns.push({ label: 'Prix Achat', render: r => UI.formatCurrency(r.purchasePrice) });
+  }
+  if (Auth.can('stock_view_margin')) {
+    columns.push({ label: 'Marge', render: r => {
         const m = r.salePrice && r.purchasePrice ? ((r.salePrice - r.purchasePrice) / r.salePrice * 100).toFixed(0) : 0;
         return `<span class="badge badge-${m >= 30 ? 'success' : m >= 20 ? 'warning' : 'danger'}">${m}%</span>`;
-    }},
-    {
-      label: 'Actions', render: r => `
-      <div class="actions-cell">
-        <button class="btn btn-xs btn-primary" onclick="viewProduct(${r.id})"><i data-lucide="eye"></i></button>
-        <button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})"><i data-lucide="edit-3"></i></button>
+    }});
+  }
+
+  columns.push({
+    label: 'Actions', render: r => `
+    <div class="actions-cell">
+      <button class="btn btn-xs btn-primary" onclick="viewProduct(${r.id})" title="Détails"><i data-lucide="eye"></i></button>
+      ${Auth.can('stock_edit') ? `
+        <button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>
         <button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>
-      </div>` },
-  ];
+      ` : ''}
+    </div>`
+  });
 
   // Injecter la barre d'actions + tableau
   const wrapper = document.createElement('div');

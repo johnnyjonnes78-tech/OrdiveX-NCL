@@ -84,108 +84,150 @@ const Auth = {
 
   // Permissions par défaut pour chaque rôle (modifiables depuis les Paramètres)
   _defaultPerms: {
-    responsable:        ['voir_ca','voir_benefices','voir_prix_achat','voir_cout_achat','voir_valeur_stock','voir_marges','voir_rapports_financiers','voir_statistiques','voir_salaires','caisse_voir_historique','modifier_prix','modifier_prix_panier','annuler_vente','annuler_facture','supprimer_facture','appliquer_remise','pos_allow_credit','effectuer_inventaire','effectuer_sortie_stock','supprimer_produit','exporter_donnees','gerer_utilisateurs','gerer_rh','gerer_parametres','acceder_sauvegardes','caisse_depot_retrait','caisse_cloture','module_stock','module_achats','module_rh','module_rapports','module_caisse'],
-    rh:                 ['voir_salaires','gerer_utilisateurs','gerer_rh','module_rh'],
-    pharmacien:         ['voir_ca','voir_valeur_stock','voir_cout_achat','voir_prix_achat','voir_marges','voir_rapports_financiers','voir_statistiques','caisse_voir_historique','effectuer_inventaire','effectuer_sortie_stock','exporter_donnees','modifier_prix','appliquer_remise','pos_allow_credit','annuler_vente','annuler_facture','caisse_cloture','caisse_depot_retrait','module_stock','module_achats','module_caisse','module_rapports'],
-    caissier:           ['appliquer_remise','module_caisse'],
-    receptionniste:     ['module_caisse'],
-    gestionnaire_stock: ['voir_valeur_stock','effectuer_inventaire','effectuer_sortie_stock','exporter_donnees','module_stock'],
-    comptable:          ['voir_ca','voir_benefices','voir_cout_achat','voir_valeur_stock','voir_marges','voir_rapports_financiers','voir_statistiques','caisse_voir_historique','exporter_donnees','module_rapports'],
-    assistant:          [],
-  },
-
-
-  // Charger les permissions depuis IndexedDB au login
-  async loadPermissions() {
-    try {
-      const rec = await DB.dbGetByKey('settings', 'role_permissions').catch(() => null);
-      if (rec && rec.value) {
-        window._rolePermissions = typeof rec.value === 'string' ? JSON.parse(rec.value) : rec.value;
-      } else {
-        window._rolePermissions = {};
-      }
-    } catch(e) {
-      window._rolePermissions = {};
-    }
-    // Charger TOUS les paramètres applicatifs dans _appSettings
-    try {
-      const allSettings = await DB.dbGetAll('settings');
-      window._appSettings = {};
-      (allSettings || []).forEach(s => {
-        if (s.key) window._appSettings[s.key] = s.value;
-      });
-    } catch(e) {
-      window._appSettings = {};
-    }
-    // Charger les permissions individuelles de l'utilisateur courant
-    try {
-      const user = DB.AppState.currentUser;
-      if (user && user.id) {
-        const rec2 = await DB.dbGetByKey('settings', `user_permissions_${user.id}`).catch(() => null);
-        if (rec2 && rec2.value) {
-          const perms = typeof rec2.value === 'string' ? JSON.parse(rec2.value) : rec2.value;
-          DB.AppState.currentUser.permissions = perms;
-        }
-      }
-    } catch(e) { /* silencieux */ }
+    responsable: [
+      'module_dashboard', 'module_sales', 'module_caisse', 'module_stock', 'module_products', 'module_inventory', 'module_achats', 'module_patients', 'module_accounting', 'module_rh', 'module_settings',
+      'dashboard_voir_kpi',
+      'sales_create', 'sales_edit', 'sales_cancel', 'sales_discount', 'sales_credit', 'sales_view_ca', 'sales_view_profit', 'sales_view_stats', 'sales_reprint',
+      'caisse_depot_retrait', 'caisse_cloture', 'caisse_voir_historique',
+      'stock_view', 'stock_view_purchase_price', 'stock_view_sale_price', 'stock_view_profit', 'stock_view_margin', 'stock_view_value', 'stock_edit', 'stock_export', 'stock_print',
+      'inventory_create', 'inventory_adjust',
+      'achats_create', 'achats_cancel',
+      'patients_edit', 'patients_credit_limit',
+      'accounting_view_journal', 'accounting_view_reports', 'accounting_export',
+      'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_view_salary',
+      'settings_edit', 'settings_users', 'settings_backup', 'settings_sync', 'settings_naomi'
+    ],
+    rh: [
+      'module_rh',
+      'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_view_salary'
+    ],
+    pharmacien: [
+      'module_dashboard', 'module_sales', 'module_caisse', 'module_stock', 'module_products', 'module_inventory', 'module_achats', 'module_patients', 'module_accounting', 'module_rh',
+      'dashboard_voir_kpi',
+      'sales_create', 'sales_cancel', 'sales_discount', 'sales_credit', 'sales_view_ca', 'sales_view_stats', 'sales_reprint',
+      'caisse_depot_retrait', 'caisse_cloture', 'caisse_voir_historique',
+      'stock_view', 'stock_view_purchase_price', 'stock_view_sale_price', 'stock_view_value', 'stock_edit', 'stock_export', 'stock_print',
+      'inventory_create', 'inventory_adjust',
+      'achats_create',
+      'patients_edit',
+      'accounting_view_journal', 'accounting_view_reports',
+      'hr_manage_employees', 'hr_manage_attendance'
+    ],
+    caissier: [
+      'module_sales', 'module_caisse',
+      'sales_create', 'sales_discount', 'sales_reprint'
+    ],
+    receptionniste: [
+      'module_sales',
+      'sales_create', 'sales_reprint'
+    ],
+    gestionnaire_stock: [
+      'module_stock', 'module_products', 'module_inventory',
+      'stock_view', 'stock_view_sale_price', 'stock_edit', 'stock_export', 'stock_print',
+      'inventory_create'
+    ],
+    comptable: [
+      'module_dashboard', 'module_accounting',
+      'dashboard_voir_kpi',
+      'sales_view_ca', 'sales_view_profit', 'sales_view_stats',
+      'stock_view_value',
+      'accounting_view_journal', 'accounting_view_reports', 'accounting_export'
+    ],
+    assistant: [],
   },
 
   ALL_PERMISSIONS: [
-    // === Financier ===
-    { key: 'voir_ca',                  label: 'Voir le chiffre d\'affaires',           cat: 'financier' },
-    { key: 'voir_benefices',           label: 'Voir les bénéfices nets',               cat: 'financier' },
-    { key: 'voir_prix_achat',          label: 'Voir les prix d\'achat fournisseur',     cat: 'financier' },
-    { key: 'voir_cout_achat',          label: 'Voir le coût d\'achat global',           cat: 'financier' },
-    { key: 'voir_valeur_stock',        label: 'Voir la valeur totale du stock',         cat: 'financier' },
-    { key: 'voir_marges',              label: 'Voir les marges produits',               cat: 'financier' },
-    { key: 'voir_rapports_financiers', label: 'Voir les rapports financiers',           cat: 'financier' },
-    { key: 'voir_statistiques',        label: 'Voir les statistiques et graphiques',    cat: 'financier' },
-    { key: 'voir_salaires',            label: 'Voir les salaires du personnel',         cat: 'financier' },
-    { key: 'caisse_voir_historique',   label: 'Voir l\'historique complet de la caisse', cat: 'financier' },
-    // === Point de Vente (POS) ===
-    { key: 'appliquer_remise',         label: 'Appliquer une remise sur une vente',     cat: 'pos' },
-    { key: 'pos_allow_credit',         label: 'Autoriser les ventes à crédit (dette)',  cat: 'pos' },
-    { key: 'modifier_prix',            label: 'Modifier le prix de vente d\'un produit', cat: 'pos' },
-    { key: 'modifier_prix_panier',     label: 'Modifier le prix unitaire dans le panier POS', cat: 'pos' },
-    { key: 'annuler_vente',            label: 'Annuler / rembourser une vente',         cat: 'pos' },
-    { key: 'supprimer_vente',          label: 'Supprimer définitivement une vente',     cat: 'pos' },
-    // === Caisse ===
-    { key: 'caisse_depot_retrait',     label: 'Effectuer des mouvements de caisse manuels (dépôt/retrait)', cat: 'caisse' },
-    { key: 'caisse_cloture',           label: 'Effectuer la clôture journalière de la caisse', cat: 'caisse' },
-    // === Actions Achats / Factures ===
-    { key: 'annuler_facture',          label: 'Annuler une facture d\'achat',           cat: 'achats' },
-    { key: 'supprimer_facture',        label: 'Supprimer définitivement une facture d\'achat', cat: 'achats' },
-    // === Stock & Inventaire ===
-    { key: 'effectuer_inventaire',     label: 'Effectuer un inventaire physique',       cat: 'stock' },
-    { key: 'effectuer_sortie_stock',   label: 'Effectuer une sortie de stock manuelle', cat: 'stock' },
-    { key: 'supprimer_produit',        label: 'Désactiver / retirer un produit du catalogue', cat: 'stock' },
-    // === Administration ===
-    { key: 'exporter_donnees',         label: 'Exporter des données (CSV / PDF)',       cat: 'admin' },
-    { key: 'gerer_utilisateurs',       label: 'Gérer les utilisateurs & employés',      cat: 'admin' },
-    { key: 'gerer_rh',                 label: 'Gérer les paies, congés et avances RH',  cat: 'admin' },
-    { key: 'gerer_parametres',         label: 'Modifier les paramètres de l\'application', cat: 'admin' },
-    { key: 'acceder_sauvegardes',      label: 'Accéder aux sauvegardes et restauration', cat: 'admin' },
-    // === Accès Modules ===
-    { key: 'module_stock',             label: 'Accéder au module Stock',               cat: 'modules' },
-    { key: 'module_achats',            label: 'Accéder au module Achats / Fournisseurs', cat: 'modules' },
-    { key: 'module_rh',                label: 'Accéder au module Ressources Humaines', cat: 'modules' },
-    { key: 'module_rapports',          label: 'Accéder aux Rapports & Statistiques',   cat: 'modules' },
-    { key: 'module_caisse',            label: 'Accéder à la Caisse Journalière',       cat: 'modules' },
+    // === ACCÈS MODULES ===
+    { key: 'module_dashboard',         label: 'Accéder au Tableau de Bord',                   cat: 'modules' },
+    { key: 'module_sales',             label: 'Accéder aux Ventes (POS/Historique)',          cat: 'modules' },
+    { key: 'module_caisse',            label: 'Accéder à la Caisse Journalière',              cat: 'modules' },
+    { key: 'module_stock',             label: 'Accéder au module Stock & Mouvements',         cat: 'modules' },
+    { key: 'module_products',          label: 'Accéder au Catalogue Produits',                cat: 'modules' },
+    { key: 'module_inventory',         label: 'Accéder aux Inventaires Physiques',            cat: 'modules' },
+    { key: 'module_achats',            label: 'Accéder au module Achats & Fournisseurs',      cat: 'modules' },
+    { key: 'module_patients',          label: 'Accéder aux Dossiers Patients & Assurances',   cat: 'modules' },
+    { key: 'module_accounting',        label: 'Accéder au module Comptabilité',               cat: 'modules' },
+    { key: 'module_rh',                label: 'Accéder aux Ressources Humaines',              cat: 'modules' },
+    { key: 'module_settings',          label: 'Accéder aux Paramètres Généraux',              cat: 'modules' },
+
+    // === TABLEAU DE BORD ===
+    { key: 'dashboard_voir_kpi',       label: 'Voir les indicateurs financiers globaux',      cat: 'dashboard' },
+
+    // === VENTES ===
+    { key: 'sales_create',             label: 'Créer de nouvelles ventes',                    cat: 'sales' },
+    { key: 'sales_edit',               label: 'Modifier des ventes existantes',               cat: 'sales' },
+    { key: 'sales_cancel',             label: 'Annuler ou rembourser des ventes',             cat: 'sales' },
+    { key: 'sales_discount',           label: 'Appliquer des remises au POS',                 cat: 'sales' },
+    { key: 'sales_credit',             label: 'Autoriser les ventes à crédit / dette',        cat: 'sales' },
+    { key: 'sales_view_ca',            label: 'Voir le chiffre d\'affaires des ventes',       cat: 'sales' },
+    { key: 'sales_view_profit',        label: 'Voir le bénéfice généré par les ventes',       cat: 'sales' },
+    { key: 'sales_view_stats',         label: 'Voir les rapports et statistiques de ventes',  cat: 'sales' },
+    { key: 'sales_reprint',            label: 'Réimprimer les tickets / reçus',               cat: 'sales' },
+
+    // === CAISSE ===
+    { key: 'caisse_depot_retrait',     label: 'Mouvements manuels de caisse (dépôt/retrait)',  cat: 'caisse' },
+    { key: 'caisse_cloture',           label: 'Faire la clôture journalière de la caisse',     cat: 'caisse' },
+    { key: 'caisse_voir_historique',   label: 'Voir l\'historique des transactions de caisse', cat: 'caisse' },
+
+    // === STOCK & PRODUITS ===
+    { key: 'stock_view',               label: 'Voir les quantités de stock physique',          cat: 'stock' },
+    { key: 'stock_view_purchase_price',label: 'Voir les prix d\'achat fournisseur',           cat: 'stock' },
+    { key: 'stock_view_sale_price',    label: 'Voir les prix de vente publics',               cat: 'stock' },
+    { key: 'stock_view_profit',        label: 'Voir les bénéfices par lot/produit',           cat: 'stock' },
+    { key: 'stock_view_margin',        label: 'Voir les marges bénéficiaires',                cat: 'stock' },
+    { key: 'stock_view_value',         label: 'Voir la valeur financière globale du stock',   cat: 'stock' },
+    { key: 'stock_edit',               label: 'Modifier ou ajouter des produits/stocks',      cat: 'stock' },
+    { key: 'stock_export',             label: 'Exporter la liste du stock (CSV/Excel)',       cat: 'stock' },
+    { key: 'stock_print',              label: 'Imprimer les fiches et états de stock',        cat: 'stock' },
+
+    // === INVENTAIRE ===
+    { key: 'inventory_create',         label: 'Lancer et enregistrer un inventaire',          cat: 'inventory' },
+    { key: 'inventory_adjust',         label: 'Valider et appliquer les ajustements d\'écarts',cat: 'inventory' },
+
+    // === ACHATS & FOURNISSEURS ===
+    { key: 'achats_create',            label: 'Créer des bons de commande & factures d\'achat',cat: 'achats' },
+    { key: 'achats_cancel',            label: 'Annuler ou supprimer des factures d\'achat',    cat: 'achats' },
+
+    // === PATIENTS & ASSURANCES ===
+    { key: 'patients_edit',            label: 'Gérer les fiches patients & assurances',       cat: 'patients' },
+    { key: 'patients_credit_limit',    label: 'Modifier les plafonds de crédit autorisés',    cat: 'patients' },
+
+    // === COMPTABILITÉ ===
+    { key: 'accounting_view_journal',  label: 'Voir le journal des écritures comptables',     cat: 'accounting' },
+    { key: 'accounting_view_reports',  label: 'Voir la balance, bilans et rapports financiers',cat: 'accounting' },
+    { key: 'accounting_export',        label: 'Exporter les journaux et rapports (PDF/CSV)',  cat: 'accounting' },
+
+    // === RESSOURCES HUMAINES ===
+    { key: 'hr_manage_employees',      label: 'Gérer les fiches employés & contrats',         cat: 'hr' },
+    { key: 'hr_manage_attendance',     label: 'Enregistrer et gérer les pointages/présences', cat: 'hr' },
+    { key: 'hr_manage_payroll',        label: 'Gérer les paies, primes, retenues et avances', cat: 'hr' },
+    { key: 'hr_view_salary',           label: 'Voir les salaires et éditer les bulletins paie',cat: 'hr' },
+
+    // === CONFIGURATION & SYSTÈME ===
+    { key: 'settings_edit',            label: 'Modifier les paramètres généraux de l\'ERP',    cat: 'admin' },
+    { key: 'settings_users',           label: 'Gérer les utilisateurs et leurs permissions',  cat: 'admin' },
+    { key: 'settings_backup',          label: 'Faire des sauvegardes et restaurations',       cat: 'admin' },
+    { key: 'settings_sync',            label: 'Piloter la synchronisation Supabase',          cat: 'admin' },
+    { key: 'settings_naomi',           label: 'Interagir avec l\'assistant Naomi IA',         cat: 'admin' },
   ],
 
   ALL_PERMISSION_CATS: [
-    { key: 'financier', label: '💰 Données Financières' },
-    { key: 'pos',       label: '🛒 Point de Vente (POS)' },
-    { key: 'caisse',    label: '🏧 Caisse & Mouvements' },
-    { key: 'achats',    label: '📋 Achats & Factures' },
-    { key: 'stock',     label: '📦 Stock & Inventaire' },
-    { key: 'admin',     label: '⚙️ Administration' },
-    { key: 'modules',   label: '🧩 Accès Modules' },
+    { key: 'modules',    label: '🧩 Accès aux Modules de l\'ERP' },
+    { key: 'dashboard',  label: '📊 Tableau de Bord (KPIs)' },
+    { key: 'sales',      label: '🛒 Point de Vente & Ventes' },
+    { key: 'caisse',     label: '🏧 Caisse Journalière' },
+    { key: 'stock',      label: '📦 Stock & Catalogue' },
+    { key: 'inventory',  label: '📋 Inventaires Physiques' },
+    { key: 'achats',     label: '💼 Fournisseurs & Achats' },
+    { key: 'patients',   label: '👥 Patients & Assurances' },
+    { key: 'accounting', label: '📒 Comptabilité Générale' },
+    { key: 'hr',         label: '👔 Ressources Humaines' },
+    { key: 'admin',      label: '⚙️ Paramètres & Système' },
   ],
 
   ALL_ROLES: [
-    { key: 'responsable',        label: 'Responsable' },
-    { key: 'rh',                 label: 'RH' },
+    { key: 'responsable',        label: 'Responsable / Manager' },
+    { key: 'rh',                 label: 'Directeur RH' },
     { key: 'pharmacien',         label: 'Pharmacien' },
     { key: 'caissier',           label: 'Caissier' },
     { key: 'receptionniste',     label: 'Réceptionniste' },

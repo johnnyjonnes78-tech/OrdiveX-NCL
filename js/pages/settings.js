@@ -1077,20 +1077,48 @@ window.renderPermissionsGrid = async function() {
   const badgeColors = { admin:'#7c3aed', pharmacien:'#0ea5e9', caissier:'#10b981', responsable:'#f59e0b', rh:'#ec4899', gestionnaire_stock:'#6366f1', comptable:'#14b8a6', assistant:'#94a3b8' };
   const roleColor = badgeColors[roleKey] || '#6366f1';
 
+  // Recherche en direct
+  const searchQuery = (window._permSearchQuery || '').toLowerCase();
+
   let html = `
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg);border-radius:10px;margin-bottom:16px;border:1px solid var(--border)">
-      <div style="width:40px;height:40px;border-radius:50%;background:${roleColor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0">${(user.name||'?').charAt(0).toUpperCase()}</div>
-      <div>
-        <div style="font-weight:700;font-size:.95rem">${user.name || user.username}</div>
-        <div style="font-size:.78rem;color:var(--text-muted)">@${user.username} — <span style="color:${roleColor};font-weight:600">${user.role}</span>${userPerms ? ' · <span style="color:#10b981;font-weight:600">Permissions personnalisées</span>' : ' · Permissions par défaut du rôle'}</div>
+    <!-- Entete de l'utilisateur selectionne -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--bg);border-radius:10px;margin-bottom:16px;border:1px solid var(--border);flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:${roleColor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0">${(user.name||'?').charAt(0).toUpperCase()}</div>
+        <div>
+          <div style="font-weight:700;font-size:.95rem">${user.name || user.username}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">@${user.username} — <span style="color:${roleColor};font-weight:600">${user.role}</span>${userPerms ? ' · <span style="color:#10b981;font-weight:600">Permissions personnalisees</span>' : ' · Permissions par defaut'}</div>
+        </div>
+      </div>
+      
+      <!-- Boutons d'action globale -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-xs btn-secondary" onclick="window.setAllPermissions(true)"><i data-lucide="check-square" style="width:12px;height:12px"></i> Tout autoriser</button>
+        <button class="btn btn-xs btn-secondary" onclick="window.setAllPermissions(false)"><i data-lucide="square" style="width:12px;height:12px"></i> Tout retirer</button>
+        <button class="btn btn-xs btn-danger" onclick="window.resetSelectedUserPermissions()"><i data-lucide="rotate-ccw" style="width:12px;height:12px"></i> Reinitialiser role</button>
       </div>
     </div>
+
+    <!-- Barre de recherche rapide -->
+    <div style="position:relative;margin-bottom:16px;">
+      <i data-lucide="search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-muted)"></i>
+      <input type="text" class="form-control" placeholder="Recherche rapide de permissions..." style="padding-left:36px;width:100%" value="${window._permSearchQuery || ''}" oninput="window._permSearchQuery=this.value;window.renderPermissionsGrid()">
+    </div>
+
     <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">`;
 
   cats.forEach(cat => {
-    const catPerms = perms.filter(p => (p.cat || 'all') === cat.key);
+    let catPerms = perms.filter(p => (p.cat || 'all') === cat.key);
+    if (searchQuery) {
+      catPerms = catPerms.filter(p => p.label.toLowerCase().includes(searchQuery) || p.key.toLowerCase().includes(searchQuery));
+    }
     if (catPerms.length === 0) return;
-    html += `<div style="background:var(--primary);color:#fff;padding:10px 16px;font-weight:700;font-size:13px;letter-spacing:.3px">${cat.label}</div>`;
+
+    html += `<div style="background:var(--primary);color:#fff;padding:10px 16px;font-weight:700;font-size:13px;letter-spacing:.3px;display:flex;justify-content:space-between;align-items:center;">
+      <span>${cat.label}</span>
+      <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:10px;">${catPerms.length} options</span>
+    </div>`;
+
     catPerms.forEach((perm, i) => {
       const bg = i % 2 === 0 ? 'var(--surface)' : 'var(--bg)';
       let hasPerm;
@@ -1105,7 +1133,7 @@ window.renderPermissionsGrid = async function() {
           <input type="checkbox" id="user_perm_${perm.key}" ${hasPerm ? 'checked' : ''}
             style="width:18px;height:18px;cursor:pointer;accent-color:var(--primary);flex-shrink:0">
           <span style="flex:1;font-size:.88rem;font-weight:500">${perm.label}</span>
-          ${isCustomized ? '<span style="font-size:.72rem;color:#f59e0b;white-space:nowrap;font-weight:700;background:rgba(245,158,11,.12);padding:2px 7px;border-radius:10px">Personnalisé</span>' : '<span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap">Hérité du rôle</span>'}
+          ${isCustomized ? '<span style="font-size:.72rem;color:#f59e0b;white-space:nowrap;font-weight:700;background:rgba(245,158,11,.12);padding:2px 7px;border-radius:10px">Personnalise</span>' : '<span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap">Herite du role</span>'}
         </label>`;
     });
   });
@@ -1114,6 +1142,16 @@ window.renderPermissionsGrid = async function() {
   container.innerHTML = html;
   if (saveBtn) saveBtn.style.display = 'flex';
   if (window.lucide) lucide.createIcons({ node: container });
+};
+
+// Fonction helper pour cocher/decocher globalement
+window.setAllPermissions = function(checked) {
+  const perms = Auth.ALL_PERMISSIONS;
+  perms.forEach(perm => {
+    const chk = document.getElementById(`user_perm_${perm.key}`);
+    if (chk) chk.checked = checked;
+  });
+  UI.toast(checked ? 'Toutes les permissions cochees' : 'Toutes les permissions decochees', 'info', 1500);
 };
 
 // ─── SAUVEGARDER LES PERMISSIONS D'UN UTILISATEUR ─────────────────────────────

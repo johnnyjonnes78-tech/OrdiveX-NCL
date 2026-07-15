@@ -1,5 +1,5 @@
 {
-  "version": "9.7.69",
+  "version": "9.7.70",
   "date": "2026-07-13",
-  "changelog": "v9.7.69 : Correction export ventes (PDF/CSV utilise les ventes filtrées). Refonte onglet Permissions : sélecteur d'utilisateur + cases à cocher par catégorie (Modules, Financier, Commercial, Stock, Admin). Correction filtrage par date timezone-safe. Permissions de module incluses dans les défauts de chaque rôle. Priorité permissions individuelles > rôle dans le menu."
+  "changelog": "v9.7.70 : Correction export ventes (PDF/CSV utilise les ventes filtrées). Refonte onglet Permissions : sélecteur d'utilisateur + cases à cocher par catégorie (Modules, Financier, Commercial, Stock, Admin). Correction filtrage par date timezone-safe. Permissions de module incluses dans les défauts de chaque rôle. Priorité permissions individuelles > rôle dans le menu."
 }
