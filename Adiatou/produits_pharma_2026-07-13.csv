@@ -1,0 +1,1255 @@
+﻿Code,Nom,DCI,Marque,Categorie,Prix Vente,Prix Achat,Rx
+PN0001,"Doliprane 1g cp/eff",,,Autre,22000,0,Non
+PN0002,"Doliprane 1g cp/sec",,,Autre,18000,0,Non
+PN0003,"Doliprane 500 mg cp/sec",,,Autre,20000,0,Non
+PN0004,"Doliprane Vitc cp/eff",,,Autre,25000,0,Non
+PN0005,"Aclop cp",,,Autre,37000,0,Non
+PN0006,"Actinac cp+",,,Autre,48000,0,Non
+PN0007,"Acumol cp",,,Autre,70000,0,Non
+PN0008,"Acofan cp",,,Autre,0,0,Non
+PN0009,"Acure cp 20/120",,,Autre,24000,0,Non
+PN0010,"Acure cp 40/240",,,Autre,0,0,Non
+PN0011,"Acure cp 60/360",,,Autre,0,0,Non
+PN0012,"Acure cp 80/480",,,Autre,41000,0,Non
+PN0013,"Aerius cp B/7",,,Autre,52000,0,Non
+PN0014,"Aerius cp B/15",,,Autre,104000,0,Non
+PN0015,"Adione cp B/10",,,Autre,44000,0,Non
+PN0016,"Adione cp B/30",,,Autre,102500,0,Non
+PN0017,"Airtal cp 100 mg",,,Autre,0,0,Non
+PN0018,"Alben cp 400 mg",,,Autre,26000,0,Non
+PN0019,"Alcer cp",,,Autre,0,0,Non
+PN0020,"Aldactone 75 cp",,,Autre,0,0,Non
+PN0021,"Aldomet 500 cp",,,Autre,77000,0,Non
+PN0022,"Alerid cp",,,Autre,0,0,Non
+PN0023,"Alfacure cp 20/120",,,Autre,13000,0,Non
+PN0024,"Alfacure cp 40/240",,,Autre,26000,0,Non
+PN0025,"Alfacure cp 80/480",,,Autre,41000,0,Non
+PN0026,"Allergal cp",,,Autre,26000,0,Non
+PN0027,"Amoxidel cp 500 mg",,,Autre,32000,0,Non
+PN0028,"Alvityl cp",,,Autre,0,0,Non
+PN0029,"Amarel 2 mg cp",,,Autre,0,0,Non
+PN0030,"Amaday 5 mg cp",,,Autre,65000,0,Non
+PN0031,"Amaday 10 mg cp",,,Autre,104000,0,Non
+PN0032,"Amaday PL 5/8 cp",,,Autre,156000,0,Non
+PN0033,"Amaday PL 10/4 cp",,,Autre,0,0,Non
+PN0034,"Amaday PL 10/8 cp",,,Autre,168000,0,Non
+PN0035,"Amep 5 mg cp",,,Autre,45000,0,Non
+PN0036,"Amep 10 mg cp",,,Autre,63000,0,Non
+PN0037,"Amical 10 mg cp",,,Autre,0,0,Non
+PN0038,"Amlodip 10 mg cp",,,Autre,57000,0,Non
+PN0039,"Amlodipine 10 mg BGR cp",,,Autre,85000,0,Non
+PN0040,"Amlodip 5 mg cp",,,Autre,44000,0,Non
+PN0041,"Amlodipine 10 mg GH cp",,,Autre,83000,0,Non
+PN0042,"Amloclass 10 mg cp",,,Autre,60000,0,Non
+PN0043,"Amloperin 5/5 cp",,,Autre,0,0,Non
+PN0044,"Amloperin 10/5 cp",,,Autre,208000,0,Non
+PN0045,"Amloperin 10/10 cp",,,Autre,231000,0,Non
+PN0046,"Amlotensine 10 mg cp",,,Autre,0,0,Non
+PN0047,"Amoxi denk 1g cp",,,Autre,47000,0,Non
+PN0048,"Amoxi denk 500 mg cp",,,Autre,43000,0,Non
+PN0049,"Amoxiclav 500 mg cp Denk",,,Autre,81000,0,Non
+PN0050,"Andol 500 mg cp",,,Autre,17000,0,Non
+PN0051,"Andol 1 g cp",,,Autre,18000,0,Non
+PN0052,"Antadys cp",,,Autre,54000,0,Non
+PN0053,"Antalgex T cp",,,Autre,0,0,Non
+PN0054,"Amtiba cp",,,Autre,0,0,Non
+PN0055,"Apramol 500 mg cp/eff",,,Autre,22000,0,Non
+PN0056,"Apramol 1g cp/eff",,,Autre,21000,0,Non
+PN0057,"Albentel cp 400mg",,,Autre,9000,0,Non
+PN0058,"Arthel plus cp",,,Autre,0,0,Non
+PN0059,"Artefan disp 20/120 cp",,,Autre,14000,0,Non
+PN0060,"Artefan 40/240 DT cp",,,Autre,35000,0,Non
+PN0061,"Artefan 40/240 sec cp",,,Autre,0,0,Non
+PN0062,"Artefan 60/360 cp",,,Autre,55000,0,Non
+PN0063,"Artefan 80/480 cp",,,Autre,44000,0,Non
+PN0064,"Aprilam 10/5 cp",,,Autre,105000,0,Non
+PN0065,"Artilex 40/240 cp",,,Autre,35000,0,Non
+PN0066,"Artilex 60/360 cp",,,Autre,69000,0,Non
+PN0067,"Artilex 80/480 cp",,,Autre,44000,0,Non
+PN0068,"Artrim GH cp 80/480",,,Autre,26000,0,Non
+PN0069,"Artiflex cp",,,Autre,95000,0,Non
+PN0070,"Astyfer cp",,,Autre,0,0,Non
+PN0071,"Aspirin UPSA cp",,,Autre,49000,0,Non
+PN0072,"Astaph 500mg B/12 cp",,,Autre,127000,0,Non
+PN0073,"Astaph 500mg B/24 cp",,,Autre,0,0,Non
+PN0074,"Atedapene cp",,,Autre,0,0,Non
+PN0075,"Atidine cp",,,Autre,63000,0,Non
+PN0076,"Atofan cp",,,Autre,53000,0,Non
+PN0077,"Atorcap 40 B/10 cp",,,Autre,0,0,Non
+PN0078,"Atorcap 40 B/20 cp",,,Autre,0,0,Non
+PN0079,"Atopir cp",,,Autre,69000,0,Non
+PN0080,"Atopar 1g LP cp B/10",,,Autre,26000,0,Non
+PN0081,"Atoflox 500mg cp",,,Autre,69000,0,Non
+PN0082,"Atogrel 75mg cp",,,Autre,105000,0,Non
+PN0083,"Atopril 10mg cp",,,Autre,0,0,Non
+PN0084,"Atorfit 20mg cp",,,Autre,141000,0,Non
+PN0085,"Atorfit 40mg cp",,,Autre,160000,0,Non
+PN0086,"Atostatine 40mg cp",,,Autre,68000,0,Non
+PN0087,"Atozidine 35mg cp",,,Autre,74000,0,Non
+PN0088,"Azicure 500mg cp",,,Autre,93000,0,Non
+PN0089,"Azythro GH 500mg cp",,,Autre,90000,0,Non
+PN0090,"Azit 500mg cp",,,Autre,0,0,Non
+PN0091,"Creazithro 500mg cp",,,Autre,35000,0,Non
+PN0092,"Aziocin 500 mg cp",,,Autre,0,0,Non
+PN0093,"Gripex 500mg cp",,,Autre,0,0,Non
+PN0094,"Bactrim Forte cp",,,Autre,0,0,Non
+PN0095,"Bactrim cp",,,Autre,47000,0,Non
+PN0096,"Beclav 62.5 cp",,,Autre,93000,0,Non
+PN0097,"Beclav Forte cp",,,Autre,104000,0,Non
+PN0098,"Bekracine 200mg cp",,,Autre,104000,0,Non
+PN0099,"Bekrazole 400mg cp",,,Autre,17000,0,Non
+PN0100,"Bendex 400mg cp",,,Autre,12000,0,Non
+PN0101,"Betalin cp",,,Autre,41000,12000,Non
+PN0102,"Bidongyl cp",,,Autre,0,0,Non
+PN0103,"Bimalaril plus cp",,,Autre,60000,0,Non
+PN0104,"Bimalaril AD cp",,,Autre,39000,0,Non
+PN0105,"Biofar Mg + Ca cp/eff",,,Autre,60000,0,Non
+PN0106,"Biofar Vit C cp/eff 1000",,,Autre,64000,0,Non
+PN0107,"Biofar Fer + Acide Folique cp",,,Autre,0,0,Non
+PN0108,"Biofar Multi-Vitamine cp",,,Autre,80000,0,Non
+PN0109,"Cac 1000mg cp",,,Autre,33000,0,Non
+PN0110,"Biodroxyl 500 mg cp",,,Autre,94000,0,Non
+PN0111,"Bibloc 10 mg cp",,,Autre,82000,0,Non
+PN0112,"Bibloc 5 mg cp",,,Autre,0,0,Non
+PN0113,"Bisoprolol GH 10 mg cp",,,Autre,54000,0,Non
+PN0114,"Biprofenid LP cp",,,Autre,0,0,Non
+PN0115,"Boncare plus cp",,,Autre,0,0,Non
+PN0116,"Brufen cp",,,Autre,45000,0,Non
+PN0117,"Boncipro 500 cp",,,Autre,81000,0,Non
+PN0118,"Boncipro 750 mg cp",,,Autre,116000,0,Non
+PN0119,"Brustan cp",,,Autre,23000,0,Non
+PN0120,"Bifosa 35 mg cp",,,Autre,0,0,Non
+PN0121,"Bifosa 70 mg cp",,,Autre,0,0,Non
+PN0122,"Boostex cp / eff",,,Autre,0,0,Non
+PN0123,"Ticosse 200 mg",,,Autre,0,0,Non
+PN0124,"Ticosse 400 mg",,,Autre,0,0,Non
+PN0125,"Calben 400 MG CP",,,Autre,0,0,Non
+PN0126,"Calcibronat cp",,,Autre,0,0,Non
+PN0127,"Calci D denk cp",,,Autre,0,0,Non
+PN0128,"Calcium active denk cp",,,Autre,0,0,Non
+PN0129,"Calsource cp",,,Autre,0,0,Non
+PN0130,"Calgin cp",,,Autre,0,0,Non
+PN0131,"Captopril 25mg cp B/20",,,Autre,0,0,Non
+PN0132,"Carben 500mg cp",,,Autre,0,0,Non
+PN0133,"Carben 100mg cp",,,Autre,0,0,Non
+PN0134,"Capen cp 25g B/30",,,Autre,0,0,Non
+PN0135,"Cardiurine cp",,,Autre,0,0,Non
+PN0136,"Cardix 6.25 cp",,,Autre,0,0,Non
+PN0137,"Cardiovalam GH cp",,,Autre,0,0,Non
+PN0138,"Colosar Denk 100/12.5 cp",,,Autre,0,0,Non
+PN0139,"Carvedi Denk 25mg cp",,,Autre,0,0,Non
+PN0140,"Carvedi Denk 6.25mg cp",,,Autre,0,0,Non
+PN0141,"Cataflam 25mg cp",,,Autre,0,0,Non
+PN0142,"Cataflam 50mg cp",,,Autre,0,0,Non
+PN0143,"Cefaloral 100mg cp",,,Autre,0,0,Non
+PN0144,"Cefaloral 200mg cp",,,Autre,0,0,Non
+PN0145,"Cefixidel cp 200g cp",,,Autre,0,0,Non
+PN0146,"Cenazol 500mg cp",,,Autre,0,0,Non
+PN0147,"Cenazol 250mg cp",,,Autre,0,0,Non
+PN0148,"Cetamyl 500mg cp",,,Autre,0,0,Non
+PN0149,"Cetamyl 1g cp",,,Autre,0,0,Non
+PN0150,"Celestene 2mg cp",,,Autre,0,0,Non
+PN0151,"Cefixim 200mg BGR cp",,,Autre,0,0,Non
+PN0152,"Ceficap 400mg cp",,,Autre,0,0,Non
+PN0153,"Chophytol cp",,,Autre,0,0,Non
+PN0154,"Cefim 200mg cp",,,Autre,0,0,Non
+PN0155,"Cefim 400 mg cp",,,Autre,0,0,Non
+PN0156,"Chondroflex cp",,,Autre,0,0,Non
+PN0157,"Chondrosteo cp",,,Autre,0,0,Non
+PN0158,"Chondrogen cp",,,Autre,0,0,Non
+PN0159,"Cinabac cp",,,Autre,0,0,Non
+PN0160,"Ciprolex TZ cp",,,Autre,0,0,Non
+PN0161,"Cipotax cp",,,Autre,0,0,Non
+PN0162,"Cipro Denk 500mg cp",,,Autre,0,0,Non
+PN0163,"Cipro Denk 750mg cp",,,Autre,0,0,Non
+PN0164,"Cipromed TZ cp",,,Autre,0,0,Non
+PN0165,"Cipromed cp",,,Autre,0,0,Non
+PN0166,"Cipronat 500mg cp",,,Autre,0,0,Non
+PN0167,"Cipronat 750mg cp",,,Autre,0,0,Non
+PN0168,"Ciptin Forte cp",,,Autre,0,0,Non
+PN0169,"Caplin ciptin cp",,,Autre,0,0,Non
+PN0170,"Citrate de Betaïne cp",,,Autre,0,0,Non
+PN0171,"Clamoxyl 500mg cp",,,Autre,0,0,Non
+PN0172,"Clamoxyl 1g cp",,,Autre,0,0,Non
+PN0173,"Clariton cp",,,Autre,0,0,Non
+PN0174,"Clariva cp",,,Autre,0,0,Non
+PN0175,"Clartec cp 10mg cp",,,Autre,0,0,Non
+PN0176,"Clavumocid 500mg cp",,,Autre,0,0,Non
+PN0177,"Clavumocid 1g cp",,,Autre,0,0,Non
+PN0178,"Cloace cp",,,Autre,0,0,Non
+PN0179,"Clomiflex cp 50g q",,,Autre,0,0,Non
+PN0180,"Clomilen cp 50mg cp",,,Autre,0,0,Non
+PN0181,"Co Arinate Adulte cp",,,Autre,0,0,Non
+PN0182,"Co Arinate Junior cp",,,Autre,0,0,Non
+PN0183,"Coartem B/12 20/120 cp",,,Autre,0,0,Non
+PN0184,"Coartem B/6 20/120 cp",,,Autre,0,0,Non
+PN0185,"Coartem 80mg cp",,,Autre,0,0,Non
+PN0186,"Co-Doliprane cp",,,Autre,0,0,Non
+PN0187,"Cofantrine Adulte cp",,,Autre,0,0,Non
+PN0188,"Cofantrine 20/120 disp cp",,,Autre,0,0,Non
+PN0189,"Colchimax cp",,,Autre,0,0,Non
+PN0190,"Colchicine cp",,,Autre,0,0,Non
+PN0191,"Curam 1g cp",,,Autre,0,0,Non
+PN0192,"Curam 500mg cp",,,Autre,0,0,Non
+PN0193,"Combifrinil cp",,,Autre,0,0,Non
+PN0194,"Daflon 500mg cp",,,Autre,0,0,Non
+PN0195,"Daflon 1g cp",,,Autre,0,0,Non
+PN0196,"Coveram 5/5mg cp",,,Autre,0,0,Non
+PN0197,"Coveram 10/10mg cp",,,Autre,0,0,Non
+PN0198,"Coveram 5/10mg cp",,,Autre,0,0,Non
+PN0199,"Cordarone cp 200g cp",,,Autre,0,0,Non
+PN0200,"Defnil cp p50/500",,,Autre,0,0,Non
+PN0201,"Denk Air cp",,,Autre,0,0,Non
+PN0202,"Dafrazol B/14 cp",,,Autre,0,0,Non
+PN0203,"Cupid cp  50g q",,,Autre,0,0,Non
+PN0204,"Curtec cp 10mg cp",,,Autre,0,0,Non
+PN0205,"Depakine 500mg cp",,,Autre,0,0,Non
+PN0206,"Depakine chrono cp",,,Autre,0,0,Non
+PN0207,"Diantalex cp",,,Autre,0,0,Non
+PN0208,"Diflamex cp  50mg q",,,Autre,0,0,Non
+PN0209,"Diflucan cp  150mg",,,Autre,0,0,Non
+PN0210,"Dycinone cp  500mg",,,Autre,0,0,Non
+PN0211,"Daonil cp  5mg",,,Autre,0,0,Non
+PN0212,"Difrarel E cp",,,Autre,0,0,Non
+PN0213,"Dislep cp  25g",,,Autre,0,0,Non
+PN0214,"Diclomax cp LP/100g cp",,,Autre,0,0,Non
+PN0215,"Diamox cp",,,Autre,0,0,Non
+PN0216,"Dynapar cp  B/20",,,Autre,0,0,Non
+PN0217,"Distem cp",,,Autre,0,0,Non
+PN0218,"Dolamine cp",,,Autre,0,0,Non
+PN0219,"Dolex SR 75mg cp",,,Autre,0,0,Non
+PN0220,"Dolotren cp 100g cp",,,Autre,0,0,Non
+PN0221,"Dolimex 1g cp",,,Autre,0,0,Non
+PN0222,"Dolimex 500mg cp",,,Autre,0,0,Non
+PN0223,"Dolimex migraine cp",,,Autre,0,0,Non
+PN0224,"Dontomycine 1M.U.I cp",,,Autre,0,0,Non
+PN0225,"Dontomycine 3M.U.I cp",,,Autre,0,0,Non
+PN0226,"Doxy Denk 100mg cp",,,Autre,0,0,Non
+PN0227,"Doxy Denk 200mg cp",,,Autre,0,0,Non
+PN0228,"Doxy Exphar 200mg cp",,,Autre,0,0,Non
+PN0229,"Duo-cotecxin cp",,,Autre,0,0,Non
+PN0230,"Duphaston 10mg B/10 cp",,,Autre,0,0,Non
+PN0231,"Duphaston 10mg B/20 cp",,,Autre,0,0,Non
+PN0232,"Duspatalin cp 200mg cp",,,Autre,0,0,Non
+PN0233,"Entamizol 500mg cp",,,Autre,0,0,Non
+PN0234,"Entamizol DS 500mg cp",,,Autre,0,0,Non
+PN0235,"Ery 500mg cp",,,Autre,0,0,Non
+PN0236,"Efferalgan 500mg cp/eff",,,Autre,0,0,Non
+PN0237,"Efferalgan Codeïne cp/eff",,,Autre,0,0,Non
+PN0238,"Efferalgan Vit C cp/eff",,,Autre,0,0,Non
+PN0239,"Efferalgan 1g cp/eff",,,Autre,0,0,Non
+PN0240,"Efferalgan gel",,,Autre,0,0,Non
+PN0241,"Efferalgan 500mg cp/plus",,,Autre,0,0,Non
+PN0242,"Effercal cp",,,Autre,0,0,Non
+PN0243,"Etorex 90 cp",,,Autre,0,0,Non
+PN0244,"Etorex 120 cp",,,Autre,0,0,Non
+PN0245,"Esomed 40mg cp",,,Autre,0,0,Non
+PN0246,"Exxib cp 10g cp",,,Autre,0,0,Non
+PN0247,"Feldene cp",,,Autre,0,0,Non
+PN0248,"Fedate cp",,,Autre,0,0,Non
+PN0249,"Fansidar cp",,,Autre,0,0,Non
+PN0250,"Fertilo Forte cp",,,Autre,0,0,Non
+PN0251,"Flex pro Extra cp",,,Autre,0,0,Non
+PN0252,"Fludex LP cp",,,Autre,0,0,Non
+PN0253,"Fixim 200mg cp",,,Autre,0,0,Non
+PN0254,"Fixim 400mg cp",,,Autre,0,0,Non
+PN0255,"Femigeston 100mg cp",,,Autre,0,0,Non
+PN0256,"Femigeston 200mg cp",,,Autre,0,0,Non
+PN0257,"Fercefol cp",,,Autre,0,0,Non
+PN0258,"Ferrex Forte cp",,,Autre,0,0,Non
+PN0259,"Ferfoltone cp",,,Autre,0,0,Non
+PN0260,"Fertab 50 cp",,,Autre,0,0,Non
+PN0261,"Finanemie cp",,,Autre,0,0,Non
+PN0262,"Fezomin C cp",,,Autre,0,0,Non
+PN0263,"Flagyl 250mg cp B/20",,,Autre,0,0,Non
+PN0264,"Flagyl 500mg cp",,,Autre,0,0,Non
+PN0265,"Fleming 1g cp",,,Autre,0,0,Non
+PN0266,"Filazol cp 400g cp",,,Autre,0,0,Non
+PN0267,"Flatoril cp",,,Autre,0,0,Non
+PN0268,"Flotac 75 cp",,,Autre,0,0,Non
+PN0269,"Flucap cp",,,Autre,0,0,Non
+PN0270,"Fluna Denk 150mg cp",,,Autre,0,0,Non
+PN0271,"Flucazol TZ cp",,,Autre,0,0,Non
+PN0272,"Flucogen cp 500g cp",,,Autre,0,0,Non
+PN0273,"Flox oz cp",,,Autre,0,0,Non
+PN0274,"Flex Nor cp",,,Autre,0,0,Non
+PN0275,"Flucomyc cp 150 mg",,,Autre,0,0,Non
+PN0276,"Fluxol cp",,,Autre,0,0,Non
+PN0277,"Fuclo 500mg cp",,,Autre,0,0,Non
+PN0278,"Forcan cp   150mg",,,Autre,0,0,Non
+PN0279,"Fumafer cp",,,Autre,0,0,Non
+PN0280,"Fluvermal cp",,,Autre,0,0,Non
+PN0281,"Fortaline plus cp",,,Autre,0,0,Non
+PN0282,"Flexdol cp",,,Autre,0,0,Non
+PN0283,"Fizaclav 1g cp",,,Autre,0,0,Non
+PN0284,"Decontractyl cp",,,Autre,0,0,Non
+PN0285,"Jafazot 20g",,,Autre,0,0,Non
+PN0286,"Gastrozol D cp",,,Autre,0,0,Non
+PN0287,"Gastrozol cp",,,Autre,0,0,Non
+PN0288,"Gamalate B6 cp",,,Autre,0,0,Non
+PN0289,"Generve P cp",,,Autre,0,0,Non
+PN0290,"Gagnerve BT cp",,,Autre,0,0,Non
+PN0291,"Gestrokit cp",,,Autre,0,0,Non
+PN0292,"Gastrokit plus cp",,,Autre,0,0,Non
+PN0293,"Genset cp",,,Autre,0,0,Non
+PN0294,"Genes Vit cp",,,Autre,0,0,Non
+PN0295,"Genes Grossesse cp",,,Autre,0,0,Non
+PN0296,"Gestane cp",,,Autre,0,0,Non
+PN0297,"Genes Vit mult-vitamine cp",,,Autre,0,0,Non
+PN0298,"Glimeperide Denk cp",,,Autre,0,0,Non
+PN0299,"Ginkor cp",,,Autre,0,0,Non
+PN0300,"Guncipro Forte cp",,,Autre,0,0,Non
+PN0301,"Gynopen cp",,,Autre,0,0,Non
+PN0302,"Glucophage 500mg cp",,,Autre,0,0,Non
+PN0303,"Glucophage 850mg cp",,,Autre,0,0,Non
+PN0304,"Glucovance 500mg cp",,,Autre,0,0,Non
+PN0305,"Glucovance 1000mg cp",,,Autre,0,0,Non
+PN0306,"Glyferon 850mg cp",,,Autre,0,0,Non
+PN0307,"Glyferon 1000mg cp",,,Autre,0,0,Non
+PN0308,"Gynecline 200 cp",,,Autre,0,0,Non
+PN0309,"Gynospan cp",,,Autre,0,0,Non
+PN0310,"Haemup cp",,,Autre,0,0,Non
+PN0311,"Helminthox 250mg cp",,,Autre,0,0,Non
+PN0312,"Hemafer cp/eff",,,Autre,0,0,Non
+PN0313,"Hemafer fol eff cp",,,Autre,0,0,Non
+PN0314,"Hemafer ccp/crocquer",,,Autre,0,0,Non
+PN0315,"Hemafer fol cp/crocquer",,,Autre,0,0,Non
+PN0316,"Helicocin cp",,,Autre,0,0,Non
+PN0317,"Ibumol cp",,,Autre,0,0,Non
+PN0318,"Isolone 5mg cp",,,Autre,0,0,Non
+PN0319,"Isolone 20mg cp",,,Autre,0,0,Non
+PN0320,"Inflacam cp",,,Autre,0,0,Non
+PN0321,"Ibuprofene 400mg BGR cp",,,Autre,0,0,Non
+PN0322,"Imodium cp",,,Autre,0,0,Non
+PN0323,"Ideos cp",,,Autre,0,0,Non
+PN0324,"Imox cp",,,Autre,0,0,Non
+PN0325,"Ibex cp",,,Autre,0,0,Non
+PN0326,"Ibuprofene Denk 600mg cp",,,Autre,0,0,Non
+PN0327,"Inercef 100 cp",,,Autre,0,0,Non
+PN0328,"Intercef 200 cp",,,Autre,0,0,Non
+PN0329,"Imuclav 1g cp",,,Autre,0,0,Non
+PN0330,"Joint Active cp",,,Autre,0,0,Non
+PN0331,"Joyclav 1g cp",,,Autre,0,0,Non
+PN0332,"Jespere 50mg cp",,,Autre,0,0,Non
+PN0333,"Ketoprofen GH 100mg cp",,,Autre,0,0,Non
+PN0334,"Ketoprofen LP 100mg cp",,,Autre,0,0,Non
+PN0335,"Kinafon cp",,,Autre,0,0,Non
+PN0336,"Kilmol cp",,,Autre,0,0,Non
+PN0337,"Kinal Codeïne cp",,,Autre,0,0,Non
+PN0338,"Kaleorid CP 600mg cp",,,Autre,0,0,Non
+PN0339,"Klipal 300mg cp",,,Autre,0,0,Non
+PN0340,"Klipal 600mg cp",,,Autre,0,0,Non
+PN0341,"Lansocap cp",,,Autre,0,0,Non
+PN0342,"Laritem 20/120 cp",,,Autre,0,0,Non
+PN0343,"Laritem 40/240 cp",,,Autre,0,0,Non
+PN0344,"Laritem 80/480 cp",,,Autre,0,0,Non
+PN0345,"Laroscorbine B/10 cp",,,Autre,0,0,Non
+PN0346,"Laroscorbine B/30 cp",,,Autre,0,0,Non
+PN0347,"Lasilix 40mg cp",,,Autre,0,0,Non
+PN0348,"Lerin cp",,,Autre,0,0,Non
+PN0349,"Libertex cp",,,Autre,0,0,Non
+PN0350,"Lodoz 5/6.25mg cp",,,Autre,0,0,Non
+PN0351,"Lodoz  10/6.25mg cp",,,Autre,0,0,Non
+PN0352,"Lolip 10mg cp",,,Autre,0,0,Non
+PN0353,"Lufamet DS cp",,,Autre,0,0,Non
+PN0354,"Lutenyl 5mg cp",,,Autre,0,0,Non
+PN0355,"Lumiter DS cp",,,Autre,0,0,Non
+PN0356,"Lufanter 40mg B/12 cp",,,Autre,0,0,Non
+PN0357,"Lufanter disp 20/120mg cp",,,Autre,0,0,Non
+PN0358,"Lyso 6 cp",,,Autre,0,0,Non
+PN0359,"Meteoxane cp",,,Autre,0,0,Non
+PN0360,"Melex cp",,,Autre,0,0,Non
+PN0361,"Metformine 500mg BGR cp",,,Autre,0,0,Non
+PN0362,"Metformine 850mg BGR cp",,,Autre,0,0,Non
+PN0363,"Metformine 1000mg BGR cp",,,Autre,0,0,Non
+PN0364,"Metformine Denk 500mg cp",,,Autre,0,0,Non
+PN0365,"Metformine Denk 850mg cp",,,Autre,0,0,Non
+PN0366,"Metformine Denk 1000mg cp",,,Autre,0,0,Non
+PN0367,"Meteospasmyl cp",,,Autre,0,0,Non
+PN0368,"Macromax cp",,,Autre,0,0,Non
+PN0369,"Malacure 20/120 B/6 cp",,,Autre,0,0,Non
+PN0370,"Malacure 40/360 B/12 cp",,,Autre,0,0,Non
+PN0371,"Malacure 40/320 B/9 cp",,,Autre,0,0,Non
+PN0372,"Magnesium Marin Forte cp",,,Autre,0,0,Non
+PN0373,"Migretil cp",,,Autre,0,0,Non
+PN0374,"Myocalm cp",,,Autre,0,0,Non
+PN0375,"Misodia cp",,,Autre,0,0,Non
+PN0376,"Neurodol cp",,,Autre,0,0,Non
+PN0377,"Naturex pastille cp",,,Autre,0,0,Non
+PN0378,"Natrixam 1.5/5mg cp",,,Autre,0,0,Non
+PN0379,"Natrixam 1.5/10mg cp",,,Autre,0,0,Non
+PN0380,"Nauselium cp",,,Autre,0,0,Non
+PN0381,"Neurocobal cp",,,Autre,0,0,Non
+PN0382,"Neural 150mg cp",,,Autre,0,0,Non
+PN0383,"Neural 75mg cp",,,Autre,0,0,Non
+PN0384,"Nidazol 250mg cp",,,Autre,0,0,Non
+PN0385,"Nidazol 500mg cp",,,Autre,0,0,Non
+PN0386,"Neurobion cp",,,Autre,0,0,Non
+PN0387,"Neagyl 80mg cp",,,Autre,0,0,Non
+PN0388,"Nifluril cp",,,Autre,0,0,Non
+PN0389,"Nucleo CMP forte cp",,,Autre,0,0,Non
+PN0390,"Norfen 400mg cp",,,Autre,0,0,Non
+PN0391,"Norflozole cp",,,Autre,0,0,Non
+PN0392,"Norlevo cp",,,Autre,0,0,Non
+PN0393,"Neurogil 75mg cp",,,Autre,0,0,Non
+PN0394,"Nortens forte cp",,,Autre,0,0,Non
+PN0395,"Nortens plus cp",,,Autre,0,0,Non
+PN0396,"Nospa 40mg cp",,,Autre,0,0,Non
+PN0397,"Novalgin cp",,,Autre,0,0,Non
+PN0398,"Omiz B/14 cp",,,Autre,0,0,Non
+PN0399,"Omiz B/28 cp",,,Autre,0,0,Non
+PN0400,"Oflocine cp",,,Autre,0,0,Non
+PN0401,"Oflocet 200mg cp",,,Autre,0,0,Non
+PN0402,"Oflomac 200mg cp",,,Autre,0,0,Non
+PN0403,"Oflomac 400mg cp",,,Autre,0,0,Non
+PN0404,"Oflor cp",,,Autre,0,0,Non
+PN0405,"Omeprazol BGR B/14 cp",,,Autre,0,0,Non
+PN0406,"Omeprazol BGR B/28 cp",,,Autre,0,0,Non
+PN0407,"Oroperydis cp",,,Autre,0,0,Non
+PN0408,"Oedes B/14 cp",,,Autre,0,0,Non
+PN0409,"Oedes B/28 cp",,,Autre,0,0,Non
+PN0410,"Ospen 1M.U.I cp",,,Autre,0,0,Non
+PN0411,"Oramid cp",,,Autre,0,0,Non
+PN0412,"Ospamox 500mg cp",,,Autre,0,0,Non
+PN0413,"Ospamox 1g cp",,,Autre,0,0,Non
+PN0414,"Oxyboldine cp",,,Autre,0,0,Non
+PN0415,"Ocuguard cp",,,Autre,0,0,Non
+PN0416,"Oziben 100mg cp",,,Autre,0,0,Non
+PN0417,"Oziben 500mg cp",,,Autre,0,0,Non
+PN0418,"Palumil Adulte cp",,,Autre,0,0,Non
+PN0419,"Palucure 20/120 cp",,,Autre,0,0,Non
+PN0420,"Palacure 40/240 cp",,,Autre,0,0,Non
+PN0421,"Papofer cp",,,Autre,0,0,Non
+PN0422,"Prazol B/14 cp",,,Autre,0,0,Non
+PN0423,"Prazol B/28 cp",,,Autre,0,0,Non
+PN0424,"Panto Denk 20mg cp",,,Autre,0,0,Non
+PN0425,"Panto Denk 40mg cp",,,Autre,0,0,Non
+PN0426,"Panadol Advance cp",,,Autre,0,0,Non
+PN0427,"Panadol Extra cp",,,Autre,0,0,Non
+PN0428,"Panalgic cp",,,Autre,0,0,Non
+PN0429,"Caplin Painex B/10mg cp",,,Autre,0,0,Non
+PN0430,"Caplin Painex B/30mg cp",,,Autre,0,0,Non
+PN0431,"Paraco Denk cp",,,Autre,0,0,Non
+PN0432,"Pidex cp",,,Autre,0,0,Non
+PN0433,"Pill 72 cp",,,Autre,0,0,Non
+PN0434,"Perispasm cp",,,Autre,0,0,Non
+PN0435,"Phenergan cp",,,Autre,0,0,Non
+PN0436,"Preventacare F cp",,,Autre,0,0,Non
+PN0437,"Plencoxib 200mg cp",,,Autre,0,0,Non
+PN0438,"Predni 20mg cp",,,Autre,0,0,Non
+PN0439,"Prenatal Denk cp",,,Autre,0,0,Non
+PN0440,"Prenatal + DHA cp",,,Autre,0,0,Non
+PN0441,"Principe B fort cp",,,Autre,0,0,Non
+PN0442,"Profiz forte cp",,,Autre,0,0,Non
+PN0443,"Primalan 10mg cp",,,Autre,0,0,Non
+PN0444,"Primalan 5mg cp",,,Autre,0,0,Non
+PN0445,"Plufentrine 80mg cp",,,Autre,0,0,Non
+PN0446,"Profenil cp",,,Autre,0,0,Non
+PN0447,"Protec pill cp",,,Autre,0,0,Non
+PN0448,"Propofan cp",,,Autre,0,0,Non
+PN0449,"Profenol cp",,,Autre,0,0,Non
+PN0450,"Prokefen 100 mg cp",,,Autre,0,0,Non
+PN0451,"Quinex 300mg cp",,,Autre,0,0,Non
+PN0452,"Neurgab 150",,,Autre,0,0,Non
+PN0453,"Plaucure 80/",,,Autre,0,0,Non
+PN0454,"Rabeloc cp",,,Autre,0,0,Non
+PN0455,"Ramithiazide 10/12.5mg cp",,,Autre,0,0,Non
+PN0456,"Ramithiazide10/25mg cp",,,Autre,0,0,Non
+PN0457,"Ramithiazide 5/12.5mg cp",,,Autre,0,0,Non
+PN0458,"Ranferon cp",,,Autre,0,0,Non
+PN0459,"Rapiclav 1g cp",,,Autre,0,0,Non
+PN0460,"Regulix 10mg cp",,,Autre,0,0,Non
+PN0461,"Regulix 80 mg",,,Autre,0,0,Non
+PN0462,"Rejuvenex cp",,,Autre,0,0,Non
+PN0463,"Renerve P cp",,,Autre,0,0,Non
+PN0464,"Renerve Plus cp",,,Autre,0,0,Non
+PN0465,"Restriva cp",,,Autre,0,0,Non
+PN0466,"Ribatran cp",,,Autre,0,0,Non
+PN0467,"Richfer cp",,,Autre,0,0,Non
+PN0468,"Rinialer cp",,,Autre,0,0,Non
+PN0469,"R lume 40mg cp",,,Autre,0,0,Non
+PN0470,"R lume 80mg cp",,,Autre,0,0,Non
+PN0471,"Roipar 1g cp",,,Autre,0,0,Non
+PN0472,"Roipar 500mg cp",,,Autre,0,0,Non
+PN0473,"Roipar plus cp",,,Autre,0,0,Non
+PN0474,"Rhumadol cp",,,Autre,0,0,Non
+PN0475,"Stopadol cp",,,Autre,0,0,Non
+PN0476,"Rovamycine 3M.U.I cp",,,Autre,0,0,Non
+PN0477,"Rovamycine 1M.U.I cp",,,Autre,0,0,Non
+PN0478,"Runn P cp",,,Autre,0,0,Non
+PN0479,"Rox-mycin cp",,,Autre,0,0,Non
+PN0480,"Safex cp",,,Autre,0,0,Non
+PN0481,"Sekalgic cp",,,Autre,0,0,Non
+PN0482,"Sedaspir cp",,,Autre,0,0,Non
+PN0483,"Sidenafil BGR 100mg cp",,,Autre,0,0,Non
+PN0484,"Sitrus SR cp",,,Autre,0,0,Non
+PN0485,"Spasfon cp",,,Autre,0,0,Non
+PN0486,"Spasmarix 40mg cp",,,Autre,0,0,Non
+PN0487,"Spasmarix 80mg cp",,,Autre,0,0,Non
+PN0488,"Spasmo-apotel cp",,,Autre,0,0,Non
+PN0489,"Spasmocalm cp",,,Autre,0,0,Non
+PN0490,"Spasmosyl cp",,,Autre,0,0,Non
+PN0491,"Spasmotroy 40mg cp",,,Autre,0,0,Non
+PN0492,"Spasmotroy 80mg cp",,,Autre,0,0,Non
+PN0493,"Shibudal cp",,,Autre,0,0,Non
+PN0494,"stresam cp",,,Autre,0,0,Non
+PN0495,"Sufix 200mg cp",,,Autre,0,0,Non
+PN0496,"Sufix 400mg cp",,,Autre,0,0,Non
+PN0497,"Sulfobactam 250mg cp",,,Autre,0,0,Non
+PN0498,"Sulfobactam 500mg cp",,,Autre,0,0,Non
+PN0499,"Surgam 100mg cp",,,Autre,0,0,Non
+PN0500,"Surgam 200mg cp",,,Autre,0,0,Non
+PN0501,"Tanakan cp",,,Autre,0,0,Non
+PN0502,"Tanganil cp",,,Autre,0,0,Non
+PN0503,"Tardyferon 80mg cp",,,Autre,0,0,Non
+PN0504,"Tardyferon B/9 cp",,,Autre,0,0,Non
+PN0505,"T-dol Rapid cp",,,Autre,0,0,Non
+PN0506,"T-dol P Rapid cp",,,Autre,0,0,Non
+PN0507,"Tegretol 200mg cp",,,Autre,0,0,Non
+PN0508,"Tegretol LP 200mg cp",,,Autre,0,0,Non
+PN0509,"Tegretol LP 400mg cp",,,Autre,0,0,Non
+PN0510,"Tensiodip 5mg cp",,,Autre,0,0,Non
+PN0511,"Tensiodip 10mg cp",,,Autre,0,0,Non
+PN0512,"Ticasse 500mg cp",,,Autre,0,0,Non
+PN0513,"Ticasse 1g cp",,,Autre,0,0,Non
+PN0514,"Tensionorme cp",,,Autre,0,0,Non
+PN0515,"T-fer cp",,,Autre,0,0,Non
+PN0516,"Thiobactin 500mg cp",,,Autre,0,0,Non
+PN0517,"Tinazol cp",,,Autre,0,0,Non
+PN0518,"Toco 500mg cp",,,Autre,0,0,Non
+PN0519,"Tocfim 200mg DT cp",,,Autre,0,0,Non
+PN0520,"Traclav 1g cp",,,Autre,0,0,Non
+PN0521,"Top-3 kit cp",,,Autre,0,0,Non
+PN0522,"Tracedol cp",,,Autre,0,0,Non
+PN0523,"Tramadol 50mg cp",,,Autre,0,0,Non
+PN0524,"Tremadol cp",,,Autre,0,0,Non
+PN0525,"Tricef 400mg cp",,,Autre,0,0,Non
+PN0526,"Triafene cp",,,Autre,0,0,Non
+PN0527,"Trialgic cp",,,Autre,0,0,Non
+PN0528,"Troycal cp",,,Autre,0,0,Non
+PN0529,"Trifene 200mg cp",,,Autre,0,0,Non
+PN0530,"Trifene 400mg cp",,,Autre,0,0,Non
+PN0531,"Triazide 5/25mg cp",,,Autre,0,0,Non
+PN0532,"Triazide 10/12.5mg cp",,,Autre,0,0,Non
+PN0533,"Triazide 10/25mg cp",,,Autre,0,0,Non
+PN0534,"Vitamine C Upsa cp",,,Autre,0,0,Non
+PN0535,"Vik vit C cp",,,Autre,0,0,Non
+PN0536,"Utrogestan 100mg cp",,,Autre,0,0,Non
+PN0537,"Utrogestan 200mg cp",,,Autre,0,0,Non
+PN0538,"Urbanyl 10mg cp",,,Autre,0,0,Non
+PN0539,"Vastarel 35mg cp",,,Autre,0,0,Non
+PN0540,"Vermox 100mg cp",,,Autre,0,0,Non
+PN0541,"Vermox 500mg cp",,,Autre,0,0,Non
+PN0542,"Verrex 500mg cp",,,Autre,0,0,Non
+PN0543,"Verzol 500mg cp",,,Autre,0,0,Non
+PN0544,"Vicombil cp",,,Autre,0,0,Non
+PN0545,"Vitamine C Galenica B/10 cp",,,Autre,0,0,Non
+PN0546,"Vitamine C Galenica B/20 cp",,,Autre,0,0,Non
+PN0547,"Vivagest cp",,,Autre,0,0,Non
+PN0548,"Visceralgine cp",,,Autre,0,0,Non
+PN0549,"Versino cp",,,Autre,0,0,Non
+PN0550,"Vitafact cp",,,Autre,0,0,Non
+PN0551,"Vitamine E forte cp",,,Autre,0,0,Non
+PN0552,"Voltarene 5mg cp",,,Autre,0,0,Non
+PN0553,"Wormin 500mg cp",,,Autre,0,0,Non
+PN0554,"Wormin 100mg cp",,,Autre,0,0,Non
+PN0555,"Xykaa 500mg cp",,,Autre,0,0,Non
+PN0556,"Xykaa 1g cp",,,Autre,0,0,Non
+PN0557,"Xerin cp",,,Autre,0,0,Non
+PN0558,"X-flux cp",,,Autre,0,0,Non
+PN0559,"Zamudol LP 100mg cp",,,Autre,0,0,Non
+PN0560,"Zentel 400mg cp",,,Autre,0,0,Non
+PN0561,"Zerodol P cp",,,Autre,0,0,Non
+PN0562,"Zerodol CR cp",,,Autre,0,0,Non
+PN0563,"Zyloric 100mg cp",,,Autre,0,0,Non
+PN0564,"Zyloric 200mg cp",,,Autre,0,0,Non
+PN0565,"Zyloric 300mg cp",,,Autre,0,0,Non
+PN0566,"Zocin cp",,,Autre,0,0,Non
+PN0567,"Aclav 1g B/12 Sh",,,Autre,0,0,Non
+PN0568,"Aclav 1g B/16 Sh",,,Autre,0,0,Non
+PN0569,"Aclav 500mg B/12 Sh",,,Autre,0,0,Non
+PN0570,"Aclav 500mg B/16 Sh",,,Autre,0,0,Non
+PN0571,"Alfamox 1g Sh",,,Autre,0,0,Non
+PN0572,"Alfamox 500mg Sh",,,Autre,0,0,Non
+PN0573,"Almax Forte Sh",,,Autre,0,0,Non
+PN0574,"Amfocin Sh 1g",,,Autre,0,0,Non
+PN0575,"Amoxiclav 1g Sh B/8",,,Autre,0,0,Non
+PN0576,"Amoxiclav 1g Sh B/12",,,Autre,0,0,Non
+PN0577,"Aspegic 100mg Sh",,,Autre,0,0,Non
+PN0578,"Aspegic 250mg Sh",,,Autre,0,0,Non
+PN0579,"Aspegic 500mg Sh",,,Autre,0,0,Non
+PN0580,"Aspegic 1000mg Sh",,,Autre,0,0,Non
+PN0581,"Azithro 100mg Sh",,,Autre,0,0,Non
+PN0582,"Azithro 200mg Sh",,,Autre,0,0,Non
+PN0583,"Cefixidel 100mg Sh",,,Autre,0,0,Non
+PN0584,"Creaclav 1g Sh",,,Autre,0,0,Non
+PN0585,"Bedelix Sh",,,Autre,0,0,Non
+PN0586,"Biotic plus B/14 Sh",,,Autre,0,0,Non
+PN0587,"Biotic plus B/24 Sh",,,Autre,0,0,Non
+PN0588,"Curam 1g B/12 Sh",,,Autre,0,0,Non
+PN0589,"Curam 1g B/24 Sh",,,Autre,0,0,Non
+PN0590,"Dolimex 200mg Sh",,,Autre,0,0,Non
+PN0591,"Dolimex 300mg Sh",,,Autre,0,0,Non
+PN0592,"Dolimex 500mg Sh",,,Autre,0,0,Non
+PN0593,"Dolimex 1g Sh",,,Autre,0,0,Non
+PN0594,"Doliprane 200mg Sh",,,Autre,0,0,Non
+PN0595,"Doliprane 300mg Sh",,,Autre,0,0,Non
+PN0596,"Efferalgan 500mg Sh",,,Autre,0,0,Non
+PN0597,"Fortans Sh",,,Autre,0,0,Non
+PN0598,"Duphalac Sh",,,Autre,0,0,Non
+PN0599,"Electrolyte Sh",,,Autre,0,0,Non
+PN0600,"Exomuc Sh",,,Autre,0,0,Non
+PN0601,"Fervex enf Sh",,,Autre,0,0,Non
+PN0602,"Fervex A/D Sh",,,Autre,0,0,Non
+PN0603,"Forlax B/10 Sh",,,Autre,0,0,Non
+PN0604,"Forlax B/20 Sh",,,Autre,0,0,Non
+PN0605,"Gaviscon Sh",,,Autre,0,0,Non
+PN0606,"Genclav 250mg Sh",,,Autre,0,0,Non
+PN0607,"Genclav 500mg Sh",,,Autre,0,0,Non
+PN0608,"Genclav 1g Sh",,,Autre,0,0,Non
+PN0609,"Immu C Sh",,,Autre,0,0,Non
+PN0610,"Immu Active Denk Sh",,,Autre,0,0,Non
+PN0611,"Kardegic 75mg Sh",,,Autre,0,0,Non
+PN0612,"Kardegic 160mg Sh",,,Autre,0,0,Non
+PN0613,"Lufanter 80 Sh",,,Autre,0,0,Non
+PN0614,"Mucomyst Sh",,,Autre,0,0,Non
+PN0615,"Maalox Sh",,,Autre,0,0,Non
+PN0616,"Magnes Active Denk Sh",,,Autre,0,0,Non
+PN0617,"Pepsane Sh",,,Autre,0,0,Non
+PN0618,"Peptex Sh",,,Autre,0,0,Non
+PN0619,"Rapidex Sh",,,Autre,0,0,Non
+PN0620,"Recharge Active Sh",,,Autre,0,0,Non
+PN0621,"Rinomicine Sh",,,Autre,0,0,Non
+PN0622,"Rinogrip Sh",,,Autre,0,0,Non
+PN0623,"Rhumadol ped Sh",,,Autre,0,0,Non
+PN0624,"S R O Zinc Sh",,,Autre,0,0,Non
+PN0625,"Saphir 1g B/12 Sh",,,Autre,0,0,Non
+PN0626,"Saphir 500mg Sh",,,Autre,0,0,Non
+PN0627,"Diosmectite Sh",,,Autre,0,0,Non
+PN0628,"Smecta B/10 Sh",,,Autre,0,0,Non
+PN0629,"Smecta B/20 Sh",,,Autre,0,0,Non
+PN0630,"Tiorfan enf Sh",,,Autre,0,0,Non
+PN0631,"Tributine Sh",,,Autre,0,0,Non
+PN0632,"Trebon 300 Sh",,,Autre,0,0,Non
+PN0633,"Trebon 600 Sh",,,Autre,0,0,Non
+PN0634,"Zamox 500mg Sh",,,Autre,0,0,Non
+PN0635,"Zamox 1g Sh B/12",,,Autre,0,0,Non
+PN0636,"Zamox 1g Sh B/16",,,Autre,0,0,Non
+PN0637,"Trofocard Max Sh",,,Autre,0,0,Non
+PN0638,"Ulcar 1g Sh",,,Autre,0,0,Non
+PN0639,"Vitamax Caffé B/10 Sh",,,Autre,0,0,Non
+PN0640,"Vitamax Miel B/10 Sh",,,Autre,0,0,Non
+PN0641,"Bioherb Sucré (Dr Secret) B/8 Sh",,,Autre,0,0,Non
+PN0642,"Bioherb Sans Sucre (Dr Secret) B/8 Sh",,,Autre,0,0,Non
+PN0643,"Dynamogene Amp/Buv",,,Autre,0,0,Non
+PN0644,"Mag 2 Amp/Buv",,,Autre,0,0,Non
+PN0645,"Magnoral Amp/Buv",,,Autre,0,0,Non
+PN0646,"Maximag Amp/Buv",,,Autre,0,0,Non
+PN0647,"Potenciator Amp/Buv",,,Autre,0,0,Non
+PN0648,"Revitalose A/B Amp/Buv",,,Autre,0,0,Non
+PN0649,"Rocmaline Amp/Buv",,,Autre,0,0,Non
+PN0650,"Sargenor C Amp/Buv",,,Autre,0,0,Non
+PN0651,"Stimol Amp/Buv",,,Autre,0,0,Non
+PN0652,"Tothema Amp/Buv",,,Autre,0,0,Non
+PN0653,"S R O Sh",,,Autre,0,0,Non
+PN0654,"Ac. Foliq creat B/100",,,Autre,0,0,Non
+PN0655,"Bora sipo pest",,,Autre,0,0,Non
+PN0656,"philco cipro pest",,,Autre,0,0,Non
+PN0657,"philco Metro pest",,,Autre,0,0,Non
+PN0658,"Metro udi 200 SB.",,,Autre,0,0,Non
+PN0659,"Medither inj B/6",,,Autre,0,0,Non
+PN0660,"Artesiane inj",,,Autre,0,0,Non
+PN0661,"Atropine inj 0,5",,,Autre,0,0,Non
+PN0662,"Arthemeter Ubi inj B/10",,,Autre,0,0,Non
+PN0663,"Artesun 60 inj",,,Autre,0,0,Non
+PN0664,"Artesun 120 inj",,,Autre,0,0,Non
+PN0665,"Becozyme inj",,,Autre,0,0,Non
+PN0666,"Caplin Caprazole inj",,,Autre,0,0,Non
+PN0667,"Dipro inj",,,Autre,0,0,Non
+PN0668,"Diclo Denk 75mg inj",,,Autre,0,0,Non
+PN0669,"Ciplacef 1g inj",,,Autre,0,0,Non
+PN0670,"profenol 100mg inj",,,Autre,0,0,Non
+PN0671,"dicacillile 1,2 inj",,,Autre,0,0,Non
+PN0672,"Dicacillile 2.4 inj",,,Autre,0,0,Non
+PN0673,"R-Lume inj",,,Autre,0,0,Non
+PN0674,"Dislep 25 inj",,,Autre,0,0,Non
+PN0675,"Diclofenac Ibu inj",,,Autre,0,0,Non
+PN0676,"Dycinone inj 250",,,Autre,0,0,Non
+PN0677,"Gastroject inj",,,Autre,0,0,Non
+PN0678,"Gynospan inj",,,Autre,0,0,Non
+PN0679,"lidocaine inj",,,Autre,0,0,Non
+PN0680,"Osikort 40mg inj",,,Autre,0,0,Non
+PN0681,"lerin inj",,,Autre,0,0,Non
+PN0682,"Felden inj",,,Autre,0,0,Non
+PN0683,"Prokefen inj",,,Autre,0,0,Non
+PN0684,"Cefezone inj 1g",,,Autre,0,0,Non
+PN0685,"Onecef 1g inj",,,Autre,0,0,Non
+PN0686,"Pyocef 1g inj",,,Autre,0,0,Non
+PN0687,"Sulbacef inf 1,5 g",,,Autre,0,0,Non
+PN0688,"Synergon inj",,,Autre,0,0,Non
+PN0689,"Rocephin 1g inj I4",,,Autre,0,0,Non
+PN0690,"Spasmo Apotel inj",,,Autre,0,0,Non
+PN0691,"Spasfon inj",,,Autre,0,0,Non
+PN0692,"Spasmosyl inj",,,Autre,0,0,Non
+PN0693,"Triam-Denk inj",,,Autre,0,0,Non
+PN0694,"Trabar 100 inj",,,Autre,0,0,Non
+PN0695,"Vitamine B/12 inj",,,Autre,0,0,Non
+PN0696,"Vogalene inj",,,Autre,0,0,Non
+PN0697,"Diclo 5 sup",,,Autre,0,0,Non
+PN0698,"Diclowal sup",,,Autre,0,0,Non
+PN0699,"Evamax ov",,,Autre,0,0,Non
+PN0700,"Flagyl ov",,,Autre,0,0,Non
+PN0701,"Elle Test",,,Autre,0,0,Non
+PN0702,"Levatest (Levo test)",,,Autre,0,0,Non
+PN0703,"Gencloben ov",,,Autre,0,0,Non
+PN0704,"Gyflorine ov",,,Autre,0,0,Non
+PN0705,"Gynofast ov",,,Autre,0,0,Non
+PN0706,"Gynanfort ov",,,Autre,0,0,Non
+PN0707,"Gynospan ov",,,Autre,0,0,Non
+PN0708,"Gynospan sup",,,Autre,0,0,Non
+PN0709,"Gynomax B/6 ov",,,Autre,0,0,Non
+PN0710,"Gynomax B/12 ov",,,Autre,0,0,Non
+PN0711,"Ketoprofen GH sup",,,Autre,0,0,Non
+PN0712,"Ketoflex sup",,,Autre,0,0,Non
+PN0713,"Nystasha ov",,,Autre,0,0,Non
+PN0714,"Kinafon sup",,,Autre,0,0,Non
+PN0715,"Microlax BB sup",,,Autre,0,0,Non
+PN0716,"Microlax A/D sup",,,Autre,0,0,Non
+PN0717,"Pevagin ov",,,Autre,0,0,Non
+PN0718,"Polygynax B/6 ov",,,Autre,0,0,Non
+PN0719,"Polygynax B/12 ov",,,Autre,0,0,Non
+PN0720,"Prokefen sup",,,Autre,0,0,Non
+PN0721,"Profenid sup",,,Autre,0,0,Non
+PN0722,"Spasmo Apotel sup",,,Autre,0,0,Non
+PN0723,"Spasmosyl sup",,,Autre,0,0,Non
+PN0724,"Titanoreine sup",,,Autre,0,0,Non
+PN0725,"Vagimilt ov",,,Autre,0,0,Non
+PN0726,"Vogalene sup",,,Autre,0,0,Non
+PN0727,"Visceralgine sup",,,Autre,0,0,Non
+PN0728,"Voltaren 100 sup",,,Autre,0,0,Non
+PN0729,"Zalain ovule",,,Autre,0,0,Non
+PN0730,"Warimazol ov",,,Autre,0,0,Non
+PN0731,"Ascabiol sol",,,Autre,0,0,Non
+PN0732,"Acaribial sol",,,Autre,0,0,Non
+PN0733,"Buccothymol Bb",,,Autre,0,0,Non
+PN0734,"Betadine derm sol",,,Autre,0,0,Non
+PN0735,"Betadine BB sol",,,Autre,0,0,Non
+PN0736,"Betadine Vag sol",,,Autre,0,0,Non
+PN0737,"Dakin sol 250ml",,,Autre,0,0,Non
+PN0738,"Dakin 500ml sol",,,Autre,0,0,Non
+PN0739,"Dermobacter 125ml sol",,,Autre,0,0,Non
+PN0740,"Dermobacter 300ml sol",,,Autre,0,0,Non
+PN0741,"Dexeryl sol",,,Autre,0,0,Non
+PN0742,"Doloseptyl sol",,,Autre,0,0,Non
+PN0743,"Clivon sol",,,Autre,0,0,Non
+PN0744,"Eosine Aqueuse sol 2g",,,Autre,0,0,Non
+PN0745,"Eludrilpro sol",,,Autre,0,0,Non
+PN0746,"Exofen pdr",,,Autre,0,0,Non
+PN0747,"Lactiva sol",,,Autre,0,0,Non
+PN0748,"Ketocon shp",,,Autre,0,0,Non
+PN0749,"Saforelle 100ml sol",,,Autre,0,0,Non
+PN0750,"Saforelle 200ml sol",,,Autre,0,0,Non
+PN0751,"Septivon sol",,,Autre,0,0,Non
+PN0752,"Septyl BB",,,Autre,0,0,Non
+PN0753,"Aclin gel",,,Autre,0,0,Non
+PN0754,"Algesal gel",,,Autre,0,0,Non
+PN0755,"Aclogel gel",,,Autre,0,0,Non
+PN0756,"Betadine gel",,,Autre,0,0,Non
+PN0757,"Baneocin pde",,,Autre,0,0,Non
+PN0758,"Bronchodermique pde",,,Autre,0,0,Non
+PN0759,"Clobex cr",,,Autre,0,0,Non
+PN0760,"Cutacnyl 5% pde",,,Autre,0,0,Non
+PN0761,"Cutacnyl 10% pde",,,Autre,0,0,Non
+PN0762,"Clotri denk cr",,,Autre,0,0,Non
+PN0763,"Curapel pde",,,Autre,0,0,Non
+PN0764,"Diclowal spr",,,Autre,0,0,Non
+PN0765,"Dynapar Qs 15ml spr",,,Autre,0,0,Non
+PN0766,"Dynapar gel",,,Autre,0,0,Non
+PN0767,"Dflex pde",,,Autre,0,0,Non
+PN0768,"Diprolene pde",,,Autre,0,0,Non
+PN0769,"Diprosalic pde",,,Autre,0,0,Non
+PN0770,"Diprostene pde",,,Autre,0,0,Non
+PN0771,"Diprostene cr",,,Autre,0,0,Non
+PN0772,"Doulerex pde",,,Autre,0,0,Non
+PN0773,"Fusiderme pde",,,Autre,0,0,Non
+PN0774,"Gencloben cr",,,Autre,0,0,Non
+PN0775,"Ketoderm pde",,,Autre,0,0,Non
+PN0776,"Ketocon cr",,,Autre,0,0,Non
+PN0777,"Hemorex kit",,,Autre,0,0,Non
+PN0778,"Litacold vap",,,Autre,0,0,Non
+PN0779,"L-Mesitran 50g pde",,,Autre,0,0,Non
+PN0780,"L-Mesitran 100g pde",,,Autre,0,0,Non
+PN0781,"Locoid cr",,,Autre,0,0,Non
+PN0782,"Micokin 2% cr",,,Autre,0,0,Non
+PN0783,"Micolex cr",,,Autre,0,0,Non
+PN0784,"Micolex 3 cr",,,Autre,0,0,Non
+PN0785,"Intimyty gel",,,Autre,0,0,Non
+PN0786,"Coton Hydrophile 50g",,,Autre,0,0,Non
+PN0787,"Coton Hydrophile 100g",,,Autre,0,0,Non
+PN0788,"Mycoster creme",,,Autre,0,0,Non
+PN0789,"Mycoster spray",,,Autre,0,0,Non
+PN0790,"Niflugel pde",,,Autre,0,0,Non
+PN0791,"Oxyplastine pde",,,Autre,0,0,Non
+PN0792,"Phenergan pde",,,Autre,0,0,Non
+PN0793,"Positon pde",,,Autre,0,0,Non
+PN0794,"Positon cre",,,Autre,0,0,Non
+PN0795,"Procomil cre",,,Autre,0,0,Non
+PN0796,"PKG cre",,,Autre,0,0,Non
+PN0797,"Pevagin cre",,,Autre,0,0,Non
+PN0798,"Titanoreine cre",,,Autre,0,0,Non
+PN0799,"Trecopex pde",,,Autre,0,0,Non
+PN0800,"Triafene gel",,,Autre,0,0,Non
+PN0801,"Vendome gel",,,Autre,0,0,Non
+PN0802,"Volini gel",,,Autre,0,0,Non
+PN0803,"Vovgel gel",,,Autre,0,0,Non
+PN0804,"Voltaren cr   Emulgre",,,Autre,0,0,Non
+PN0805,"Vegebom secours 50g gel",,,Autre,0,0,Non
+PN0806,"Vegebom secours 100g gel",,,Autre,0,0,Non
+PN0807,"Vegebom Tonifiant gel",,,Autre,0,0,Non
+PN0808,"Warimazol cre",,,Autre,0,0,Non
+PN0809,"Sparadrap 5m*18cm",,,Autre,0,0,Non
+PN0810,"Bande crepe 4cm*5m",,,Autre,0,0,Non
+PN0811,"Bande crepe 4cm*7m",,,Autre,0,0,Non
+PN0812,"Bande crepe 4cm*10m",,,Autre,0,0,Non
+PN0813,"Bande crepe 4cm*15m",,,Autre,0,0,Non
+PN0814,"Bande crepe 4cm*20m",,,Autre,0,0,Non
+PN0815,"Bande ordinaire 15 cm",,,Autre,0,0,Non
+PN0816,"Bande ordinaire 10 cm",,,Autre,0,0,Non
+PN0817,"Gants steril 7.5",,,Autre,0,0,Non
+PN0818,"Compress Steril 40*40m",,,Autre,0,0,Non
+PN0819," Maxidrol pde",,,Autre,0,0,Non
+PN0820,"Fleming 250 sp",,,Autre,0,0,Non
+PN0821,"Flucazol sp",,,Autre,0,0,Non
+PN0822,"Fluditec enf sp",,,Autre,0,0,Non
+PN0823,"Fluditec A/D sp",,,Autre,0,0,Non
+PN0824,"Fuclo 250 sp",,,Autre,0,0,Non
+PN0825,"Fluvermal sp",,,Autre,0,0,Non
+PN0826,"Flucogen sp",,,Autre,0,0,Non
+PN0827,"Gaviscon sp",,,Autre,0,0,Non
+PN0828,"Gastrogel O sp",,,Autre,0,0,Non
+PN0829,"Gastrogel plus sp",,,Autre,0,0,Non
+PN0830,"Gamalate B6 sp",,,Autre,0,0,Non
+PN0831,"Genacid sp",,,Autre,0,0,Non
+PN0832,"Gastrogel sp",,,Autre,0,0,Non
+PN0833,"Genforte GH sp",,,Autre,0,0,Non
+PN0834,"Guaflex sp",,,Autre,0,0,Non
+PN0835,"Gynofert sp",,,Autre,0,0,Non
+PN0836,"Hapenz sp",,,Autre,0,0,Non
+PN0837,"Helicidine 125ml sp",,,Autre,0,0,Non
+PN0838,"Helicidine 250ml sp",,,Autre,0,0,Non
+PN0839,"Hemafer sp",,,Autre,0,0,Non
+PN0840,"Helmintox 250mg sp",,,Autre,0,0,Non
+PN0841,"Hemofer sp",,,Autre,0,0,Non
+PN0842,"HPV eurolab gtte",,,Autre,0,0,Non
+PN0843,"HPV hydrosol gtte",,,Autre,0,0,Non
+PN0844,"Ibumol sp",,,Autre,0,0,Non
+PN0845,"Ixine 40mg sp",,,Autre,0,0,Non
+PN0846,"Ixine 100mg sp",,,Autre,0,0,Non
+PN0847,"Kidjoy sp",,,Autre,0,0,Non
+PN0848,"Lilgro-H sp",,,Autre,0,0,Non
+PN0849,"Litacold sp",,,Autre,0,0,Non
+PN0850,"Luex enf Toux seche sp",,,Autre,0,0,Non
+PN0851,"Luex enf Toux grasse sp",,,Autre,0,0,Non
+PN0852,"Luex A/D Toux seche sp",,,Autre,0,0,Non
+PN0853,"Luex A/D Toux grasse sp",,,Autre,0,0,Non
+PN0854,"Lufamet sp",,,Autre,0,0,Non
+PN0855,"Maalox sp",,,Autre,0,0,Non
+PN0856,"Macromax sp",,,Autre,0,0,Non
+PN0857,"Malacur sp",,,Autre,0,0,Non
+PN0858,"Maxilase sp",,,Autre,0,0,Non
+PN0859,"Mebendazole Ibu sp",,,Autre,0,0,Non
+PN0860,"Metrolex F sp",,,Autre,0,0,Non
+PN0861,"Megacid sp",,,Autre,0,0,Non
+PN0862,"Motilum sp",,,Autre,0,0,Non
+PN0863,"Nugene sp",,,Autre,0,0,Non
+PN0864,"Nugene plus sp",,,Autre,0,0,Non
+PN0865,"Nauselium sp",,,Autre,0,0,Non
+PN0866,"Neex sp",,,Autre,0,0,Non
+PN0867,"Neutrosec sp",,,Autre,0,0,Non
+PN0868,"Norflozole sp",,,Autre,0,0,Non
+PN0869,"Nt-tus sp",,,Autre,0,0,Non
+PN0870,"Novalgin sp",,,Autre,0,0,Non
+PN0871,"Nuravite sp",,,Autre,0,0,Non
+PN0872,"Nurabol enf sp",,,Autre,0,0,Non
+PN0873,"Nurabol A/D sp",,,Autre,0,0,Non
+PN0874,"Nystatine sp",,,Autre,0,0,Non
+PN0875,"Orex 125mg sp",,,Autre,0,0,Non
+PN0876,"Orex 250mg sp",,,Autre,0,0,Non
+PN0877,"Oroken 100mg sp",,,Autre,0,0,Non
+PN0878,"Oziben sp",,,Autre,0,0,Non
+PN0879,"Paidoterin sp",,,Autre,0,0,Non
+PN0880,"Caplin painex sp",,,Autre,0,0,Non
+PN0881,"Panol sp",,,Autre,0,0,Non
+PN0882,"Panadol sp",,,Autre,0,0,Non
+PN0883,"Peridys sp",,,Autre,0,0,Non
+PN0884,"Peptex sp",,,Autre,0,0,Non
+PN0885,"Phenergan sp",,,Autre,0,0,Non
+PN0886,"Philco cotri sp",,,Autre,0,0,Non
+PN0887,"Philco metro sp",,,Autre,0,0,Non
+PN0888,"Philco cloxa 125mg sp",,,Autre,0,0,Non
+PN0889,"Philco cloxa 250mg sp",,,Autre,0,0,Non
+PN0890,"Philco albo sp",,,Autre,0,0,Non
+PN0891,"Philco para 120mg sp",,,Autre,0,0,Non
+PN0892,"Philco para 240mg sp",,,Autre,0,0,Non
+PN0893,"Philco ibupa sp",,,Autre,0,0,Non
+PN0894,"Philco ibu sp",,,Autre,0,0,Non
+PN0895,"Pinkoo sp",,,Autre,0,0,Non
+PN0896,"Polyvit sp",,,Autre,0,0,Non
+PN0897,"Polyvit gtte",,,Autre,0,0,Non
+PN0898,"Plasmocur sp",,,Autre,0,0,Non
+PN0899,"Primalan sp",,,Autre,0,0,Non
+PN0900,"Profenol sp",,,Autre,0,0,Non
+PN0901,"Pulmodexane sp",,,Autre,0,0,Non
+PN0902,"Rapidex sp",,,Autre,0,0,Non
+PN0903,"Rhinathiol enf sp",,,Autre,0,0,Non
+PN0904,"Rhinathiol A/D sp",,,Autre,0,0,Non
+PN0905,"Rhinex sp",,,Autre,0,0,Non
+PN0906,"Rhinacold sp",,,Autre,0,0,Non
+PN0907,"Richefer plus sp",,,Autre,0,0,Non
+PN0908,"Rinialer sp",,,Autre,0,0,Non
+PN0909,"Rucold sp",,,Autre,0,0,Non
+PN0910,"Roipar sp",,,Autre,0,0,Non
+PN0911,"Salbutus 100ml sp",,,Autre,0,0,Non
+PN0912,"Salbutus 200ml sp",,,Autre,0,0,Non
+PN0913,"Sekrol 15mg sp",,,Autre,0,0,Non
+PN0914,"Sekrol 30mg sp",,,Autre,0,0,Non
+PN0915,"Sekalgic sp",,,Autre,0,0,Non
+PN0916,"Stimogene sp",,,Autre,0,0,Non
+PN0917,"Sekisan sp",,,Autre,0,0,Non
+PN0918,"Sirofen sp",,,Autre,0,0,Non
+PN0919,"Soclav sp",,,Autre,0,0,Non
+PN0920,"Skilax gtte",,,Autre,0,0,Non
+PN0921,"Surdex sp",,,Autre,0,0,Non
+PN0922,"Suffix sp",,,Autre,0,0,Non
+PN0923,"Tardyferon B/9 SP",,,Autre,0,0,Non
+PN0924,"Tanakan sp",,,Autre,0,0,Non
+PN0925,"Tegretol sp",,,Autre,0,0,Non
+PN0926,"Terpone  enf sp",,,Autre,0,0,Non
+PN0927,"Terpone A/D sp",,,Autre,0,0,Non
+PN0928,"Thiobactin sp",,,Autre,0,0,Non
+PN0929,"Tributine sp",,,Autre,0,0,Non
+PN0930,"Trimetabol sp",,,Autre,0,0,Non
+PN0931,"Ventoline spr",,,Autre,0,0,Non
+PN0932,"Vermox sp",,,Autre,0,0,Non
+PN0933,"Viscodril sp",,,Autre,0,0,Non
+PN0934,"Viscof S sp",,,Autre,0,0,Non
+PN0935,"Viscof D sp",,,Autre,0,0,Non
+PN0936,"Vitavit sp",,,Autre,0,0,Non
+PN0937,"Vogalene gtte",,,Autre,0,0,Non
+PN0938,"Vogalene sp",,,Autre,0,0,Non
+PN0939,"Zentel sp",,,Autre,0,0,Non
+PN0940,"Wormin sp",,,Autre,0,0,Non
+PN0941,"Zocin sp",,,Autre,0,0,Non
+PN0942,"Clamoxyl 500mg sp",,,Autre,0,0,Non
+PN0943,"Cetamyl sp",,,Autre,0,0,Non
+PN0944,"Ceficap sp",,,Autre,0,0,Non
+PN0945,"Cefim 100 sp",,,Autre,0,0,Non
+PN0946,"Cypep sp",,,Autre,0,0,Non
+PN0947,"Carben sp",,,Autre,0,0,Non
+PN0948,"Calben sp",,,Autre,0,0,Non
+PN0949,"Caltoux enf sp",,,Autre,0,0,Non
+PN0950,"Caltoux A/D sp",,,Autre,0,0,Non
+PN0951,"Carbotoux enf sp",,,Autre,0,0,Non
+PN0952,"Carbotoux A/D sp",,,Autre,0,0,Non
+PN0953,"Cipcal sp",,,Autre,0,0,Non
+PN0954,"Buto-Asma spr",,,Autre,0,0,Non
+PN0955,"Brustan sp",,,Autre,0,0,Non
+PN0956,"Bronex sp",,,Autre,0,0,Non
+PN0957,"Broxol sp",,,Autre,0,0,Non
+PN0958,"Brufen sp",,,Autre,0,0,Non
+PN0959,"Bronquidiazina sp",,,Autre,0,0,Non
+PN0960,"Broncathiol enf sp",,,Autre,0,0,Non
+PN0961,"Broncathiol A/D sp",,,Autre,0,0,Non
+PN0962,"Applift sp",,,Autre,0,0,Non
+PN0963,"Appetine sp",,,Autre,0,0,Non
+PN0964,"Appetine Viatamine sp",,,Autre,0,0,Non
+PN0965,"Appetamine sp",,,Autre,0,0,Non
+PN0966,"Apdyl-H sp",,,Autre,0,0,Non
+PN0967,"Anginovag spr",,,Autre,0,0,Non
+PN0968,"Angispray spr",,,Autre,0,0,Non
+PN0969,"Anticide plus sp",,,Autre,0,0,Non
+PN0970,"Amibazol sp",,,Autre,0,0,Non
+PN0971,"Amifer sp",,,Autre,0,0,Non
+PN0972,"Ambrolite GH sp",,,Autre,0,0,Non
+PN0973,"Almax forte sp",,,Autre,0,0,Non
+PN0974,"Alvityl sp",,,Autre,0,0,Non
+PN0975,"Algofene sp",,,Autre,0,0,Non
+PN0976,"Astyfer sp",,,Autre,0,0,Non
+PN0977,"Alfamox sp",,,Autre,0,0,Non
+PN0978,"Advilmed sp",,,Autre,0,0,Non
+PN0979,"Alzol sp",,,Autre,0,0,Non
+PN0980,"Arginine veyron sp",,,Autre,0,0,Non
+PN0981,"Acure 20/120 sp",,,Autre,0,0,Non
+PN0982,"Acure 40/240 sp",,,Autre,0,0,Non
+PN0983,"Acure 60/360 sp",,,Autre,0,0,Non
+PN0984,"Acigene sp",,,Autre,0,0,Non
+PN0985,"Acefyl sp",,,Autre,0,0,Non
+PN0986,"Actimag sp",,,Autre,0,0,Non
+PN0987,"Aclav enf sp",,,Autre,0,0,Non
+PN0988,"Bimalaril Adolescent sp",,,Autre,0,0,Non
+PN0989,"Bimalaril Enfant sp",,,Autre,0,0,Non
+PN0990,"Bimalaril NN sp",,,Autre,0,0,Non
+PN0991,"Bimalaril Adolescent cp",,,Autre,0,0,Non
+PN0992,"Bimalaril Enfant cp",,,Autre,0,0,Non
+PN0993,"Bimalaril NN cp",,,Autre,0,0,Non
+PN0994,"Betalin sp  gtte",,,Autre,0,0,Non
+PN0995,"Bekracine sp",,,Autre,0,0,Non
+PN0996,"Bibactin sp",,,Autre,0,0,Non
+PN0997,"Biba sp",,,Autre,0,0,Non
+PN0998,"Beclav sp",,,Autre,0,0,Non
+PN0999,"Bactoxine sp",,,Autre,0,0,Non
+PN1000,"Bioferon 12 sp",,,Autre,0,0,Non
+PN1001,"Bactox 500mg sp",,,Autre,0,0,Non
+PN1002,"Azicure sp",,,Autre,0,0,Non
+PN1003,"Augmentin enf sp",,,Autre,0,0,Non
+PN1004,"Atovit sp",,,Autre,0,0,Non
+PN1005,"Aminopep sp",,,Autre,0,0,Non
+PN1006,"Amoxidel 125 sp",,,Autre,0,0,Non
+PN1007,"Amoxidel 150 sp",,,Autre,0,0,Non
+PN1008,"Atofer ZN sp",,,Autre,0,0,Non
+PN1009,"Astymin C gtte",,,Autre,0,0,Non
+PN1010,"Alfer sp",,,Autre,0,0,Non
+PN1011,"Atofan sp",,,Autre,0,0,Non
+PN1012,"Astimine sp",,,Autre,0,0,Non
+PN1013,"Artiz sp",,,Autre,0,0,Non
+PN1014,"Artilex sp",,,Autre,0,0,Non
+PN1015,"Artrim GH sp",,,Autre,0,0,Non
+PN1016,"Artefan sp",,,Autre,0,0,Non
+PN1017,"Artefan 40mg sp",,,Autre,0,0,Non
+PN1018,"Artefan 60mg sp",,,Autre,0,0,Non
+PN1019,"Artefan 80mg sp",,,Autre,0,0,Non
+PN1020,"Fixim sp",,,Autre,0,0,Non
+PN1021,"Ferravit sp",,,Autre,0,0,Non
+PN1022,"Fifer sp",,,Autre,0,0,Non
+PN1023,"Fercefol sp",,,Autre,0,0,Non
+PN1024,"Femifer sp",,,Autre,0,0,Non
+PN1025,"Finanemie sp",,,Autre,0,0,Non
+PN1026,"Ferromix sp",,,Autre,0,0,Non
+PN1027,"Ferrex forte sp",,,Autre,0,0,Non
+PN1028,"Fedate sp",,,Autre,0,0,Non
+PN1029,"Febrilex plus sp",,,Autre,0,0,Non
+PN1030,"Febulex junior sp",,,Autre,0,0,Non
+PN1031,"Enrouex sp",,,Autre,0,0,Non
+PN1032,"Entamizol sp",,,Autre,0,0,Non
+PN1033,"Dolodent sol",,,Autre,0,0,Non
+PN1034,"Drenoxol sp",,,Autre,0,0,Non
+PN1035,"Desyrel sp",,,Autre,0,0,Non
+PN1036,"Desarol sp",,,Autre,0,0,Non
+PN1037,"Defal sp",,,Autre,0,0,Non
+PN1038,"Dedrogyl sp",,,Autre,0,0,Non
+PN1039,"Diastop sp",,,Autre,0,0,Non
+PN1040,"Diaryl sp",,,Autre,0,0,Non
+PN1041,"Curam enf sp",,,Autre,0,0,Non
+PN1042,"Cough off sp",,,Autre,0,0,Non
+PN1043,"Curtec sp",,,Autre,0,0,Non
+PN1044,"Co-artesiane sp",,,Autre,0,0,Non
+PN1045,"Combifrinil sp",,,Autre,0,0,Non
+PN1046,"Clartec sp",,,Autre,0,0,Non
+PN1047,"Roipar Goiffe",,,Autre,0,0,Non
+PN1048,"Aeruis sr",,,Autre,0,0,Non
+PN1049,"attapa 125",,,Autre,0,0,Non
+PN1050,"Attapa 200",,,Autre,0,0,Non
+PN1051,"Attapa 250",,,Autre,0,0,Non
+PN1052,"Flagyl sp",,,Autre,0,0,Non
+PN1053,"Gel larmes ",,,Autre,0,0,Non
+PN1054,"Nasonex 120 spray",,,Autre,0,0,Non
+PN1055,"Naaxia cy",,,Autre,0,0,Non
+PN1056,"Mydriaticum cy",,,Autre,0,0,Non
+PN1057,"Maxidrol cy",,,Autre,0,0,Non
+PN1058,"Maxidrol pde",,,Autre,0,0,Non
+PN1059,"Marimer baby isotonique spray",,,Autre,0,0,Non
+PN1060,"Marimer baby hypertonique spray",,,Autre,0,0,Non
+PN1061,"Marimer isotonique spray",,,Autre,0,0,Non
+PN1062,"Marimer hypertonique spray",,,Autre,0,0,Non
+PN1063,"Gel larmes",,,Autre,0,0,Non
+PN1064,"Genta cy",,,Autre,0,0,Non
+PN1065,"Gentasol cy",,,Autre,0,0,Non
+PN1066,"Gatistar cy",,,Autre,0,0,Non
+PN1067,"Ciloxan cy",,,Autre,0,0,Non
+PN1068,"Apdrops cy",,,Autre,0,0,Non
+PN1069,"Patadin cy",,,Autre,0,0,Non
+PN1070,"Frakidex cy",,,Autre,0,0,Non
+PN1071,"Floxsol cy",,,Autre,0,0,Non
+PN1072,"Difenasol cy",,,Autre,0,0,Non
+PN1073,"Duotrav cy",,,Autre,0,0,Non
+PN1074,"Cromosol cy",,,Autre,0,0,Non
+PN1075,"Cromoptic cy",,,Autre,0,0,Non
+PN1076,"Co-Avazir cy",,,Autre,0,0,Non
+PN1077,"Collyre bleu cy",,,Autre,0,0,Non
+PN1078,"Cerylise gtte",,,Autre,0,0,Non
+PN1079,"Chibrocadron cy",,,Autre,0,0,Non
+PN1080,"Chibroxine cy",,,Autre,0,0,Non
+PN1081,"Correctol cy",,,Autre,0,0,Non
+PN1082,"Cetraxalplus  gtte",,,Autre,0,0,Non
+PN1083,"Cetraxal Otico gtte",,,Autre,0,0,Non
+PN1084,"Apdrops dx cy",,,Autre,0,0,Non
+PN1085,"Azopt cy",,,Autre,0,0,Non
+PN1086,"Antibiosynalar gtte",,,Autre,0,0,Non
+PN1087,"Narisol cy",,,Autre,0,0,Non
+PN1088,"Twinzol cy",,,Autre,0,0,Non
+PN1089,"Trillerg cy",,,Autre,0,0,Non
+PN1090,"Tobrex cy",,,Autre,0,0,Non
+PN1091,"Timosol cy",,,Autre,0,0,Non
+PN1092,"Sterdex pde",,,Autre,0,0,Non
+PN1093,"Respibien gtte",,,Autre,0,0,Non
+PN1094,"Rifamycine cy",,,Autre,0,0,Non
+PN1095,"Polydexa gtte",,,Autre,0,0,Non
+PN1096,"Polyfresh cy",,,Autre,0,0,Non
+PN1097,"Physiodose 15 unidose",,,Autre,0,0,Non
+PN1098,"Physiodose 30 unidoses",,,Autre,0,0,Non
+PN1099,"Tetracycline pde",,,Autre,0,0,Non
+PN1100,"Ofusine cy",,,Autre,0,0,Non
+PN1101,"Otrivine enf gtte",,,Autre,0,0,Non
+PN1102,"Otrivine A/D gtte",,,Autre,0,0,Non
+PN1103,"Otofa gtte",,,Autre,0,0,Non
+PN1104,"Otipax gtte",,,Autre,0,0,Non
+PN1105,"Boncipro gtte/cy",,,Autre,0,0,Non
+PN1106,"Orchazid cy",,,Autre,0,0,Non
+PN1107,"Orchapred cy",,,Autre,0,0,Non
+PN1108,"Opticron cy",,,Autre,0,0,Non
+PN1109,"Opatanol cy",,,Autre,0,0,Non
+PN1110,"Optipred cy",,,Autre,0,0,Non
+PN1111,"Neomdexsol cy",,,Autre,0,0,Non
+PN1112,"Niclosamide cp",,,Autre,0,0,Non
+PN1113,"Ciprofloxacine cp",,,Autre,0,0,Non
+PN1114,"Amoxicilline entrance cp",,,Autre,0,0,Non
+PN1115,"Roipar grippe cp",,,Autre,0,0,Non
+PN1116,"Afine cp",,,Autre,0,0,Non
+PN1117,"Litacold cp",,,Autre,0,0,Non
+PN1118,"Rapidex cp",,,Autre,0,0,Non
+PN1119,"Paradik cp",,,Autre,0,0,Non
+PN1120,"kinal ibu cp",,,Autre,0,0,Non
+PN1121,"T-Afnac cp",,,Autre,0,0,Non
+PN1122,"Albela cp",,,Autre,0,0,Non
+PN1123,"Parafizz 500mg cp",,,Autre,0,0,Non
+PN1124,"Parafizz 1g cp",,,Autre,0,0,Non
+PN1125,"Genforte cp",,,Autre,0,0,Non
+PN1126,"Febrilex cp",,,Autre,0,0,Non
+PN1127,"B-vit fort cp",,,Autre,0,0,Non
+PN1128,"Maloxine cp",,,Autre,0,0,Non
+PN1129,"Vit B Denk cp",,,Autre,0,0,Non
+PN1130,"Dynapar 100mg cp",,,Autre,0,0,Non
+PN1131,"Mebendazole ibu 100mg cp",,,Autre,0,0,Non
+PN1132,"Claben cp",,,Autre,0,0,Non
+PN1133,"Nifenidi Denk cp",,,Autre,0,0,Non
+PN1134,"Captopril 25mg Denk B/100 cp",,,Autre,0,0,Non
+PN1135,"Diclo Denk 50mg cp",,,Autre,0,0,Non
+PN1136,"Diclo Denk 100mg cp",,,Autre,0,0,Non
+PN1137,"Furo Denk cp",,,Autre,0,0,Non
+PN1138,"Atenolol Denk cp",,,Autre,0,0,Non
+PN1139,"Amlo Denk cp",,,Autre,0,0,Non
+PN1140,"Metformine 850mg Denk B/120 cp",,,Autre,0,0,Non
+PN1141,"Fluxdol cp B/100",,,Autre,0,0,Non
+PN1142,"Glucart B/100 cp",,,Autre,0,0,Non
+PN1143,"Cipro 750mg Ibu cp",,,Autre,0,0,Non
+PN1144,"Oxacilline Ibu cp",,,Autre,0,0,Non
+PN1145,"Fene 400mg cp",,,Autre,0,0,Non
+PN1146,"Amoxicilline Sandoz 500mg cp",,,Autre,0,0,Non
+PN1147,"Amoxicilline Ibu 500mg cp",,,Autre,0,0,Non
+PN1148,"Amoxicilline Creat 500mg cp",,,Autre,0,0,Non
+PN1149,"Ampicilline 500mg cp",,,Autre,0,0,Non
+PN1150,"Gastricid cp",,,Autre,0,0,Non
+PN1151,"Hydroxyde d'Aluminium (PCG) cp",,,Autre,0,0,Non
+PN1152,"Metronidazole Ibu 250mg cp",,,Autre,0,0,Non
+PN1153,"Lyncomycine 500mg cp",,,Autre,0,0,Non
+PN1154,"Ery 500mg Creat cp",,,Autre,0,0,Non
+PN1155,"Furosemid Creat 40mg cp",,,Autre,0,0,Non
+PN1156,"Cotri 480mg Creat cp",,,Autre,0,0,Non
+PN1157,"Cotri 960mg Creat cp",,,Autre,0,0,Non
+PN1158,"Paracetamol Creat cp",,,Autre,0,0,Non
+PN1159,"Griseofluvine 250mg Creat cp",,,Autre,0,0,Non
+PN1160,"Griseofluvine 500mg Creat cp",,,Autre,0,0,Non
+PN1161,"Doxycilline 100mg Creat cp",,,Autre,0,0,Non
+PN1162,"Doxycilline 200mg Creat cp",,,Autre,0,0,Non
+PN1163,"Cimetidine Creat cp",,,Autre,0,0,Non
+PN1164,"Loperamid Creat cp",,,Autre,0,0,Non
+PN1165,"Metronidazole Creat 250mg cp",,,Autre,0,0,Non
+PN1166,"Metronidazole Creat 500mg cp",,,Autre,0,0,Non
+PN1167,"Dermofine 250mg cp",,,Autre,0,0,Non
+PN1168,"Griseopharn 125mg cp",,,Autre,0,0,Non
+PN1169,"Griseopharn 250mg cp",,,Autre,0,0,Non
+PN1170,"Griseopharn 500mg cp",,,Autre,0,0,Non
+PN1171,"Hydroxyde d'Aluminium Creat cp",,,Autre,0,0,Non
+PN1172,"Philco Ery 500mg cp",,,Autre,0,0,Non
+PN1173,"Philco Mepra 20mg cp",,,Autre,0,0,Non
+PN1174,"Philco Cloxa 500mg cp",,,Autre,0,0,Non
+PN1175,"Philco Cipro 500mg cp",,,Autre,0,0,Non
+PN1176,"Philco Albo 400mg cp",,,Autre,0,0,Non
+PN1177,"Philco Capto 25mg cp",,,Autre,0,0,Non
+PN1178,"Philco Max cp",,,Autre,0,0,Non
+PN1179,"Philco Ampi 500mg cp",,,Autre,0,0,Non
+PN1180,"Philco Amoxi 500mg cp",,,Autre,0,0,Non
+PN1181,"Philco Quinine  600mg cp",,,Autre,0,0,Non
+PN1182,"Philco Cimo cp",,,Autre,0,0,Non
+PN1183,"Philco Metro 250mg cp",,,Autre,0,0,Non
+PN1184,"Philco Para  500mg cp",,,Autre,0,0,Non
+PN1185,"Philco Diclo  50mg cp",,,Autre,0,0,Non
+PN1186,"Philco Ibu 400mg",,,Autre,0,0,Non
+PN1187,"Perfuseur",,,Autre,0,0,Non
+PN1188,"Seringue 10 cc",,,Autre,0,0,Non
+PN1189,"Seringue 5 cc",,,Autre,0,0,Non
+PN1190,"Epicranienne",,,Autre,0,0,Non
+PN1191,"Solvant",,,Autre,0,0,Non
+PN1192,"Test HCG",,,Autre,0,0,Non
+PN1193,"Calgin inj 500mg",,,Autre,0,0,Non
+PN1194,"Restriva 500mg inj",,,Autre,0,0,Non
+PN1195,"Vitamine C inj",,,Autre,0,0,Non
+PN1196,"Vitamine B complexe inj",,,Autre,0,0,Non
+PN1197,"Metoclocare 10mg inj",,,Autre,0,0,Non
+PN1198,"Serum ringer Lactate perf",,,Autre,0,0,Non
+PN1199,"Serum glucose perf",,,Autre,0,0,Non
+PN1200,"Serum salé perf",,,Autre,0,0,Non
+PN1201,"Apotel max perf",,,Autre,0,0,Non
+PN1202,"Wapar perf",,,Autre,0,0,Non
+PN1203,"Manitol perf",,,Autre,0,0,Non
+PN1204,"Gelofusine 80",,,Autre,0,0,Non
+PN1205,"Philco Cimo inj",,,Autre,0,0,Non
+PN1206,"Philco Bemza inj",,,Autre,0,0,Non
+PN1207,"Philco Quinine inj",,,Autre,0,0,Non
+PN1208,"Philco Dexa inj",,,Autre,0,0,Non
+PN1209,"Philco Genta inj",,,Autre,0,0,Non
+PN1210,"Philco Meta inj",,,Autre,0,0,Non
+PN1211,"Philco Kana inj",,,Autre,0,0,Non
+PN1212,"Philco Ampi inj",,,Autre,0,0,Non
+PN1213,"Ampigent 500 81 1000",,,Autre,0,0,Non
+PN1214,"Ibusark 600",,,Autre,0,0,Non
+AUTO-53745,"Actinal 200 hp",,,Non classé,63000,0,Non
+AUTO-91346,"Actinac 100 mg",,,Non classé,43000,0,Non
+AUTO-74928,"Alvityl Tonus",,,Non classé,90000,0,Non
+AUTO-46272,"Aprilam",,,Non classé,106000,0,Non
+AUTO-70017,"Atarax",,,Non classé,39000,0,Non
+AUTO-13534,"Biofar Vit C 500",,,Non classé,64000,0,Non
+AUTO-59109,"Azée 500 cp",,,Non classé,60000,0,Non
+AUTO-80221,"Aziral 500 cp",,,Non classé,79000,0,Non
+AUTO-17455,"Azinex 500",,,Non classé,70000,0,Non
+AUTO-45577,"Allergine cp",,,Non classé,78000,0,Non
+AUTO-73308,"Adna Fenu Grec",,,Non classé,80000,0,Non
+AUTO-01546,"Amep 10g B/20",,,Non classé,130000,0,Non
+AUTO-25449,"Amloclass 5 mg",,,Non classé,90000,0,Non
+AUTO-85413,"Albensen 400 mg cp",,,Non classé,10000,0,Non
+AUTO-18470,"Acyclovir  Denk 200",,,Non classé,152000,0,Non
+AUTO-59165,"Advil Med 400 cp",,,Non classé,38000,0,Non
+AUTO-86767,"Alzol 400 mg",,,Non classé,22000,0,Non
+AUTO-14057,"Andol vit C eff",,,Non classé,20000,0,Non
+AUTO-50156,"Creadol plus CP",,,Non classé,11000,0,Non
+AUTO-72325,"Atoflox plus",,,Non classé,100000,0,Non
+AUTO-02215,"Atogrel Plus",,,Non classé,126000,0,Non
+AUTO-35861,"Atorilator CP",,,Non classé,90000,0,Non
+AUTO-63774,"Batoxime 200 CP",,,Non classé,110000,0,Non
+AUTO-07481,"Brain active200 CP",,,Non classé,277000,0,Non
+AUTO-77809,"Biofar 12 Vit 12 Mineraux",,,Non classé,80000,0,Non
+AUTO-04367,"Artiz Forte",,,Non classé,40000,0,Non
+AUTO-30900,"Artiz DP",,,Non classé,40000,0,Non
+PARA0001,"Sur-eau",,,Parapharmacie,10000,0,Non
+PARA0013,"Pampers Confy bébé 2",,,Parapharmacie,75000,0,Non
+PARA0020,"serviette hygienique Perfect Normal",,,Parapharmacie,10000,0,Non
+PARA0021,"serviette hygienique Perfect Super",,,Parapharmacie,10000,0,Non
+PARA0022,"Serviette hygienique Confy Long",,,Parapharmacie,15000,0,Non
+PARA0026,"Biberon only 60ml",,,Parapharmacie,15000,0,Non
+PARA0030,"Biberon Minitree 420ml",,,Parapharmacie,40000,0,Non
+PARA0036,"Biberon verre Douanière 120ml",,,Parapharmacie,40000,0,Non
+PARA0040,"Cerelac riz",,,Parapharmacie,55000,0,Non
+PARA0041,"Cerelac blé",,,Parapharmacie,50000,0,Non
+PARA0042,"Cerelac 3 fruits",,,Parapharmacie,55000,0,Non
+PARA0048,"Bledine blé",,,Parapharmacie,40000,0,Non
+PARA0052,"Bledine lactée",,,Parapharmacie,40000,0,Non
