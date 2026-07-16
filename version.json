@@ -1,5 +1,5 @@
 {
-  "version": "9.7.78",
+  "version": "9.7.79",
   "date": "2026-07-16",
-  "changelog": "v9.7.78 : TVA d'achat masquée par défaut, tickets thermiques en gras pour visibilité renforcée, correction du bug de persistance des permissions repliées dans Settings, filtres par période de dates sur la comptabilité RH, et suppression du bouton d'impression dans le module de pilotage."
+  "changelog": "v9.7.79 : Déplacement de la configuration de la TVA en dehors de la barre de total pour éliminer les problèmes de contraste avec le fond bleu, et rendu du total TVA en blanc sur bleu dans le total bar."
 }
