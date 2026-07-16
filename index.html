@@ -4,7 +4,7 @@
 <head>
   <script>
     (function() {
-      const CURRENT_APP_VERSION = '9.7.76';
+      const CURRENT_APP_VERSION = '9.7.77';
       const lastVersion = localStorage.getItem('ordivex_version');
       if (lastVersion !== CURRENT_APP_VERSION) {
         localStorage.setItem('ordivex_version', CURRENT_APP_VERSION);
@@ -53,9 +53,9 @@
     rel="stylesheet"
     media="print" onload="this.media='all'"
     onerror="this.remove()">
-  <link rel="stylesheet" href="css/main.css?v=9.7.76">
-  <link rel="stylesheet" href="css/mobile.css?v=9.7.76">
-  <script>const APP_VERSION = '9.7.76';</script>
+  <link rel="stylesheet" href="css/main.css?v=9.7.77">
+  <link rel="stylesheet" href="css/mobile.css?v=9.7.77">
+  <script>const APP_VERSION = '9.7.77';</script>
   <meta name="theme-color" content="#1B4F72">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -692,6 +692,11 @@
 
         // --- Check if pharmacy is already configured ---
         let settings = await DB.dbGetAll('settings');
+
+        // ── Initialiser window._appSettings globalement (utilisé dans tous les modules) ──
+        window._appSettings = {};
+        settings.forEach(s => { if (s.key) window._appSettings[s.key] = s.value; });
+
         let onboardingDone = settings.find(s => s.key === 'onboarding_done')?.value || localStorage.getItem('onboarding_done') === 'true';
         const hasSupabase = settings.find(s => s.key === 'supabase_url')?.value;
 

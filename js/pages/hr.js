@@ -1381,9 +1381,15 @@
     const employees = rawEmployees.map(e => ({ ...e, nom: e.nom || e.name || e.username || '', status: e.status || (e.active !== false ? 'actif' : 'inactif') }));
     const empMap = new Map(employees.map(e => [e.id, e]));
 
+    let enCoursPage = 1;
+    let rembPage = 1;
+
     function render() {
       const enCours = advances.filter(a => a.status === 'approuvee' && a.solde > 0);
-      const remb = advances.filter(a => a.status === 'remboursee');
+      const remb = advances.filter(a => a.status === 'remboursee').sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+      const pgEnCours = paginateData(enCours, enCoursPage, 20);
+      const pgRemb = paginateData(remb, rembPage, 20);
 
       c.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
@@ -1395,8 +1401,8 @@
 
         ${enCours.length > 0 ? `
           <h4 style="font-size:.85rem;font-weight:700;margin-bottom:12px;color:#f59e0b">⏳ En cours (${enCours.length})</h4>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
-            ${enCours.map(a => {
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+            ${pgEnCours.items.map(a => {
               const emp = empMap.get(a.employeeId);
               const pct = a.montant > 0 ? Math.round(((a.montant - (a.solde||0)) / a.montant) * 100) : 0;
               return `
@@ -1420,12 +1426,13 @@
               `;
             }).join('')}
           </div>
+          ${renderPaginationBar('adv_encours', pgEnCours.page, pgEnCours.totalPages, pgEnCours.total, (p) => { enCoursPage = p; render(); })}
         ` : ''}
 
         ${remb.length > 0 ? `
-          <h4 style="font-size:.85rem;font-weight:700;margin-bottom:12px;color:#10b981">✅ Remboursées (${remb.length})</h4>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${remb.slice(-10).reverse().map(a => {
+          <h4 style="font-size:.85rem;font-weight:700;margin-top:20px;margin-bottom:12px;color:#10b981">✅ Remboursées (${remb.length})</h4>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+            ${pgRemb.items.map(a => {
               const emp = empMap.get(a.employeeId);
               return `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface-alt);border-radius:8px;font-size:.82rem">
@@ -1437,6 +1444,7 @@
               `;
             }).join('')}
           </div>
+          ${renderPaginationBar('adv_remb', pgRemb.page, pgRemb.totalPages, pgRemb.total, (p) => { rembPage = p; render(); })}
         ` : ''}
       `;
       if (window.lucide) lucide.createIcons({ node: c });
@@ -1533,6 +1541,7 @@
     const typeLabel = { conge:'Congé Payé', maladie:'Maladie', maternite:'Maternité', absence:'Absence Injustifiée', retard:'Retard', permission:'Permission' };
     const typeColor = { conge:'#3b82f6', maladie:'#f59e0b', maternite:'#ec4899', absence:'#ef4444', retard:'#f97316', permission:'#8b5cf6' };
     let viewMonth = today().slice(0, 7);
+    let congesPage = 1;
 
     function render() {
       const [yr, mo] = viewMonth.split('-').map(Number);
@@ -1541,7 +1550,9 @@
       const monthLeaves = leaves.filter(l => {
         const d = l.dateDebut || '';
         return d.slice(0, 7) === viewMonth || (l.dateFin && l.dateFin.slice(0, 7) === viewMonth);
-      });
+      }).sort((a, b) => new Date(b.dateDebut || 0) - new Date(a.dateDebut || 0));
+
+      const pgConges = paginateData(monthLeaves, congesPage, 10);
 
       const byDay = new Map();
       for (const l of monthLeaves) {
@@ -1600,9 +1611,9 @@
 
           <div>
             <h4 style="font-size:.85rem;font-weight:700;margin-bottom:12px">Ce mois-ci (${monthLeaves.length})</h4>
-            <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto">
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
               ${monthLeaves.length === 0 ? '<p style="color:var(--text-muted);font-size:.83rem">Aucune absence ou congé ce mois-ci</p>' : ''}
-              ${monthLeaves.map(l => {
+              ${pgConges.items.map(l => {
                 const emp = empMap.get(l.employeeId);
                 const days = l.dateFin ? Math.ceil((new Date(l.dateFin)-new Date(l.dateDebut))/86400000)+1 : 1;
                 return `
@@ -1622,6 +1633,7 @@
                 `;
               }).join('')}
             </div>
+            ${renderPaginationBar('conges', pgConges.page, pgConges.totalPages, pgConges.total, (p) => { congesPage = p; render(); })}
           </div>
         </div>
       `;
@@ -1632,6 +1644,7 @@
       const d = new Date(viewMonth + '-01');
       d.setMonth(d.getMonth() + delta);
       viewMonth = d.toISOString().slice(0, 7);
+      congesPage = 1;
       render();
     };
     window.hrNewLeave = () => {
@@ -1711,11 +1724,20 @@
     const employees = rawEmployees.map(e => ({ ...e, nom: e.nom || e.name || e.username || '', status: e.status || (e.active !== false ? 'actif' : 'inactif') }));
     const empMap = new Map(employees.map(e => [e.id, e]));
     let selectedDate = today();
+    let presencePage = 1;
+    window._tempAttendance = {};
+
+    window._hrRecordTempAttendance = (empId, field, val) => {
+      if (!window._tempAttendance[empId]) window._tempAttendance[empId] = {};
+      window._tempAttendance[empId][field] = val;
+    };
 
     function render() {
       const dayRecords = attendance.filter(a => a.date === selectedDate);
       const recMap = new Map(dayRecords.map(r => [r.employeeId, r]));
       const actifs = employees.filter(e => e.status === 'actif');
+
+      const pgPresence = paginateData(actifs, presencePage, 20);
 
       function calcH(a, d) {
         if (!a || !d) return 0;
@@ -1740,50 +1762,70 @@
           </div>
         </div>
 
-        <div class="card" style="overflow:auto">
+        <div class="card" style="overflow:auto;margin-bottom:12px">
           <div class="attendance-row header" style="border-bottom:2px solid var(--border);margin-bottom:4px">
             <div>Employé</div><div>Arrivée</div><div>Départ</div><div>Heures</div><div>Statut</div>
           </div>
           ${actifs.length === 0 ? '<p style="padding:16px;color:var(--text-muted)">Aucun employé actif</p>' : ''}
-          ${actifs.map(emp => {
+          ${pgPresence.items.map(emp => {
             const rec = recMap.get(emp.id) || {};
-            const h = calcH(rec.arrivee, rec.depart);
-            const present = !!rec.arrivee;
+            const tempArr = window._tempAttendance[emp.id]?.arrivee;
+            const tempDep = window._tempAttendance[emp.id]?.depart;
+            const arrVal = tempArr !== undefined ? tempArr : (rec.arrivee || '');
+            const depVal = tempDep !== undefined ? tempDep : (rec.depart || '');
+            const h = calcH(arrVal, depVal);
+            const present = !!arrVal;
             return `
               <div class="attendance-row">
                 <div>
                   <div style="font-weight:600;font-size:.85rem">${emp.nom}</div>
                   <div style="font-size:.72rem;color:var(--text-muted)">${emp.poste||'—'}</div>
                 </div>
-                <div><input type="time" class="form-control" style="width:100px;font-size:.82rem" id="arr-${emp.id}" value="${rec.arrivee||''}"></div>
-                <div><input type="time" class="form-control" style="width:100px;font-size:.82rem" id="dep-${emp.id}" value="${rec.depart||''}"></div>
-                <div style="font-weight:600;font-size:.85rem">${h > 0 ? h.toFixed(1) + 'h' : '—'}</div>
-                <div><span class="emp-badge ${present?'emp-badge-actif':'emp-badge-inactif'}">${present?'Présent':'Absent'}</span></div>
+                <div><input type="time" class="form-control" style="width:100px;font-size:.82rem" id="arr-${emp.id}" value="${arrVal}" onchange="window._hrRecordTempAttendance(${emp.id}, 'arrivee', this.value); hrUpdateRowHours(${emp.id})"></div>
+                <div><input type="time" class="form-control" style="width:100px;font-size:.82rem" id="dep-${emp.id}" value="${depVal}" onchange="window._hrRecordTempAttendance(${emp.id}, 'depart', this.value); hrUpdateRowHours(${emp.id})"></div>
+                <div style="font-weight:600;font-size:.85rem" id="hours-${emp.id}">${h > 0 ? h.toFixed(1) + 'h' : '—'}</div>
+                <div><span class="emp-badge ${present?'emp-badge-actif':'emp-badge-inactif'}" id="badge-${emp.id}">${present?'Présent':'Absent'}</span></div>
               </div>
             `;
           }).join('')}
         </div>
+        ${renderPaginationBar('presence', pgPresence.page, pgPresence.totalPages, pgPresence.total, (p) => { presencePage = p; render(); })}
       `;
       if (window.lucide) lucide.createIcons({ node: c });
     }
 
-    window.hrPresDate = (v) => { selectedDate = v; render(); };
+    window.hrUpdateRowHours = (empId) => {
+      const arrVal = document.getElementById(`arr-${empId}`)?.value || '';
+      const depVal = document.getElementById(`dep-${empId}`)?.value || '';
+      const hoursEl = document.getElementById(`hours-${empId}`);
+      const badgeEl = document.getElementById(`badge-${empId}`);
+      const [ah, am] = arrVal.split(':').map(Number);
+      const [dh, dm] = depVal.split(':').map(Number);
+      const h = (arrVal && depVal) ? Math.max(0, (dh * 60 + dm - ah * 60 - am) / 60) : 0;
+      if (hoursEl) hoursEl.textContent = h > 0 ? h.toFixed(1) + 'h' : '—';
+      if (badgeEl) {
+        const present = !!arrVal;
+        badgeEl.className = `emp-badge ${present ? 'emp-badge-actif' : 'emp-badge-inactif'}`;
+        badgeEl.textContent = present ? 'Présent' : 'Absent';
+      }
+    };
+
+    window.hrPresDate = (v) => { selectedDate = v; presencePage = 1; window._tempAttendance = {}; render(); };
     window.hrSavePresence = async (date) => {
       const actifs = employees.filter(e => e.status === 'actif');
       let saved = 0;
       for (const emp of actifs) {
-        const arrivee = document.getElementById(`arr-${emp.id}`)?.value || '';
-        const depart = document.getElementById(`dep-${emp.id}`)?.value || '';
+        const arrInput = document.getElementById(`arr-${emp.id}`);
+        const depInput = document.getElementById(`dep-${emp.id}`);
+        const arrivee = arrInput ? arrInput.value : (window._tempAttendance[emp.id]?.arrivee || '');
+        const depart  = depInput ? depInput.value : (window._tempAttendance[emp.id]?.depart  || '');
         if (!arrivee && !depart) continue;
         const existing = attendance.find(a => a.employeeId === emp.id && a.date === date);
-        await DB.dbPut('hr_attendance', {
-          ...(existing || {}),
-          employeeId: emp.id, date, arrivee, depart,
-          updatedAt: new Date().toISOString()
-        });
+        await DB.dbPut('hr_attendance', { ...(existing || {}), employeeId: emp.id, date, arrivee, depart, updatedAt: new Date().toISOString() });
         saved++;
       }
       UI.toast(`${saved} pointages enregistrés`, 'success');
+      window._tempAttendance = {};
       attendance.length = 0;
       (await DB.dbGetAll('hr_attendance')).forEach(a => attendance.push(a));
       render();
@@ -1808,7 +1850,8 @@
     }));
 
     let selectedEmpId = employees[0]?.id || '';
-    let _compSortOrder = 'desc'; // 'desc' = plus récent d'abord, 'asc' = plus ancien d'abord
+    let _compSortOrder = 'desc';
+    let comptaPage = 1;
 
     function render() {
       const emp = employees.find(e => e.id === Number(selectedEmpId));
@@ -1871,6 +1914,8 @@
         ? new Date(a.date) - new Date(b.date)
         : new Date(b.date) - new Date(a.date));
 
+      const pgCompta = paginateData(txs, comptaPage, 20);
+
       const totalSalaires = empPayroll.reduce((s, p) => s + (p.netAPayer || 0), 0);
       const totalAvances  = empAdvances.reduce((s, a) => s + (a.montant || 0), 0);
       const totalRembourses = txs.filter(t => t.credit > 0).reduce((s, t) => s + t.credit, 0);
@@ -1882,7 +1927,6 @@
             <div style="display:flex;align-items:center;gap:12px">
               <label style="font-weight:700;color:var(--text-primary)">Sélectionner un employé :</label>
               <select id="comp-emp-select" class="form-control" style="width:240px" onchange="hrChangeCompEmp(this.value)">
-
                 ${employees.map(e => `<option value="${e.id}" ${e.id === Number(selectedEmpId) ? 'selected' : ''}>${e.nom} (${e.poste || '—'})</option>`).join('')}
               </select>
             </div>
@@ -1938,7 +1982,7 @@
               <div class="empty-state">
                 <p>Aucune transaction financière enregistrée pour cet employé.</p>
               </div>` : `
-              <div style="overflow-x:auto">
+              <div style="overflow-x:auto;margin-bottom:12px">
                 <table class="table" style="width:100%;border-collapse:collapse;font-size:13px">
                   <thead>
                     <tr style="border-bottom:2px solid var(--border);text-align:left">
@@ -1950,7 +1994,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    ${txs.map(t => `
+                    ${pgCompta.items.map(t => `
                       <tr style="border-bottom:1px solid var(--border)">
                         <td style="padding:10px">${dateLabel(t.date)}</td>
                         <td style="padding:10px">
@@ -1972,6 +2016,7 @@
                   </tbody>
                 </table>
               </div>
+              ${renderPaginationBar('compta', pgCompta.page, pgCompta.totalPages, pgCompta.total, (p) => { comptaPage = p; render(); })}
             `}
           </div>
         `}
@@ -1981,13 +2026,16 @@
 
     window.hrChangeCompEmp = (id) => {
       selectedEmpId = id;
+      comptaPage = 1;
       render();
     };
 
     window.hrChangeCompSort = (order) => {
       _compSortOrder = order;
+      comptaPage = 1;
       render();
     };
+
 
 window.hrExportComptaPDF = async (empId) => {
       const emp = employees.find(e => e.id === Number(empId));

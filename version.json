@@ -1,5 +1,5 @@
 {
-  "version": "9.7.76",
+  "version": "9.7.77",
   "date": "2026-07-16",
-  "changelog": "v9.7.76 : Lot de corrections — Résolution du tri stock déjà expiré, tri chronologique en comptabilité RH, droits d'accès shifts via Auth.can, retrait des emojis et onglet paiement dans paramètres, et intégration de la TVA configurable (auto/manuel) sur factures fournisseurs."
+  "changelog": "v9.7.77 : TVA conditionnelle avec checkbox sur factures, séparation des permissions Shifts et Sessions de caisse avec accès complet via module_shifts, et pagination de tous les onglets RH (Employés, Paie, Avances, Congés, Présence, Comptabilité)."
 }

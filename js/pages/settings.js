@@ -941,29 +941,31 @@ window.renderPermissionsGrid = async function() {
 
   // Mapping des catégories de permissions de l'UI vers leur parent respectif (clé de module)
   const CAT_PARENTS = {
-    session: 'module_shifts',
-    sales: 'module_sales',
-    stock: 'module_stock',
-    inventory: 'module_inventory',
-    achats: 'module_achats',
-    patients: 'module_patients',
+    shifts:     'module_shifts',
+    session:    'module_caisse',
+    sales:      'module_sales',
+    stock:      'module_stock',
+    inventory:  'module_inventory',
+    achats:     'module_achats',
+    patients:   'module_patients',
     accounting: 'module_accounting',
-    caisse: 'module_caisse',
-    hr: 'module_rh',
-    admin: 'module_settings'
+    caisse:     'module_caisse',
+    hr:         'module_rh',
+    admin:      'module_settings'
   };
 
   const catIcons = {
-    session: 'clock-3',
-    sales: 'shopping-cart',
-    stock: 'package',
-    inventory: 'clipboard-list',
-    achats: 'factory',
-    patients: 'users',
+    shifts:     'clock-3',
+    session:    'shield-check',
+    sales:      'shopping-cart',
+    stock:      'package',
+    inventory:  'clipboard-list',
+    achats:     'factory',
+    patients:   'users',
     accounting: 'landmark',
-    caisse: 'banknote',
-    hr: 'user-cog',
-    admin: 'settings-2'
+    caisse:     'banknote',
+    hr:         'user-cog',
+    admin:      'settings-2'
   };
 
   // Recherche en direct
@@ -1121,16 +1123,17 @@ window._toggleSubPermsVisibility = function(catKey, checked) {
 window._toggleCatPerms = function(catKey, checked) {
   // Cocher également la permission parent
   const CAT_PARENTS = {
-    session: 'module_shifts',
-    sales: 'module_sales',
-    stock: 'module_stock',
-    inventory: 'module_inventory',
-    achats: 'module_achats',
-    patients: 'module_patients',
+    shifts:     'module_shifts',
+    session:    'module_caisse',
+    sales:      'module_sales',
+    stock:      'module_stock',
+    inventory:  'module_inventory',
+    achats:     'module_achats',
+    patients:   'module_patients',
     accounting: 'module_accounting',
-    caisse: 'module_caisse',
-    hr: 'module_rh',
-    admin: 'module_settings'
+    caisse:     'module_caisse',
+    hr:         'module_rh',
+    admin:      'module_settings'
   };
   const parentKey = CAT_PARENTS[catKey];
   if (parentKey) {
@@ -1157,16 +1160,17 @@ window.setAllPermissions = function(checked) {
   });
   // Déployer ou replier toutes les catégories d'affichage
   const CAT_PARENTS = {
-    session: 'module_shifts',
-    sales: 'module_sales',
-    stock: 'module_stock',
-    inventory: 'module_inventory',
-    achats: 'module_achats',
-    patients: 'module_patients',
+    shifts:     'module_shifts',
+    session:    'module_caisse',
+    sales:      'module_sales',
+    stock:      'module_stock',
+    inventory:  'module_inventory',
+    achats:     'module_achats',
+    patients:   'module_patients',
     accounting: 'module_accounting',
-    caisse: 'module_caisse',
-    hr: 'module_rh',
-    admin: 'module_settings'
+    caisse:     'module_caisse',
+    hr:         'module_rh',
+    admin:      'module_settings'
   };
   Object.keys(CAT_PARENTS).forEach(catKey => {
     window._toggleSubPermsVisibility(catKey, checked);
@@ -1473,6 +1477,9 @@ async function saveSettings() {
       }
     }
     await DB.writeAudit('SAVE_SETTINGS', 'settings', null, data);
+    // Synchroniser window._appSettings immédiatement
+    if (!window._appSettings) window._appSettings = {};
+    Object.entries(data).forEach(([k, v]) => { window._appSettings[k] = v; });
     updatePharmacyDisplay();
     UI.toast('Paramètres sauvegardés avec succès', 'success');
   } catch (err) {

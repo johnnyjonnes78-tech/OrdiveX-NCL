@@ -168,7 +168,9 @@ const Auth = {
     { key: 'module_rh',                label: 'Accéder aux Ressources Humaines',              cat: 'modules' },
     { key: 'module_settings',          label: 'Accéder aux Paramètres Généraux',              cat: 'modules' },
     { key: 'module_naomi',             label: 'Accéder à l\'assistant Naomi IA',              cat: 'modules' },
-    { key: 'module_shifts',            label: 'Accéder au module Équipes Matin / Soir',        cat: 'modules' },
+
+    // === EQUIPES MATIN / SOIR / NUIT ===
+    { key: 'module_shifts',            label: 'Accéder et gérer le module Équipes Matin / Soir / Nuit (accès complet)', cat: 'shifts' },
 
     // === SESSIONS ===
     { key: 'session_open',             label: 'Ouvrir sa propre session de vente',            cat: 'session' },
@@ -275,7 +277,8 @@ const Auth = {
 
   ALL_PERMISSION_CATS: [
     { key: 'modules',    label: 'Accès aux Modules de l\'ERP' },
-    { key: 'session',    label: 'Sessions & Équipes' },
+    { key: 'shifts',     label: 'Equipes Matin / Soir / Nuit' },
+    { key: 'session',    label: 'Sessions de Caisse' },
     { key: 'sales',      label: 'Point de Vente & Ventes' },
     { key: 'stock',      label: 'Catalogue & Stock' },
     { key: 'inventory',  label: 'Inventaires Physiques' },

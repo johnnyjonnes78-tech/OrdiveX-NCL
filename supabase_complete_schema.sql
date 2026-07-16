@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   "salePrice"             NUMERIC(15,2) DEFAULT 0,
   "purchasePrice"         NUMERIC(15,2) DEFAULT 0,
   tva                   NUMERIC(5,2)  DEFAULT 0,
-  "minStock"              INTEGER DEFAULT 0,
+  "minStock"              INTEGER DEFAULT 10,
   "requiresPrescription"  BOOLEAN DEFAULT FALSE,
   status                TEXT DEFAULT 'active',
   "supplierId"            BIGINT,

@@ -186,21 +186,29 @@ async function showNewInvoiceForm(invoiceId = null) {
       <div id="invoice-items-list">
         <div class="rx-empty-items">Ajoutez les produits présents sur la facture</div>
       </div>
-      <div class="order-total-bar" id="invoice-total-bar" style="display:none;flex-direction:column;gap:6px;padding:12px 16px">
+      <div class="order-total-bar" id="invoice-total-bar" style="display:none;flex-direction:column;gap:4px;padding:10px 14px">
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--text-muted)">
           <span>Sous-total HT :</span>
           <span id="invoice-subtotal-display">0 GNF</span>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px">
-          <span style="color:var(--text-muted)">TVA (${tvaSetting !== '0' && tvaSetting ? tvaSetting : 'configurable'}) :</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="invoice-tva-input" min="0" placeholder="Montant TVA" style="width:130px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:right;background:var(--surface)" oninput="window._tvaManuallyModified=true;updateInvoiceTotal()" value="${invoice && invoice.tvaAmount ? invoice.tvaAmount : 0}">
-            <span style="color:var(--text-muted);white-space:nowrap">GNF</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text-muted);margin:0">
+            <input type="checkbox" id="invoice-tva-check" style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary)"
+              ${(invoice && invoice.tvaAmount > 0) || (tvaSetting && tvaSetting !== '0') ? 'checked' : ''}
+              onchange="window._tvaManuallyModified=false;document.getElementById('invoice-tva-row').style.display=this.checked?'flex':'none';updateInvoiceTotal()">
+            TVA ${tvaSetting && tvaSetting !== '0' ? '(' + tvaSetting + '%)' : ''}
+          </label>
+          <div id="invoice-tva-row" style="display:${(invoice && invoice.tvaAmount > 0) || (tvaSetting && tvaSetting !== '0') ? 'flex' : 'none'};align-items:center;gap:4px">
+            <input type="number" id="invoice-tva-input" min="0" placeholder="0"
+              style="width:100px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;background:var(--surface)"
+              oninput="window._tvaManuallyModified=true;updateInvoiceTotal()"
+              value="${invoice && invoice.tvaAmount ? invoice.tvaAmount : 0}">
+            <span style="color:var(--text-muted);font-size:12px">GNF</span>
           </div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:2px solid var(--border)">
-          <strong style="font-size:15px">Total TTC :</strong>
-          <strong id="invoice-total-display" style="font-size:16px;color:var(--primary)">0 GNF</strong>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:5px;border-top:1px solid var(--border)">
+          <strong style="font-size:14px">Total TTC :</strong>
+          <strong id="invoice-total-display" style="font-size:15px;color:var(--primary)">0 GNF</strong>
         </div>
       </div>
     </div>
@@ -415,27 +423,29 @@ function updateInvoiceTotal() {
   const subtotalEl = document.getElementById('invoice-subtotal-display');
   if (subtotalEl) subtotalEl.textContent = UI.formatCurrency(subtotal);
 
-  // Calculer la TVA automatiquement si non modifiée manuellement
+  // Vérifier si la checkbox TVA est cochée
+  const tvaCheck = document.getElementById('invoice-tva-check');
+  const tvaEnabled = tvaCheck ? tvaCheck.checked : false;
+
+  let tvaAmount = 0;
   const tvaInput = document.getElementById('invoice-tva-input');
-  if (tvaInput && !window._tvaManuallyModified) {
-    const tvaSetting = ((window._appSettings || {})['pharmacy_tva'] || '0').trim();
-    let autoTva = 0;
-    if (tvaSetting && tvaSetting !== '0') {
-      if (!isNaN(tvaSetting)) {
+
+  if (tvaEnabled && tvaInput) {
+    // Calculer automatiquement si non modifiée manuellement
+    if (!window._tvaManuallyModified) {
+      const tvaSetting = ((window._appSettings || {})['pharmacy_tva'] || '0').trim();
+      let autoTva = 0;
+      if (tvaSetting && tvaSetting !== '0' && !isNaN(tvaSetting)) {
         autoTva = Math.round(subtotal * (parseFloat(tvaSetting) / 100));
-      } else {
-        try {
-          const formula = tvaSetting.replace(/subtotal/g, String(subtotal)).replace(/discount/g, '0');
-          autoTva = Math.round(Function('"use strict"; return (' + formula + ')')());
-        } catch(e) { autoTva = 0; }
       }
+      tvaInput.value = autoTva;
     }
-    tvaInput.value = autoTva;
+    tvaAmount = parseFloat(tvaInput.value) || 0;
+  } else if (tvaInput) {
+    tvaInput.value = 0;
   }
 
-  const tvaAmount = tvaInput ? (parseFloat(tvaInput.value) || 0) : 0;
   const total = subtotal + tvaAmount;
-
   const el = document.getElementById('invoice-total-display');
   if (el) el.textContent = UI.formatCurrency(total);
 
