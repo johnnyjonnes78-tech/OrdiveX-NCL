@@ -1852,6 +1852,8 @@
     let selectedEmpId = employees[0]?.id || '';
     let _compSortOrder = 'desc';
     let comptaPage = 1;
+    let _compDateFrom = '';
+    let _compDateTo = '';
 
     function render() {
       const emp = employees.find(e => e.id === Number(selectedEmpId));
@@ -1909,12 +1911,21 @@
         });
       });
 
+      // Filtrer par période de date
+      let filteredTxs = txs;
+      if (_compDateFrom) {
+        filteredTxs = filteredTxs.filter(t => t.date.split('T')[0] >= _compDateFrom);
+      }
+      if (_compDateTo) {
+        filteredTxs = filteredTxs.filter(t => t.date.split('T')[0] <= _compDateTo);
+      }
+
       // Trier chronologiquement selon le choix de l'utilisateur
-      txs.sort((a, b) => _compSortOrder === 'asc'
+      filteredTxs.sort((a, b) => _compSortOrder === 'asc'
         ? new Date(a.date) - new Date(b.date)
         : new Date(b.date) - new Date(a.date));
 
-      const pgCompta = paginateData(txs, comptaPage, 20);
+      const pgCompta = paginateData(filteredTxs, comptaPage, 20);
 
       const totalSalaires = empPayroll.reduce((s, p) => s + (p.netAPayer || 0), 0);
       const totalAvances  = empAdvances.reduce((s, a) => s + (a.montant || 0), 0);
@@ -1924,15 +1935,23 @@
       c.innerHTML = `
         <div style="background:var(--surface);padding:20px;border-radius:12px;border:1px solid var(--border);margin-bottom:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-            <div style="display:flex;align-items:center;gap:12px">
-              <label style="font-weight:700;color:var(--text-primary)">Sélectionner un employé :</label>
-              <select id="comp-emp-select" class="form-control" style="width:240px" onchange="hrChangeCompEmp(this.value)">
-                ${employees.map(e => `<option value="${e.id}" ${e.id === Number(selectedEmpId) ? 'selected' : ''}>${e.nom} (${e.poste || '—'})</option>`).join('')}
-              </select>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:6px">
+                <label style="font-weight:700;color:var(--text-primary)">Employé :</label>
+                <select id="comp-emp-select" class="form-control" style="width:200px" onchange="hrChangeCompEmp(this.value)">
+                  ${employees.map(e => `<option value="${e.id}" ${e.id === Number(selectedEmpId) ? 'selected' : ''}>${e.nom} (${e.poste || '—'})</option>`).join('')}
+                </select>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <label style="font-weight:600;font-size:13px;color:var(--text-muted)">Du :</label>
+                <input type="date" class="form-control" style="width:135px;padding:4px 8px;font-size:12px" value="${_compDateFrom}" onchange="hrChangeCompDateFrom(this.value)">
+                <label style="font-weight:600;font-size:13px;color:var(--text-muted)">au :</label>
+                <input type="date" class="form-control" style="width:135px;padding:4px 8px;font-size:12px" value="${_compDateTo}" onchange="hrChangeCompDateTo(this.value)">
+              </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <label style="font-weight:600;font-size:13px;color:var(--text-muted)">Trier par :</label>
-              <select id="comp-sort-select" class="form-control" style="width:180px" onchange="hrChangeCompSort(this.value)">
+              <label style="font-weight:600;font-size:13px;color:var(--text-muted)">Trier :</label>
+              <select id="comp-sort-select" class="form-control" style="width:170px" onchange="hrChangeCompSort(this.value)">
                 <option value="desc" ${_compSortOrder === 'desc' ? 'selected' : ''}>Plus récent d'abord</option>
                 <option value="asc" ${_compSortOrder === 'asc' ? 'selected' : ''}>Plus ancien d'abord</option>
               </select>
@@ -1978,9 +1997,9 @@
           <div class="card" style="padding:20px">
             <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px">Historique Financier de ${emp.nom}</h3>
             
-            ${txs.length === 0 ? `
+            ${filteredTxs.length === 0 ? `
               <div class="empty-state">
-                <p>Aucune transaction financière enregistrée pour cet employé.</p>
+                <p>Aucune transaction financière enregistrée pour cet employé sur cette période.</p>
               </div>` : `
               <div style="overflow-x:auto;margin-bottom:12px">
                 <table class="table" style="width:100%;border-collapse:collapse;font-size:13px">
@@ -2036,6 +2055,18 @@
       render();
     };
 
+    window.hrChangeCompDateFrom = (val) => {
+      _compDateFrom = val;
+      comptaPage = 1;
+      render();
+    };
+
+    window.hrChangeCompDateTo = (val) => {
+      _compDateTo = val;
+      comptaPage = 1;
+      render();
+    };
+
 
 window.hrExportComptaPDF = async (empId) => {
       const emp = employees.find(e => e.id === Number(empId));
@@ -2050,7 +2081,17 @@ window.hrExportComptaPDF = async (empId) => {
       empAdvances.forEach(a => txs.push({ date: a.date || a.createdAt || today(), type: 'Avance', details: a.motif || '—', debit: a.montant, credit: 0 }));
       empPayroll.forEach(p => { if (p.avancesDed > 0) txs.push({ date: p.payedAt || p.createdAt || today(), type: 'Remb. (Paie)', details: `Déduction période ${p.period}`, debit: 0, credit: p.avancesDed }); });
       empRepayments.forEach(r => txs.push({ date: r.date || r.createdAt || today(), type: 'Remb. (Manuel)', details: r.description, debit: 0, credit: r.amount }));
-      txs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // Filtrer par date
+      let filteredTxs = txs;
+      if (_compDateFrom) {
+        filteredTxs = filteredTxs.filter(t => t.date.split('T')[0] >= _compDateFrom);
+      }
+      if (_compDateTo) {
+        filteredTxs = filteredTxs.filter(t => t.date.split('T')[0] <= _compDateTo);
+      }
+
+      filteredTxs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       const totalSalaires = empPayroll.reduce((s, p) => s + (p.netAPayer || 0), 0);
       const totalAvances  = empAdvances.reduce((s, a) => s + (a.montant || 0), 0);
@@ -2058,7 +2099,7 @@ window.hrExportComptaPDF = async (empId) => {
       const soldeAvances = Math.max(0, totalAvances - totalRembourses);
 
       const headers = ['Date', 'Type d\'opération', 'Détails', 'Débit (Sortie)', 'Crédit (Entrée)'];
-      const data = txs.map(t => [
+      const data = filteredTxs.map(t => [
         dateLabel(t.date),
         t.type,
         t.details,
@@ -2068,6 +2109,7 @@ window.hrExportComptaPDF = async (empId) => {
 
       const subHeader = [
         `Employé : ${emp.nom} (${emp.poste || '—'})`,
+        `Période du : ${_compDateFrom || 'Début'} au ${_compDateTo || 'Fin'}`,
         `Date d'export : ${new Date().toLocaleDateString('fr-FR')}`,
         `Salaire de base : ${fmt(emp.salaire || 0)} | Total versé : ${fmt(totalSalaires)}`,
         `Total avances accordées : ${fmt(totalAvances)} | Solde avances dû : ${fmt(soldeAvances)}`

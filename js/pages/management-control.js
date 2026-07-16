@@ -20,7 +20,6 @@ async function renderManagementControl(container) {
         <p class="page-subtitle">Centre de decision — Vue unifiee de l'activite</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" onclick="window.print()"><i data-lucide="printer"></i> Imprimer la page</button>
         <button class="btn btn-primary" onclick="mcExportPDF()"><i data-lucide="download"></i> Exporter PDF</button>
       </div>
     </div>
