@@ -111,7 +111,7 @@ function filterInvoices() {
       label: 'Actions', render: r => {
         const gs = (key) => (window._appSettings || {})[key];
         const canCorriger = r.status === 'validated' && (gs('purchase_allow_edit_after') === 'true' || DB.AppState.currentUser?.role === 'admin');
-        const canDelete = r.status === 'draft' && (Auth.can('supprimer_facture') || DB.AppState.currentUser?.role === 'admin');
+        const canDelete = r.status === 'draft' && (Auth.can('achats_delete') || DB.AppState.currentUser?.role === 'admin');
         return `
         <div class="actions-cell">
           <button class="btn btn-xs btn-primary" onclick="viewInvoice(${r.id})"><i data-lucide="eye"></i> Voir</button>
@@ -131,7 +131,9 @@ function filterInvoices() {
 async function showNewInvoiceForm(invoiceId = null) {
   const suppliers = await DB.dbGetAll('suppliers');
   window._editingInvoiceId = invoiceId;
-  
+  window._tvaManuallyModified = false;
+  const tvaSetting = ((window._appSettings || {})['pharmacy_tva'] || '0').trim();
+
   let invoice = null;
   if (invoiceId) {
     invoice = await DB.dbGet('invoices', invoiceId);
@@ -184,8 +186,22 @@ async function showNewInvoiceForm(invoiceId = null) {
       <div id="invoice-items-list">
         <div class="rx-empty-items">Ajoutez les produits présents sur la facture</div>
       </div>
-      <div class="order-total-bar" id="invoice-total-bar" style="display:none">
-        <strong>Total Facture : <span id="invoice-total-display">0 GNF</span></strong>
+      <div class="order-total-bar" id="invoice-total-bar" style="display:none;flex-direction:column;gap:6px;padding:12px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--text-muted)">
+          <span>Sous-total HT :</span>
+          <span id="invoice-subtotal-display">0 GNF</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px">
+          <span style="color:var(--text-muted)">TVA (${tvaSetting !== '0' && tvaSetting ? tvaSetting : 'configurable'}) :</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="invoice-tva-input" min="0" placeholder="Montant TVA" style="width:130px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:right;background:var(--surface)" oninput="window._tvaManuallyModified=true;updateInvoiceTotal()" value="${invoice && invoice.tvaAmount ? invoice.tvaAmount : 0}">
+            <span style="color:var(--text-muted);white-space:nowrap">GNF</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:2px solid var(--border)">
+          <strong style="font-size:15px">Total TTC :</strong>
+          <strong id="invoice-total-display" style="font-size:16px;color:var(--primary)">0 GNF</strong>
+        </div>
       </div>
     </div>
   `, {
@@ -387,15 +403,46 @@ function removeInvoiceItem(idx) {
 }
 
 function updateInvoiceTotal() {
-  let total = 0;
+  let subtotal = 0;
   document.querySelectorAll('.rx-item-row[id^="inv-item-"]').forEach(row => {
     const idx = row.id.replace('inv-item-', '');
     const qty = parseFloat(document.getElementById(`inv-qty-${idx}`)?.value || 0);
     const price = parseFloat(document.getElementById(`inv-price-${idx}`)?.value || 0);
-    total += qty * price;
+    subtotal += qty * price;
   });
+
+  // Afficher le sous-total
+  const subtotalEl = document.getElementById('invoice-subtotal-display');
+  if (subtotalEl) subtotalEl.textContent = UI.formatCurrency(subtotal);
+
+  // Calculer la TVA automatiquement si non modifiée manuellement
+  const tvaInput = document.getElementById('invoice-tva-input');
+  if (tvaInput && !window._tvaManuallyModified) {
+    const tvaSetting = ((window._appSettings || {})['pharmacy_tva'] || '0').trim();
+    let autoTva = 0;
+    if (tvaSetting && tvaSetting !== '0') {
+      if (!isNaN(tvaSetting)) {
+        autoTva = Math.round(subtotal * (parseFloat(tvaSetting) / 100));
+      } else {
+        try {
+          const formula = tvaSetting.replace(/subtotal/g, String(subtotal)).replace(/discount/g, '0');
+          autoTva = Math.round(Function('"use strict"; return (' + formula + ')')());
+        } catch(e) { autoTva = 0; }
+      }
+    }
+    tvaInput.value = autoTva;
+  }
+
+  const tvaAmount = tvaInput ? (parseFloat(tvaInput.value) || 0) : 0;
+  const total = subtotal + tvaAmount;
+
   const el = document.getElementById('invoice-total-display');
   if (el) el.textContent = UI.formatCurrency(total);
+
+  // Afficher la barre si des items existent
+  const bar = document.getElementById('invoice-total-bar');
+  if (bar) bar.style.display = subtotal > 0 ? 'flex' : 'none';
+
   return total;
 }
 
@@ -460,13 +507,18 @@ async function submitInvoice(status) {
   if (!items.length) { UI.toast('Ajoutez au moins un article', 'warning'); return; }
 
   const formData = Object.fromEntries(new FormData(form));
-  const totalAmount = items.reduce((a, i) => a + i.total, 0);
+  const subtotal = items.reduce((a, i) => a + i.total, 0);
+  const tvaInput = document.getElementById('invoice-tva-input');
+  const tvaAmount = tvaInput ? (parseFloat(tvaInput.value) || 0) : 0;
+  const totalAmount = subtotal + tvaAmount;
   
   const invoiceData = {
     invoiceNumber: formData.invoiceNumber,
     supplierId,
     supplierName: supplier ? supplier.name : 'Inconnu',
     date: formData.date,
+    subtotal,
+    tvaAmount,
     totalAmount,
     items,
     status, // 'draft' or 'validated'
@@ -1296,7 +1348,7 @@ async function unvalidateInvoice(invoiceId) {
 }
 
 async function deleteInvoice(invoiceId) {
-  if (window.Auth && !Auth.can('supprimer_facture') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('achats_delete') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de supprimer des factures.', 'error', 5000);
     return;
   }

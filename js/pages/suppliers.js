@@ -936,7 +936,7 @@ function filterOrders() {
       <div class="actions-cell">
         <button class="btn btn-xs btn-primary" onclick="viewOrder(${r.id})"><i data-lucide="eye"></i> Voir</button>
         ${r.status === 'pending' && Auth.can('achats_create') ? `<button class="btn btn-xs btn-secondary" onclick="sendOrder(${r.id})"><i data-lucide="send"></i> Envoyer</button>` : ''}
-        ${['sent', 'partial'].includes(r.status) && Auth.can('stock_edit') ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
+        ${['sent', 'partial'].includes(r.status) && Auth.can('achats_receive') ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
         ${['pending', 'sent'].includes(r.status) && Auth.can('achats_cancel') ? `<button class="btn btn-xs btn-danger" onclick="cancelOrder(${r.id})" title="Annuler cette commande"><i data-lucide="x-circle"></i> Annuler</button>` : ''}
       </div>` },
   ], data, { emptyMessage: 'Aucune commande', emptyIcon: 'file-text', pageSize: 100 });

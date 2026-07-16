@@ -19,7 +19,7 @@ async function renderTraceability(container) {
   const expiryGroups = {};
   
   lots.forEach(l => {
-    if (l.status !== 'active') return;
+    if (l.status !== 'active' && l.status !== 'blocked') return;
     const d = UI.daysUntilExpiry(l.expiryDate);
     if (d === null || d > 90) return;
     

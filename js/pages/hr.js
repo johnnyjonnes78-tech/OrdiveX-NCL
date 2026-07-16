@@ -1808,6 +1808,7 @@
     }));
 
     let selectedEmpId = employees[0]?.id || '';
+    let _compSortOrder = 'desc'; // 'desc' = plus récent d'abord, 'asc' = plus ancien d'abord
 
     function render() {
       const emp = employees.find(e => e.id === Number(selectedEmpId));
@@ -1865,8 +1866,10 @@
         });
       });
 
-      // Trier chronologiquement (les plus récentes d'abord)
-      txs.sort((a, b) => new Date(b.date) - new Date(a.date));
+      // Trier chronologiquement selon le choix de l'utilisateur
+      txs.sort((a, b) => _compSortOrder === 'asc'
+        ? new Date(a.date) - new Date(b.date)
+        : new Date(b.date) - new Date(a.date));
 
       const totalSalaires = empPayroll.reduce((s, p) => s + (p.netAPayer || 0), 0);
       const totalAvances  = empAdvances.reduce((s, a) => s + (a.montant || 0), 0);
@@ -1879,15 +1882,20 @@
             <div style="display:flex;align-items:center;gap:12px">
               <label style="font-weight:700;color:var(--text-primary)">Sélectionner un employé :</label>
               <select id="comp-emp-select" class="form-control" style="width:240px" onchange="hrChangeCompEmp(this.value)">
+
                 ${employees.map(e => `<option value="${e.id}" ${e.id === Number(selectedEmpId) ? 'selected' : ''}>${e.nom} (${e.poste || '—'})</option>`).join('')}
               </select>
             </div>
-            ${emp ? `
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary" onclick="hrExportComptaPDF('${selectedEmpId}')">
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="font-weight:600;font-size:13px;color:var(--text-muted)">Trier par :</label>
+              <select id="comp-sort-select" class="form-control" style="width:180px" onchange="hrChangeCompSort(this.value)">
+                <option value="desc" ${_compSortOrder === 'desc' ? 'selected' : ''}>Plus récent d'abord</option>
+                <option value="asc" ${_compSortOrder === 'asc' ? 'selected' : ''}>Plus ancien d'abord</option>
+              </select>
+              ${emp ? `<button class="btn btn-secondary" onclick="hrExportComptaPDF('${selectedEmpId}')">
                 <i data-lucide="file-text"></i> Exporter PDF
-              </button>
-            </div>` : ''}
+              </button>` : ''}
+            </div>
           </div>
         </div>
 
@@ -1973,6 +1981,11 @@
 
     window.hrChangeCompEmp = (id) => {
       selectedEmpId = id;
+      render();
+    };
+
+    window.hrChangeCompSort = (order) => {
+      _compSortOrder = order;
       render();
     };
 

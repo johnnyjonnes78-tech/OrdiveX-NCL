@@ -5,10 +5,11 @@
 async function renderStock(container) {
   UI.loading(container, 'Chargement des stocks...');
 
-  const [allProducts, stockAll, lots] = await Promise.all([
+  const [allProducts, stockAll, lots, settings] = await Promise.all([
     DB.dbGetAll('products'),
     DB.dbGetAll('stock'),
     DB.dbGetAll('lots'),
+    DB.dbGetAll('settings').catch(() => [])
   ]);
   const products = allProducts.filter(p => p.status !== 'inactive');
   await new Promise(r => setTimeout(r, 0));
@@ -16,10 +17,13 @@ async function renderStock(container) {
   const stockMap = {};
   stockAll.forEach(s => { stockMap[s.productId] = s; });
 
-  // Indexer les lots par productId pour éviter un O(n²)
+  const thresholdSetting = (settings || []).find(s => s.key === 'min_stock_alert');
+  const defaultThreshold = parseInt(thresholdSetting ? thresholdSetting.value : '10', 10) || 10;
+
+  // Indexer les lots par productId pour éviter un O(n²) - Inclure les lots bloqués (expirés)
   const lotsMap = {};
   lots.forEach(l => {
-    if (l.status === 'active') {
+    if (l.status === 'active' || l.status === 'blocked') {
       if (!lotsMap[l.productId]) lotsMap[l.productId] = [];
       lotsMap[l.productId].push(l);
     }
@@ -32,13 +36,15 @@ async function renderStock(container) {
       if (!l.location || l.location === 'rayon') qtyRayon += (l.quantity || 0);
       else qtyReserve += (l.quantity || 0);
     });
+    const minVal = (p.minStock !== undefined && p.minStock !== null && p.minStock !== '') ? parseInt(p.minStock, 10) : defaultThreshold;
     return {
       ...p,
       currentStock: stockMap[p.id]?.quantity || 0,
       reservedQty: stockMap[p.id]?.reservedQuantity || 0,
       lots: pLots,
       qtyRayon,
-      qtyReserve
+      qtyReserve,
+      minStock: minVal
     };
   });
 
@@ -62,11 +68,9 @@ async function renderStock(container) {
       </div>
       <div class="header-actions">
         ${Auth.can('stock_print') || Auth.can('stock_export') ? `<button class="btn btn-secondary" onclick="exportStockPDF()"><i data-lucide="printer"></i> PDF</button>` : ''}
-        ${Auth.can('stock_edit') ? `
-          <button class="btn btn-secondary" onclick="showImportStockModal()"><i data-lucide="upload"></i> Importer Stock (CSV)</button>
-          <input type="file" id="import-stock-file" accept=".csv" style="display:none" onchange="importStockCsv(event)">
-          <button class="btn btn-primary" onclick="renderStockEntry()"><i data-lucide="plus"></i> Entrée Stock</button>
-        ` : ''}
+        ${Auth.can('stock_import') || Auth.can('stock_product_edit') ? `<button class="btn btn-secondary" onclick="showImportStockModal()"><i data-lucide="upload"></i> Importer Stock (CSV)</button>` : ''}
+        <input type="file" id="import-stock-file" accept=".csv" style="display:none" onchange="importStockCsv(event)">
+        ${Auth.can('achats_receive') || Auth.can('stock_adjust') ? `<button class="btn btn-primary" onclick="renderStockEntry()"><i data-lucide="plus"></i> Entrée Stock</button>` : ''}
       </div>
     </div>
 
@@ -244,8 +248,8 @@ function renderStockTable(data) {
       <div class="actions-cell">
         <button class="btn btn-xs btn-primary" onclick="viewProductLots(${r.id})" title="Voir les lots"><i data-lucide="package"></i></button>
         <button class="btn btn-xs btn-secondary" onclick="showStockMovements(${r.id})" title="Mouvements"><i data-lucide="clipboard-list"></i></button>
-        ${Auth.can('inventory_adjust') || Auth.can('stock_edit') || DB.AppState.currentUser?.role === 'admin' ? `<button class="btn btn-xs btn-warning" onclick="showAdjustStock(${r.id})" title="Ajuster le stock"><i data-lucide="pencil"></i></button>` : ''}
-        ${Auth.can('stock_edit') ? `<button class="btn btn-xs btn-ghost" onclick="editProduct(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
+        ${Auth.can('inventory_adjust') || Auth.can('stock_adjust') || DB.AppState.currentUser?.role === 'admin' ? `<button class="btn btn-xs btn-warning" onclick="showAdjustStock(${r.id})" title="Ajuster le stock"><i data-lucide="pencil"></i></button>` : ''}
+        ${Auth.can('stock_product_edit') ? `<button class="btn btn-xs btn-ghost" onclick="editProduct(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
       </div>` },
   ];
 
@@ -758,7 +762,7 @@ async function submitAdjustStock(productId, oldQty) {
   try {
     // ── Contrôle de permission ──
     const isAdmin = DB.AppState.currentUser?.role === 'admin';
-    const canAdjust = Auth.can('effectuer_sortie_stock') || Auth.can('ajuster_stock');
+    const canAdjust = Auth.can('stock_exit') || Auth.can('stock_adjust');
     if (!DB.AppState.currentUser || (!isAdmin && !canAdjust)) {
       UI.toast('⛔ Permission refusée — Vous n\'avez pas le droit d\'ajuster le stock.', 'error'); return;
     }

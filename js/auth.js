@@ -274,17 +274,17 @@ const Auth = {
   ],
 
   ALL_PERMISSION_CATS: [
-    { key: 'modules',    label: '🧩 Accès aux Modules de l\'ERP' },
-    { key: 'session',    label: '🔑 Sessions & Équipes' },
-    { key: 'sales',      label: '🛒 Point de Vente & Ventes' },
-    { key: 'stock',      label: '📦 Catalogue & Stock' },
-    { key: 'inventory',  label: '📋 Inventaires Physiques' },
-    { key: 'achats',     label: '💼 Fournisseurs & Achats' },
-    { key: 'patients',   label: '👥 Patients & Assurances' },
-    { key: 'accounting', label: '📒 Comptabilité Générale' },
-    { key: 'caisse',     label: '💵 Caisse Journalière & Opérations' },
-    { key: 'hr',         label: '👔 Ressources Humaines' },
-    { key: 'admin',      label: '⚙️ Paramètres & Système' },
+    { key: 'modules',    label: 'Accès aux Modules de l\'ERP' },
+    { key: 'session',    label: 'Sessions & Équipes' },
+    { key: 'sales',      label: 'Point de Vente & Ventes' },
+    { key: 'stock',      label: 'Catalogue & Stock' },
+    { key: 'inventory',  label: 'Inventaires Physiques' },
+    { key: 'achats',     label: 'Fournisseurs & Achats' },
+    { key: 'patients',   label: 'Patients & Assurances' },
+    { key: 'accounting', label: 'Comptabilité Générale' },
+    { key: 'caisse',     label: 'Caisse Journalière & Opérations' },
+    { key: 'hr',         label: 'Ressources Humaines' },
+    { key: 'admin',      label: 'Paramètres & Système' },
   ],
 
   ALL_ROLES: [

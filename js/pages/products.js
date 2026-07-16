@@ -151,12 +151,12 @@ async function renderProducts(container) {
         <p class="page-subtitle">${products.length} produits référencés</p>
       </div>
       <div class="header-actions">
-        ${Auth.can('stock_edit') ? `<button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>` : ''}
+        ${Auth.can('stock_import') || Auth.can('stock_product_edit') ? `<button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>` : ''}
         ${Auth.can('stock_export') ? `
           <button class="btn btn-secondary" onclick="exportProductsPDF()"><i data-lucide="printer"></i> PDF</button>
           <button class="btn btn-secondary" onclick="exportProducts()"><i data-lucide="download"></i> CSV</button>
         ` : ''}
-        ${Auth.can('stock_edit') ? `<button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>` : ''}
+        ${Auth.can('stock_product_create') ? `<button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>` : ''}
       </div>
     </div>
 
@@ -378,10 +378,8 @@ function renderProductsTable(data) {
     label: 'Actions', render: r => `
     <div class="actions-cell">
       <button class="btn btn-xs btn-primary" onclick="viewProduct(${r.id})" title="Détails"><i data-lucide="eye"></i></button>
-      ${Auth.can('stock_edit') ? `
-        <button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>
-        <button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>
-      ` : ''}
+      ${Auth.can('stock_product_edit') ? `<button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
+      ${Auth.can('stock_product_delete') ? `<button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>` : ''}
     </div>`
   });
 
@@ -441,7 +439,7 @@ function clearProductSelection() {
 async function bulkDeleteProducts() {
   const ids = [...(window._selectedProductIds || [])];
   if (!ids.length) return;
-  if (window.Auth && !Auth.can('supprimer_produit') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('stock_product_delete') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de désactiver des produits.', 'error', 5000);
     return;
   }
@@ -1423,7 +1421,7 @@ async function updateProduct(id) {
   const newSalePrice = parseFloat(data.salePrice);
   const newPurchasePrice = parseFloat(data.purchasePrice || 0);
   if ((newSalePrice !== original.salePrice || newPurchasePrice !== original.purchasePrice)
-      && !Auth.can('modifier_prix') && DB.AppState.currentUser?.role !== 'admin') {
+      && !Auth.can('stock_product_edit') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de modifier les prix.', 'error', 5000);
     return;
   }
@@ -1501,7 +1499,7 @@ async function updateProduct(id) {
 }
 
 async function deleteProduct(id) {
-  if (window.Auth && !Auth.can('supprimer_produit') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('stock_product_delete') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de désactiver des produits.', 'error', 5000);
     return;
   }

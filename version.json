@@ -1,5 +1,5 @@
 {
-  "version": "9.7.75",
+  "version": "9.7.76",
   "date": "2026-07-16",
-  "changelog": "v9.7.75 : Lot de 15 corrections et améliorations — Aide à la commande liée aux ventes récentes, suppression impression RH, correction filtrage congés et génération fiches de paie, déduction automatique des avances de paie, historique des salaires payés par mois, rôles ERP limités à admin/pharmacien/caissier, navigation vers dettes depuis dossier patient, groupement des catégories de produits par optgroups, grille d'édition en lot paginée avec persistances inter-pages, bandeau sur ventes annulées, recherche client/médicament, boutons de scroll rapide, et correction d'encodage du rapport de caisse."
+  "changelog": "v9.7.76 : Lot de corrections — Résolution du tri stock déjà expiré, tri chronologique en comptabilité RH, droits d'accès shifts via Auth.can, retrait des emojis et onglet paiement dans paramètres, et intégration de la TVA configurable (auto/manuel) sur factures fournisseurs."
 }

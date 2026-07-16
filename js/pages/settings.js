@@ -520,7 +520,7 @@ async function renderSettings(container) {
       <button class="settings-tab-btn" onclick="switchSettingsTab('securite',this)"><i data-lucide="shield-check"></i> Sécurité</button>
       <button class="settings-tab-btn" onclick="switchSettingsTab('cloud',this)"><i data-lucide="cloud"></i> Cloud & Sync</button>
       <button class="settings-tab-btn" onclick="switchSettingsTab('sms',this)"><i data-lucide="message-square"></i> SMS</button>
-      <button class="settings-tab-btn" onclick="switchSettingsTab('paiements',this)"><i data-lucide="credit-card"></i> Paiements</button>
+
       <button class="settings-tab-btn" onclick="switchSettingsTab('permissions',this)"><i data-lucide="shield-check"></i> Permissions</button>
     </div>
 
@@ -846,28 +846,7 @@ async function renderSettings(container) {
       </div>
     </div>
 
-    <!-- ══════════════ ONGLET : PAIEMENTS ══════════════ -->
-    <div class="settings-tab-pane" id="tab-paiements">
-      <div class="settings-2col">
-        <div class="settings-card2">
-          <h3 class="settings-card2-title"><i data-lucide="credit-card"></i> Moyens de Paiement Acceptés</h3>
-          <p style="font-size:.83rem;color:var(--text-muted);margin-bottom:16px">Activez uniquement les moyens de paiement utilisés dans votre pharmacie. Les options désactivées n'apparaîtront pas au Point de Vente.</p>
-          <div>
-            ${[['payment_cash','Espèces','Paiement en liquide','banknote'],['payment_orange','Orange Money','Paiement mobile Orange','smartphone'],['payment_wave','Wave','Paiement mobile Wave','zap'],['payment_card','Carte Bancaire','Visa, Mastercard, etc.','credit-card'],['payment_virement','Virement Bancaire','Virement inter-bancaire','arrow-right-left'],['payment_assurance','Assurance / Mutuelle','Tiers payant assurance','shield'],['payment_credit','Vente à Crédit','Paiement différé client','clock'],['payment_autre','Autre','Autre moyen de paiement','more-horizontal']].map(([key,label,desc,icon]) => `
-            <div class="settings-toggle-row">
-              <div class="settings-toggle-label">
-                <strong><i data-lucide="${icon}" style="width:14px;height:14px;vertical-align:middle;margin-right:6px"></i>${label}</strong>
-                <span>${desc}</span>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-${key}" ${gs(key) !== 'false' ? 'checked' : ''} onchange="saveToggleSetting('${key}',this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
+
 
 
     <!-- ══════════════ ONGLET : PERMISSIONS ══════════════ -->
