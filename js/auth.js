@@ -102,7 +102,6 @@ const Auth = {
   _defaultPerms: {
     responsable: [
       'module_dashboard', 'module_sales', 'module_caisse', 'module_stock', 'module_products', 'module_inventory', 'module_achats', 'module_patients', 'module_accounting', 'module_rh', 'module_settings', 'module_naomi', 'module_shifts',
-      'session_open', 'session_close', 'session_close_force', 'session_view_all', 'session_edit', 'session_reopen', 'session_cancel_close', 'session_reports', 'session_view_history',
       'sales_create', 'sales_edit', 'sales_cancel', 'sales_delete', 'sales_discount', 'sales_modify_price', 'sales_modify_qty', 'sales_reprint', 'sales_invoice_print', 'sales_pay_cash', 'sales_pay_mobile', 'sales_pay_credit', 'sales_pay_assurance', 'sales_view_ca', 'sales_view_profit', 'sales_view_margin', 'sales_view_stats', 'sales_export',
       'stock_view', 'stock_view_purchase_price', 'stock_view_sale_price', 'stock_view_profit', 'stock_view_margin', 'stock_view_value', 'stock_product_create', 'stock_product_edit', 'stock_product_delete', 'stock_lot_edit', 'stock_transfer', 'stock_adjust', 'stock_exit', 'stock_import', 'stock_export', 'stock_print',
       'inventory_view', 'inventory_create', 'inventory_edit', 'inventory_adjust', 'inventory_delete', 'inventory_export',
@@ -119,7 +118,6 @@ const Auth = {
     ],
     pharmacien: [
       'module_dashboard', 'module_sales', 'module_caisse', 'module_stock', 'module_products', 'module_inventory', 'module_achats', 'module_patients', 'module_accounting', 'module_rh', 'module_shifts',
-      'session_open', 'session_close', 'session_view_all', 'session_reports',
       'sales_create', 'sales_cancel', 'sales_discount', 'sales_modify_qty', 'sales_reprint', 'sales_invoice_print', 'sales_pay_cash', 'sales_pay_mobile', 'sales_pay_credit', 'sales_pay_assurance', 'sales_view_ca', 'sales_view_margin', 'sales_view_stats',
       'stock_view', 'stock_view_purchase_price', 'stock_view_sale_price', 'stock_view_profit', 'stock_view_margin', 'stock_view_value', 'stock_product_create', 'stock_product_edit', 'stock_lot_edit', 'stock_transfer', 'stock_adjust', 'stock_exit', 'stock_export', 'stock_print',
       'inventory_view', 'inventory_create', 'inventory_edit', 'inventory_adjust', 'inventory_export',
@@ -131,12 +129,10 @@ const Auth = {
     ],
     caissier: [
       'module_sales', 'module_caisse',
-      'session_open', 'session_close',
       'sales_create', 'sales_discount', 'sales_modify_qty', 'sales_reprint', 'sales_pay_cash', 'sales_pay_mobile'
     ],
     receptionniste: [
       'module_sales',
-      'session_open', 'session_close',
       'sales_create', 'sales_reprint', 'sales_pay_cash'
     ],
     gestionnaire_stock: [
@@ -172,16 +168,10 @@ const Auth = {
     // === EQUIPES MATIN / SOIR / NUIT ===
     { key: 'module_shifts',            label: 'Accéder et gérer le module Équipes Matin / Soir / Nuit (accès complet)', cat: 'shifts' },
 
-    // === SESSIONS ===
-    { key: 'session_open',             label: 'Ouvrir sa propre session de vente',            cat: 'session' },
-    { key: 'session_close',            label: 'Fermer et déclarer sa propre session',         cat: 'session' },
-    { key: 'session_close_force',      label: 'Forcer la fermeture de la session d\'un tiers',cat: 'session' },
-    { key: 'session_view_all',         label: 'Consulter toutes les sessions actives/passees',cat: 'session' },
-    { key: 'session_edit',             label: 'Modifier les ecarts d\'une session',           cat: 'session' },
-    { key: 'session_reopen',           label: 'Réouvrir une session clôturée',                cat: 'session' },
-    { key: 'session_cancel_close',     label: 'Annuler la clôture d\'une session',            cat: 'session' },
-    { key: 'session_reports',          label: 'Voir les rapports de clôture de session',      cat: 'session' },
-    { key: 'session_view_history',     label: 'Consulter l\'historique des connexions',       cat: 'session' },
+    // === SESSIONS DE CAISSE (FONCTIONNALITÉS RÉELLES DE LA CAISSE JOURNALIÈRE) ===
+    { key: 'caisse_depot_retrait',     label: 'Mouvements manuels de caisse (dépôt/retrait)',  cat: 'session' },
+    { key: 'caisse_cloture',           label: 'Faire la clôture journalière de la caisse',     cat: 'session' },
+    { key: 'caisse_voir_historique',   label: 'Consulter l\'historique des clôtures',          cat: 'session' },
 
     // === VENTES ===
     { key: 'sales_create',             label: 'Créer de nouvelles ventes au POS',             cat: 'sales' },
@@ -250,14 +240,11 @@ const Auth = {
     { key: 'patients_assurance_edit',  label: 'Associer mutuelles et taux de couverture',     cat: 'patients' },
     { key: 'patients_debt_print',      label: 'Imprimer les relevés de dettes clients',       cat: 'patients' },
 
-    // === COMPTABILITÉ & CAISSE ===
+    // === COMPTABILITÉ ===
     { key: 'accounting_view_journal',  label: 'Consulter le journal des écritures',           cat: 'accounting' },
     { key: 'accounting_view_reports',  label: 'Consulter la balance et les bilans financiers',cat: 'accounting' },
     { key: 'accounting_write',         label: 'Saisir des écritures comptables manuelles',    cat: 'accounting' },
     { key: 'accounting_export',        label: 'Exporter les rapports et journaux de compta',  cat: 'accounting' },
-    { key: 'caisse_depot_retrait',     label: 'Mouvements manuels de caisse (dépôt/retrait)',  cat: 'caisse' },
-    { key: 'caisse_cloture',           label: 'Faire la clôture journalière de la caisse',     cat: 'caisse' },
-    { key: 'caisse_voir_historique',   label: 'Consulter l\'historique des clôtures',          cat: 'caisse' },
 
     // === RESSOURCES HUMAINES ===
     { key: 'hr_view_salary',           label: 'Consulter la masse salariale et les fiches',   cat: 'hr' },
@@ -285,7 +272,6 @@ const Auth = {
     { key: 'achats',     label: 'Fournisseurs & Achats' },
     { key: 'patients',   label: 'Patients & Assurances' },
     { key: 'accounting', label: 'Comptabilité Générale' },
-    { key: 'caisse',     label: 'Caisse Journalière & Opérations' },
     { key: 'hr',         label: 'Ressources Humaines' },
     { key: 'admin',      label: 'Paramètres & Système' },
   ],

@@ -929,6 +929,24 @@ window.renderPermissionsGrid = async function() {
     ? (typeof rec.value === 'string' ? JSON.parse(rec.value) : rec.value)
     : null;
 
+  // Initialiser ou synchroniser window._userPermOverrides pour cet utilisateur
+  if (window._lastSelectedPermUserId !== userId) {
+    window._lastSelectedPermUserId = userId;
+    window._userPermOverrides = {};
+    
+    // Remplir d'abord avec les défauts du rôle
+    const roleKey = String(user.role || '').toLowerCase().replace(/[\s-]+/g, '_');
+    const rolePerms = (window._rolePermissions || {})[roleKey] || Auth._defaultPerms[roleKey] || [];
+    Auth.ALL_PERMISSIONS.forEach(p => {
+      window._userPermOverrides[p.key] = rolePerms.includes(p.key);
+    });
+
+    // Écraser par les surcharges personnalisées existantes
+    if (userPerms) {
+      Object.assign(window._userPermOverrides, userPerms);
+    }
+  }
+
   const roleKey = String(user.role || '').toLowerCase().replace(/[\s-]+/g, '_');
   const rolePerms = (window._rolePermissions || {})[roleKey] || Auth._defaultPerms[roleKey] || [];
 
@@ -949,7 +967,6 @@ window.renderPermissionsGrid = async function() {
     achats:     'module_achats',
     patients:   'module_patients',
     accounting: 'module_accounting',
-    caisse:     'module_caisse',
     hr:         'module_rh',
     admin:      'module_settings'
   };
@@ -963,7 +980,6 @@ window.renderPermissionsGrid = async function() {
     achats:     'factory',
     patients:   'users',
     accounting: 'landmark',
-    caisse:     'banknote',
     hr:         'user-cog',
     admin:      'settings-2'
   };
@@ -981,7 +997,7 @@ window.renderPermissionsGrid = async function() {
         <div style="width:44px;height:44px;border-radius:50%;background:${roleColor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex-shrink:0;box-shadow:0 2px 8px ${roleColor}44">${(user.name||'?').charAt(0).toUpperCase()}</div>
         <div>
           <div style="font-weight:700;font-size:.95rem">${user.name || user.username}</div>
-          <div style="font-size:.78rem;color:var(--text-muted)">@${user.username} — <span style="color:${roleColor};font-weight:600">${user.role}</span>${userPerms ? ' · <span style="color:#10b981;font-weight:600">Personnalise</span>' : ' · Defaut du role'}</div>
+          <div style="font-size:.78rem;color:var(--text-muted)">@${user.username} — <span style="color:${roleColor};font-weight:600">${user.role}</span>${userPerms ? ' · <span style="color:#10b981;font-weight:600">Personnalisé</span>' : ' · Defaut du role'}</div>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -1017,19 +1033,13 @@ window.renderPermissionsGrid = async function() {
     // Déterminer l'état du parent
     let parentHas = false;
     if (parentKey) {
-      totalCount += 1; // On compte le parent dans le total
-      if (userPerms !== null && userPerms[parentKey] !== undefined) {
-        parentHas = userPerms[parentKey];
-      } else {
-        parentHas = rolePerms.includes(parentKey);
-      }
+      totalCount += 1;
+      parentHas = window._userPermOverrides[parentKey] === true;
       if (parentHas) activeCount++;
     }
 
     catPerms.forEach(p => {
-      let has;
-      if (userPerms !== null && userPerms[p.key] !== undefined) { has = userPerms[p.key]; }
-      else { has = rolePerms.includes(p.key); }
+      const has = window._userPermOverrides[p.key] === true;
       if (has) activeCount++;
     });
 
@@ -1067,7 +1077,7 @@ window.renderPermissionsGrid = async function() {
           <div style="background:var(--bg-secondary, var(--bg));padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;border-left:4px solid var(--primary)">
             <label style="display:flex;align-items:center;gap:12px;cursor:pointer;flex:1;margin:0">
               <input type="checkbox" id="user_perm_${parentKey}" ${parentHas ? 'checked' : ''}
-                onchange="window._toggleSubPermsVisibility('${cat.key}',this.checked)"
+                onchange="window._setUserPermOverride('${parentKey}', this.checked); window._toggleSubPermsVisibility('${cat.key}',this.checked)"
                 style="width:19px;height:19px;cursor:pointer;accent-color:var(--primary);flex-shrink:0">
               <span style="font-weight:800;font-size:.9rem;color:var(--text-primary)">${parentPerm.label}</span>
             </label>
@@ -1080,12 +1090,7 @@ window.renderPermissionsGrid = async function() {
 
       catPerms.forEach((perm, i) => {
         const bg = i % 2 === 0 ? 'var(--surface)' : 'var(--bg)';
-        let hasPerm;
-        if (userPerms !== null && userPerms[perm.key] !== undefined) {
-          hasPerm = userPerms[perm.key];
-        } else {
-          hasPerm = rolePerms.includes(perm.key);
-        }
+        const hasPerm = window._userPermOverrides[perm.key] === true;
         const isCustomized = userPerms !== null && userPerms[perm.key] !== undefined;
         const highlight = searchQuery && (perm.label.toLowerCase().includes(searchQuery) || perm.key.toLowerCase().includes(searchQuery));
 
@@ -1093,6 +1098,7 @@ window.renderPermissionsGrid = async function() {
           <label style="display:flex;align-items:center;padding:10px 16px 10px 44px;background:${highlight ? 'rgba(99,102,241,.06)' : bg};border-bottom:1px solid var(--border);gap:12px;cursor:pointer;transition:background .12s"
             onmouseenter="this.style.background='rgba(99,102,241,.08)'" onmouseleave="this.style.background='${highlight ? 'rgba(99,102,241,.06)' : bg}'">
             <input type="checkbox" id="user_perm_${perm.key}" ${hasPerm ? 'checked' : ''}
+              onchange="window._setUserPermOverride('${perm.key}', this.checked)"
               style="width:17px;height:17px;cursor:pointer;accent-color:var(--primary);flex-shrink:0">
             <span style="flex:1;font-size:.85rem;font-weight:500">${perm.label}</span>
             ${isCustomized ? '<span style="font-size:.68rem;color:#f59e0b;white-space:nowrap;font-weight:700;background:rgba(245,158,11,.1);padding:2px 7px;border-radius:10px">Personnalisé</span>' : '<span style="font-size:.68rem;color:var(--text-muted);white-space:nowrap">Hérité</span>'}
@@ -1111,6 +1117,12 @@ window.renderPermissionsGrid = async function() {
   if (window.lucide) lucide.createIcons({ node: container });
 };
 
+window._setUserPermOverride = function(key, checked) {
+  if (window._userPermOverrides) {
+    window._userPermOverrides[key] = checked;
+  }
+};
+
 // Fonction de basculement visuel des sous-permissions en temps réel
 window._toggleSubPermsVisibility = function(catKey, checked) {
   const el = document.getElementById(`sub-perms-${catKey}`);
@@ -1121,7 +1133,6 @@ window._toggleSubPermsVisibility = function(catKey, checked) {
 
 // Cocher/decocher toutes les permissions d'une catégorie
 window._toggleCatPerms = function(catKey, checked) {
-  // Cocher également la permission parent
   const CAT_PARENTS = {
     shifts:     'module_shifts',
     session:    'module_caisse',
@@ -1131,12 +1142,12 @@ window._toggleCatPerms = function(catKey, checked) {
     achats:     'module_achats',
     patients:   'module_patients',
     accounting: 'module_accounting',
-    caisse:     'module_caisse',
     hr:         'module_rh',
     admin:      'module_settings'
   };
   const parentKey = CAT_PARENTS[catKey];
   if (parentKey) {
+    window._setUserPermOverride(parentKey, checked);
     const parentChk = document.getElementById(`user_perm_${parentKey}`);
     if (parentChk) {
       parentChk.checked = checked;
@@ -1146,6 +1157,7 @@ window._toggleCatPerms = function(catKey, checked) {
 
   const catPerms = Auth.ALL_PERMISSIONS.filter(p => (p.cat || 'all') === catKey);
   catPerms.forEach(perm => {
+    window._setUserPermOverride(perm.key, checked);
     const chk = document.getElementById(`user_perm_${perm.key}`);
     if (chk) chk.checked = checked;
   });
@@ -1155,10 +1167,11 @@ window._toggleCatPerms = function(catKey, checked) {
 window.setAllPermissions = function(checked) {
   const perms = Auth.ALL_PERMISSIONS;
   perms.forEach(perm => {
+    window._setUserPermOverride(perm.key, checked);
     const chk = document.getElementById(`user_perm_${perm.key}`);
     if (chk) chk.checked = checked;
   });
-  // Déployer ou replier toutes les catégories d'affichage
+  
   const CAT_PARENTS = {
     shifts:     'module_shifts',
     session:    'module_caisse',
@@ -1168,7 +1181,6 @@ window.setAllPermissions = function(checked) {
     achats:     'module_achats',
     patients:   'module_patients',
     accounting: 'module_accounting',
-    caisse:     'module_caisse',
     hr:         'module_rh',
     admin:      'module_settings'
   };
@@ -1182,19 +1194,19 @@ window.setAllPermissions = function(checked) {
 window.saveSelectedUserPermissions = async function() {
   const userId = window._selectedPermUserId;
   if (!userId) { UI.toast('Veuillez d\'abord choisir un utilisateur', 'warning'); return; }
-  const perms = Auth.ALL_PERMISSIONS;
-  const overrides = {};
-  perms.forEach(perm => {
-    const chk = document.getElementById(`user_perm_${perm.key}`);
-    if (chk) overrides[perm.key] = chk.checked;
-  });
+  
+  if (!window._userPermOverrides) {
+    UI.toast('Aucun changement à enregistrer', 'info');
+    return;
+  }
+
   try {
-    await DB.dbPut('settings', { key: `user_permissions_${userId}`, value: JSON.stringify(overrides) });
+    await DB.dbPut('settings', { key: `user_permissions_${userId}`, value: JSON.stringify(window._userPermOverrides) });
     if (DB.AppState.currentUser && DB.AppState.currentUser.id === userId) {
-      DB.AppState.currentUser.permissions = overrides;
+      DB.AppState.currentUser.permissions = window._userPermOverrides;
       if (typeof initSidebar === 'function') initSidebar();
     }
-    await DB.writeAudit('SET_USER_PERMISSIONS', 'users', userId, { overrides });
+    await DB.writeAudit('SET_USER_PERMISSIONS', 'users', userId, { overrides: window._userPermOverrides });
     UI.toast('✅ Permissions enregistrées et appliquées immédiatement', 'success', 3000);
     renderPermissionsGrid(); // Re-render pour afficher les badges "Personnalisé"
   } catch(e) {
@@ -1210,6 +1222,8 @@ window.resetSelectedUserPermissions = async function() {
   if (!ok) return;
   try {
     await DB.dbDelete('settings', `user_permissions_${userId}`);
+    window._userPermOverrides = null;
+    window._lastSelectedPermUserId = null; // forcer re-sync au prochain render
     if (DB.AppState.currentUser && DB.AppState.currentUser.id === userId) {
       DB.AppState.currentUser.permissions = {};
       if (typeof initSidebar === 'function') initSidebar();

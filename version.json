@@ -1,5 +1,5 @@
 {
-  "version": "9.7.79",
+  "version": "9.7.80",
   "date": "2026-07-16",
-  "changelog": "v9.7.79 : Déplacement de la configuration de la TVA en dehors de la barre de total pour éliminer les problèmes de contraste avec le fond bleu, et rendu du total TVA en blanc sur bleu dans le total bar."
+  "changelog": "v9.7.80 : Nettoyage de la grille des permissions en fusionnant la catégorie Caisse avec Sessions de Caisse pour éliminer toutes les fonctionnalités obsolètes non présentes dans l'app."
 }
