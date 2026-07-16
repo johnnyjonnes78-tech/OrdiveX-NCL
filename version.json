@@ -1,5 +1,5 @@
 {
-  "version": "9.7.80",
+  "version": "9.7.81",
   "date": "2026-07-16",
-  "changelog": "v9.7.80 : Nettoyage de la grille des permissions en fusionnant la catégorie Caisse avec Sessions de Caisse pour éliminer toutes les fonctionnalités obsolètes non présentes dans l'app."
+  "changelog": "v9.7.81 : Ajout de la mise en gras automatique sur l'impression thermique 80mm et nettoyage de la structure des permissions de session."
 }
