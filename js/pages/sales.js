@@ -77,10 +77,11 @@ async function renderSales(container) {
       </div>
     </div>
 
-    <div class="filter-bar">
-      <input type="date" id="sales-from" class="filter-input" style="max-width:180px" onchange="filterSales()">
+    <div class="filter-bar" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+      <input type="text" id="sales-search" class="filter-input" placeholder="Rechercher patient ou medicament..." style="min-width:240px; flex:1;" oninput="filterSales()">
+      <input type="date" id="sales-from" class="filter-input" style="max-width:150px" onchange="filterSales()">
       <span class="filter-sep"><i data-lucide="arrow-right"></i></span>
-      <input type="date" id="sales-to" class="filter-input" style="max-width:180px" onchange="filterSales()">
+      <input type="date" id="sales-to" class="filter-input" style="max-width:150px" onchange="filterSales()">
       <select id="sales-pay" class="filter-select" onchange="filterSales()">
         <option value="">Tous paiements</option>
         <option value="cash">Espèces</option>
@@ -115,12 +116,29 @@ async function renderSales(container) {
 }
 
 function filterSales() {
+  const query = document.getElementById('sales-search')?.value?.toLowerCase()?.trim();
   const from = document.getElementById('sales-from')?.value;
   const to = document.getElementById('sales-to')?.value;
   const pay = document.getElementById('sales-pay')?.value;
   const returnStatus = document.getElementById('sales-return-status')?.value;
 
   let data = window._salesData || [];
+
+  if (query) {
+    const saleItems = window._saleItemsData || [];
+    data = data.filter(s => {
+      const pName = (s.patientName || 'patient comptant').toLowerCase();
+      if (pName.includes(query)) return true;
+
+      const saleNum = String(s.id).padStart(6, '0');
+      if (saleNum.includes(query)) return true;
+
+      const matchedItems = saleItems.filter(si => si.saleId === s.id && si.productName?.toLowerCase()?.includes(query));
+      if (matchedItems.length > 0) return true;
+
+      return false;
+    });
+  }
 
   if (from) {
     data = data.filter(s => {
@@ -235,6 +253,12 @@ async function viewSaleDetail(saleId) {
 
   UI.modal(`<i data-lucide="shopping-bag" class="modal-icon-inline"></i> Vente #${String(saleId).padStart(6, '0')}`, `
       <div class="sale-detail">
+      ${sale.status === 'annulled' ? `
+        <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:6px; padding:12px; margin-bottom:12px; color:#991b1b; display:flex; align-items:center; gap:8px;">
+          <i data-lucide="alert-triangle" style="width:18px; height:18px;"></i>
+          <strong>Cette vente a ete annulee — Le stock a ete restaure.</strong>
+        </div>
+      ` : ''}
       <div class="detail-meta">
         <span><i data-lucide="calendar"></i> ${UI.formatDateTime(new Date(sale.date).getTime())}</span>
         <span><i data-lucide="user"></i> Patient: <strong>${sale.patientName || 'Patient Comptant'}</strong></span>

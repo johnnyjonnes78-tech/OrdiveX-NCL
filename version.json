@@ -1,5 +1,5 @@
 {
-  "version": "9.7.74",
-  "date": "2026-07-15",
-  "changelog": "v9.7.74 : Refonte ERP du système de permissions — 78 droits fins répartis en 10 catégories. Gardes de sécurité IndexedDB sur toutes les écritures sensibles (dbAdd/dbPut/dbDelete). Interface d'administration arborescente avec accordéons dépliables, barres de progression par catégorie, recherche en temps réel, et boutons tout cocher/décocher par module. Messages de blocage reformulés poliment."
+  "version": "9.7.75",
+  "date": "2026-07-16",
+  "changelog": "v9.7.75 : Lot de 15 corrections et améliorations — Aide à la commande liée aux ventes récentes, suppression impression RH, correction filtrage congés et génération fiches de paie, déduction automatique des avances de paie, historique des salaires payés par mois, rôles ERP limités à admin/pharmacien/caissier, navigation vers dettes depuis dossier patient, groupement des catégories de produits par optgroups, grille d'édition en lot paginée avec persistances inter-pages, bandeau sur ventes annulées, recherche client/médicament, boutons de scroll rapide, et correction d'encodage du rapport de caisse."
 }

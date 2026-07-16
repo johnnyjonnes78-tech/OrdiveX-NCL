@@ -49,7 +49,7 @@ const AlertsEngine = {
     stockAll.forEach(s => { stockMap[s.productId] = s.quantity; });
 
     // Récupérer le seuil d'alerte global configuré
-    const thresholdSetting = (allSettings || []).find(s => s.key === 'stock_alert_threshold');
+    const thresholdSetting = (allSettings || []).find(s => s.key === 'min_stock_alert');
     const defaultThreshold = parseInt(thresholdSetting ? thresholdSetting.value : '5', 10) || 5;
 
     // --- RESCUE MODE : Nettoyage d'urgence si la BDD a été spammée ---

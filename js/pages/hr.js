@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  OrdiveX — Module Ressources Humaines v9.7.58
+//  OrdiveX — Module Ressources Humaines v9.7.75
 //  js/pages/hr.js
 //  7 onglets : dashboard, employes, paie, avances, conges, presence, comptabilite
 // ═══════════════════════════════════════════════════════════════════════════
@@ -257,12 +257,26 @@
   //  ONGLET 2 — EMPLOYÉS
   // ═══════════════════════════════════════════════════════════════════════
   async function renderEmployes(c) {
-    const rawEmployees = await DB.dbGetAll('users');
-    const employees = rawEmployees.map(e => ({
-      ...e,
-      nom: e.nom || e.name || e.username || '',
-      status: e.status || (e.active !== false ? 'actif' : 'inactif')
-    }));
+    const [rawEmployees, leaves] = await Promise.all([
+      DB.dbGetAll('users'),
+      DB.dbGetAll('hr_leaves').catch(() => [])
+    ]);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeLeaves = leaves.filter(l => l.status === 'approuve' && l.dateDebut && l.dateFin && todayStr >= l.dateDebut && todayStr <= l.dateFin);
+    const congeEmpIds = new Set(activeLeaves.map(l => Number(l.employeeId)));
+
+    const employees = rawEmployees.map(e => {
+      let st = e.status || (e.active !== false ? 'actif' : 'inactif');
+      if (st === 'actif' && congeEmpIds.has(e.id)) {
+        st = 'conge';
+      }
+      return {
+        ...e,
+        nom: e.nom || e.name || e.username || '',
+        status: st
+      };
+    });
     let search = '';
     let filterStatus = '';
     let empPage = 1;
@@ -370,15 +384,9 @@
           <div class="form-group">
             <label>Rôle ERP <span style="color:var(--danger)">*</span></label>
             <select id="hr-emp-role" class="form-control" required>
-              <option value="caissier" ${e.role === 'caissier' ? 'selected' : ''}>Caissier</option>
-              <option value="pharmacien" ${e.role === 'pharmacien' ? 'selected' : ''}>Pharmacien</option>
               <option value="admin" ${e.role === 'admin' ? 'selected' : ''}>Administrateur</option>
-              <option value="responsable" ${e.role === 'responsable' ? 'selected' : ''}>Responsable</option>
-              <option value="rh" ${e.role === 'rh' ? 'selected' : ''}>RH</option>
-              <option value="receptionniste" ${e.role === 'receptionniste' ? 'selected' : ''}>Réceptionniste</option>
-              <option value="gestionnaire_stock" ${e.role === 'gestionnaire_stock' ? 'selected' : ''}>Gestionnaire de stock</option>
-              <option value="comptable" ${e.role === 'comptable' ? 'selected' : ''}>Comptable</option>
-              <option value="assistant" ${e.role === 'assistant' ? 'selected' : ''}>Assistant</option>
+              <option value="pharmacien" ${e.role === 'pharmacien' ? 'selected' : ''}>Pharmacien</option>
+              <option value="caissier" ${e.role === 'caissier' ? 'selected' : ''}>Caissier</option>
             </select>
           </div>
           <div class="form-group" style="grid-column:1/-1">
@@ -1007,13 +1015,27 @@
   //  ONGLET 3 — PAIE
   // ═══════════════════════════════════════════════════════════════════════
   async function renderPaie(c) {
-    const [rawEmployees, payroll] = await Promise.all([DB.dbGetAll('users'), DB.dbGetAll('hr_payroll')]);
-    const employees = rawEmployees.map(e => ({
-      ...e,
-      nom: e.nom || e.name || e.username || '',
-      status: e.status || (e.active !== false ? 'actif' : 'inactif')
-    }));
-    const actifs = employees.filter(e => e.status === 'actif');
+    const [rawEmployees, payroll, leaves] = await Promise.all([
+      DB.dbGetAll('users'),
+      DB.dbGetAll('hr_payroll'),
+      DB.dbGetAll('hr_leaves').catch(() => [])
+    ]);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const activeLeaves = leaves.filter(l => l.status === 'approuve' && l.dateDebut && l.dateFin && todayStr >= l.dateDebut && todayStr <= l.dateFin);
+    const congeEmpIds = new Set(activeLeaves.map(l => Number(l.employeeId)));
+
+    const employees = rawEmployees.map(e => {
+      let st = e.status || (e.active !== false ? 'actif' : 'inactif');
+      if (st === 'actif' && congeEmpIds.has(e.id)) {
+        st = 'conge';
+      }
+      return {
+        ...e,
+        nom: e.nom || e.name || e.username || '',
+        status: st
+      };
+    });
+    const actifs = employees.filter(e => e.status === 'actif' || e.status === 'conge');
     let selectedPeriod = ym();
     let paiePage = 1;
 
@@ -1093,11 +1115,40 @@
                     <td style="white-space:nowrap;display:flex;gap:4px">
                       <button class="btn btn-sm btn-secondary" onclick="hrEditFiche(${emp.id},'${selectedPeriod}')" title="Modifier"><i data-lucide="pencil" style="width:13px;height:13px"></i></button>
                       ${!paye ? `<button class="btn btn-sm btn-primary" onclick="hrPayerEmploye(${emp.id},'${selectedPeriod}',${net})" title="Marquer payé"><i data-lucide="check" style="width:13px;height:13px"></i></button>` : ''}
-                      ${fiche.id ? `<button class="btn btn-sm btn-secondary" onclick="hrPrintPayslip(${fiche.id})" title="PDF"><i data-lucide="printer" style="width:13px;height:13px"></i></button>` : ''}
+                      ${fiche.id ? `<button class="btn btn-sm btn-secondary" onclick="hrPrintPayslip(${fiche.id})" title="PDF"><i data-lucide="download" style="width:13px;height:13px"></i></button>` : ''}
                     </td>
                   </tr>
                 `;
               }).join('') + '</tbody></table>' + renderPaginationBar('paie', pgP.page, pgP.totalPages, pgP.total, (p) => { paiePage = p; render(); }) + '</div>'; })()}
+
+        <!-- Historique des salaires payés -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:8px;">
+              <i data-lucide="history" style="width:18px;height:18px"></i> Historique des salaires payés
+            </h3>
+            <input type="month" id="hr-history-month" class="form-control" style="width:180px" value="${window._hrHistoryMonth || ''}" onchange="window._hrHistoryMonth=this.value;hrPayPeriod(document.querySelector('input[type=month]')?.value || '${selectedPeriod}')">
+          </div>
+          ${(() => {
+            const histMonth = window._hrHistoryMonth || '';
+            const allPaid = payroll.filter(f => f.status === 'paye');
+            const filtered = histMonth ? allPaid.filter(f => f.period === histMonth) : allPaid;
+            const sorted = filtered.sort((a, b) => (b.payedAt || b.createdAt || '').localeCompare(a.payedAt || a.createdAt || ''));
+            if (sorted.length === 0) return '<div style="text-align:center;padding:20px;color:var(--text-muted);">Aucun salaire payé' + (histMonth ? ' pour ce mois' : '') + '.</div>';
+            const empById = new Map(employees.map(e => [e.id, e]));
+            return '<table class="hr-payroll-table"><thead><tr><th>Employé</th><th>Période</th><th>Net payé</th><th>Avances déduites</th><th>Date de paiement</th></tr></thead><tbody>' +
+              sorted.slice(0, 50).map(f => {
+                const e = empById.get(f.employeeId);
+                return '<tr>' +
+                  '<td><strong>' + (e?.nom || 'Emp. #' + f.employeeId) + '</strong><div style="font-size:.72rem;color:var(--text-muted)">' + (e?.poste || '') + '</div></td>' +
+                  '<td>' + f.period + '</td>' +
+                  '<td class="amount amount-net">' + fmt(f.netAPayer || 0) + '</td>' +
+                  '<td class="amount amount-negative">' + (f.avancesDed > 0 ? '-' + fmtN(f.avancesDed) : '—') + '</td>' +
+                  '<td style="font-size:.8rem;color:var(--text-muted)">' + (f.payedAt ? new Date(f.payedAt).toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'}) : '—') + '</td>' +
+                '</tr>';
+              }).join('') + '</tbody></table>';
+          })()}
+        </div>
       `;
       if (window.lucide) lucide.createIcons({ node: c });
     }
@@ -1109,7 +1160,7 @@
         ...e,
         nom: e.nom || e.name || e.username || '',
         status: e.status || (e.active !== false ? 'actif' : 'inactif')
-      })).filter(e => e.status === 'actif');
+      })).filter(e => e.status === 'actif' || e.status === 'conge');
       const existing = (await DB.dbGetAll('hr_payroll')).filter(p => p.period === period);
       const existMap = new Map(existing.map(f => [f.employeeId, f]));
       const allAdv = await DB.dbGetAll('hr_advances');
@@ -1132,13 +1183,31 @@
     };
     window.hrPayerTout = async (period) => {
       const fiches = (await DB.dbGetAll('hr_payroll')).filter(p => p.period === period && p.status !== 'paye');
+      const allAdv = await DB.dbGetAll('hr_advances');
       for (const f of fiches) {
+        // Recalculer les avances si elles sont à 0 dans la fiche
+        let advDed = f.avancesDed || 0;
+        if (advDed === 0) {
+          const empAdvs = allAdv.filter(a => a.employeeId === f.employeeId && a.status === 'approuvee' && a.solde > 0);
+          advDed = empAdvs.reduce((s, a) => s + Math.min(a.mensualite || a.solde, a.solde), 0);
+          if (advDed > 0) {
+            f.avancesDed = advDed;
+            f.netAPayer = Math.max(0, (f.salaire || 0) + (f.primes || 0) + (f.heuresSup || 0) - (f.retenues || 0) - advDed);
+          }
+        }
         await DB.dbPut('hr_payroll', { ...f, status: 'paye', payedAt: new Date().toISOString() });
         await DB.dbPut('cashRegister', {
           type: 'sortie', category: 'RH', subCategory: 'salaire',
           amount: f.netAPayer || 0, description: `Salaire ${period}`,
           employeeId: f.employeeId, date: today(), createdAt: new Date().toISOString()
         });
+        // Déduire les avances de la table hr_advances
+        const empAdvs = allAdv.filter(a => a.employeeId === f.employeeId && a.status === 'approuvee' && a.solde > 0);
+        for (const adv of empAdvs) {
+          const ded = Math.min(adv.mensualite || adv.solde, adv.solde);
+          const newSolde = Math.max(0, (adv.solde || 0) - ded);
+          await DB.dbPut('hr_advances', { ...adv, solde: newSolde, status: newSolde <= 0 ? 'remboursee' : 'approuvee' });
+        }
       }
       UI.toast(`${fiches.length} salaires payés`, 'success');
       payroll.length = 0;
@@ -1151,7 +1220,11 @@
       if (!fiche) {
         let rawEmp = await DB.dbGet('users', empId);
         const emp = rawEmp ? { ...rawEmp, nom: rawEmp.nom || rawEmp.name || rawEmp.username || '' } : null;
-        fiche = { employeeId: empId, period, salaire: emp?.salaire||0, primes:0, heuresSup:0, retenues:0, avancesDed:0, netAPayer: net, status:'en_attente', createdAt: new Date().toISOString() };
+        // Calculer les avances automatiquement
+        const empAdvs = (await DB.dbGetAll('hr_advances')).filter(a => a.employeeId === empId && a.status === 'approuvee' && a.solde > 0);
+        const advDed = empAdvs.reduce((s, a) => s + Math.min(a.mensualite || a.solde, a.solde), 0);
+        const calcNet = Math.max(0, (emp?.salaire || 0) - advDed);
+        fiche = { employeeId: empId, period, salaire: emp?.salaire||0, primes:0, heuresSup:0, retenues:0, avancesDed: advDed, netAPayer: calcNet, status:'en_attente', createdAt: new Date().toISOString() };
       }
       await DB.dbPut('hr_payroll', { ...fiche, status: 'paye', payedAt: new Date().toISOString() });
       let rawEmp2 = await DB.dbGet('users', empId);
@@ -1811,9 +1884,6 @@
             </div>
             ${emp ? `
             <div style="display:flex;gap:8px">
-              <button class="btn btn-primary" onclick="hrPrintCompta('${selectedEmpId}')">
-                <i data-lucide="printer"></i> Imprimer
-              </button>
               <button class="btn btn-secondary" onclick="hrExportComptaPDF('${selectedEmpId}')">
                 <i data-lucide="file-text"></i> Exporter PDF
               </button>
@@ -1906,84 +1976,7 @@
       render();
     };
 
-    window.hrPrintCompta = async (empId) => {
-      const emp = employees.find(e => e.id === Number(empId));
-      if (!emp) return;
-      
-      const empPayroll = payroll.filter(p => p.employeeId === Number(empId) && p.status === 'paye');
-      const empAdvances = advances.filter(a => a.employeeId === Number(empId));
-      const empRepayments = cashReg.filter(cr => cr.employeeId === Number(empId) && cr.subCategory === 'remboursement_avance');
-
-      const txs = [];
-      empPayroll.forEach(p => txs.push({ date: p.payedAt || p.createdAt || today(), type: 'Salaire', details: `Période ${p.period}`, debit: p.netAPayer, credit: 0 }));
-      empAdvances.forEach(a => txs.push({ date: a.date || a.createdAt || today(), type: 'Avance', details: a.motif || '—', debit: a.montant, credit: 0 }));
-      empPayroll.forEach(p => { if (p.avancesDed > 0) txs.push({ date: p.payedAt || p.createdAt || today(), type: 'Remb. (Paie)', details: `Déduction période ${p.period}`, debit: 0, credit: p.avancesDed }); });
-      empRepayments.forEach(r => txs.push({ date: r.date || r.createdAt || today(), type: 'Remb. (Manuel)', details: r.description, debit: 0, credit: r.amount }));
-      txs.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      const totalSalaires = empPayroll.reduce((s, p) => s + (p.netAPayer || 0), 0);
-      const totalAvances  = empAdvances.reduce((s, a) => s + (a.montant || 0), 0);
-      const totalRembourses = txs.filter(t => t.credit > 0).reduce((s, t) => s + t.credit, 0);
-      const soldeAvances = Math.max(0, totalAvances - totalRembourses);
-
-      const rowsHTML = txs.map(t => `
-        <tr>
-          <td style="padding:6px;border-bottom:1px solid #ddd">${dateLabel(t.date)}</td>
-          <td style="padding:6px;border-bottom:1px solid #ddd;font-weight:700">${t.type}</td>
-          <td style="padding:6px;border-bottom:1px solid #ddd">${t.details}</td>
-          <td style="padding:6px;border-bottom:1px solid #ddd;text-align:right;color:#c0392b">${t.debit > 0 ? fmt(t.debit) : '—'}</td>
-          <td style="padding:6px;border-bottom:1px solid #ddd;text-align:right;color:#27ae60">${t.credit > 0 ? fmt(t.credit) : '—'}</td>
-        </tr>
-      `).join('');
-
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <html>
-        <head>
-          <title>Fiche Financière — ${emp.nom}</title>
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 12px; margin: 30px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th { background: #f2f2f2; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
-            .kpi-box { display: flex; gap: 15px; margin-top: 15px; }
-            .kpi { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <h2>Fiche Financière Individuelle</h2>
-          <div><strong>Employé :</strong> ${emp.nom}</div>
-          <div><strong>Poste :</strong> ${emp.poste || '—'}</div>
-          <div><strong>Généré le :</strong> ${new Date().toLocaleDateString('fr-FR')}</div>
-          
-          <div class="kpi-box">
-            <div class="kpi"><strong>Salaire de Base</strong><br>${fmt(emp.salaire || 0)}</div>
-            <div class="kpi"><strong>Salaires Versés</strong><br>${fmt(totalSalaires)}</div>
-            <div class="kpi"><strong>Avances Accordées</strong><br>${fmt(totalAvances)}</div>
-            <div class="kpi"><strong>Solde Avances Dû</strong><br>${fmt(soldeAvances)}</div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Détails</th>
-                <th style="text-align:right">Débit (Sortie)</th>
-                <th style="text-align:right">Crédit (Entrée)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHTML || '<tr><td colspan="5" style="text-align:center;padding:10px">Aucune opération</td></tr>'}
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.onload = () => printWindow.print();
-    };
-
-    window.hrExportComptaPDF = async (empId) => {
+window.hrExportComptaPDF = async (empId) => {
       const emp = employees.find(e => e.id === Number(empId));
       if (!emp) return;
       

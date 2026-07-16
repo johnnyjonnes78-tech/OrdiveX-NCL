@@ -189,7 +189,7 @@ async function viewPatient(patientId) {
           <div class="patient-stat-val">${lastVisitDate ? UI.formatDate(lastVisitDate) : '—'}</div>
           <div class="patient-stat-label">Dernière visite</div>
         </div>
-        ${totalCredit > 0 ? `<div class="patient-stat-card" style="border-color:var(--danger);">
+        ${totalCredit > 0 ? `<div class="patient-stat-card" style="border-color:var(--danger); cursor:pointer;" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active')); const btn = Array.from(document.querySelectorAll('.patient360-tab')).find(b => b.textContent.includes('Crédits')); if(btn) btn.classList.add('active');">
           <div class="patient-stat-val kpi-value" style="color:var(--danger)">${UI.formatCurrency(totalCredit)}</div>
           <div class="patient-stat-label">Crédit en cours</div>
         </div>` : ''}

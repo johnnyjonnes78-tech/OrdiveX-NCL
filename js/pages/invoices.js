@@ -918,6 +918,26 @@ function printInvoicePDF(invoiceId) {
     createdBy = DB.AppState.currentUser.name || DB.AppState.currentUser.username || createdBy;
   }
 
+  const subtotal = (invoice.items || []).reduce((sum, item) => sum + (item.total || (item.quantity * item.unitPrice) || 0), 0);
+  const tvaSetting = ((typeof gs === 'function' ? gs('pharmacy_tva') : '0') || '0').trim();
+  let tva = 0;
+  if (tvaSetting && tvaSetting !== '0') {
+    if (!isNaN(tvaSetting)) {
+      tva = Math.round(subtotal * (parseFloat(tvaSetting) / 100));
+    } else {
+      try {
+        const formula = tvaSetting
+          .replace(/subtotal/g, String(subtotal))
+          .replace(/discount/g, '0');
+        tva = Math.round(Function(`"use strict"; return (${formula})`)());
+      } catch (e) {
+        console.error('[TVA] Erreur formule:', e);
+        tva = 0;
+      }
+    }
+  }
+  const finalTotal = subtotal + tva;
+
   const printWin = window.open('', '_blank');
   printWin.document.write(`
     <html>
@@ -1171,9 +1191,18 @@ function printInvoicePDF(invoiceId) {
                 <span>Nombre d'articles</span>
                 <span>${invoice.items?.length || 0}</span>
               </div>
+              <div class="total-row">
+                <span>Sous-total</span>
+                <span>${subtotal.toLocaleString('fr-FR')} GNF</span>
+              </div>
+              ${tva > 0 ? `
+              <div class="total-row">
+                <span>TVA (${tvaSetting}${!isNaN(tvaSetting) ? '%' : ''})</span>
+                <span>${tva.toLocaleString('fr-FR')} GNF</span>
+              </div>` : ''}
               <div class="total-row grand-total">
-                <span>Total Facture</span>
-                <span style="color: #3b82f6;">${invoice.totalAmount ? invoice.totalAmount.toLocaleString('fr-FR') : '0'} GNF</span>
+                <span>Total TTC</span>
+                <span style="color: #3b82f6;">${finalTotal.toLocaleString('fr-FR')} GNF</span>
               </div>
             </div>
           </div>

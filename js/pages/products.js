@@ -184,7 +184,18 @@ async function renderProducts(container) {
       <input type="text" id="prod-search" placeholder="Rechercher..." class="filter-input" oninput="filterProducts()">
       <select id="prod-cat" class="filter-select" onchange="filterProducts()">
         <option value="">Toutes catégories</option>
-        ${[...new Set(products.map(p => (p.category || '').trim()).filter(Boolean))].sort().map(c => `<option value="${c}">${c}</option>`).join('')}
+        ${(() => {
+          const allProductCats = new Set(products.map(p => (p.category || '').trim()).filter(Boolean));
+          const builtOptions = _PHARMA_CATEGORIES.map(g => {
+            const existingItems = g.items.filter(item => allProductCats.has(item));
+            if (existingItems.length === 0) return '';
+            return `<optgroup label="${g.group}">${existingItems.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`;
+          }).join('');
+          const coveredCats = new Set(_PHARMA_CATEGORIES.flatMap(g => g.items));
+          const leftoverCats = [...allProductCats].filter(c => !coveredCats.has(c)).sort();
+          const leftoversOptGroup = leftoverCats.length > 0 ? `<optgroup label="Autres">${leftoverCats.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>` : '';
+          return builtOptions + leftoversOptGroup;
+        })()}
       </select>
       <select id="prod-form" class="filter-select" onchange="filterProducts()">
         <option value="">Toutes les formes</option>
@@ -223,6 +234,22 @@ async function renderProducts(container) {
   filterProducts();
   if (window.lucide) lucide.createIcons();
   if (window._autoAnimateKPIValues) setTimeout(_autoAnimateKPIValues, 100);
+
+  if (!document.getElementById('scroll-float-btns')) {
+    const scrollWidget = document.createElement('div');
+    scrollWidget.id = 'scroll-float-btns';
+    scrollWidget.innerHTML = `
+      <button onclick="window.scrollTo({top:0,behavior:'smooth'})" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)"><i data-lucide='chevron-up'></i></button>
+      <button onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)"><i data-lucide='chevron-down'></i></button>
+    `;
+    scrollWidget.style.cssText = 'position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:999';
+    document.body.appendChild(scrollWidget);
+    if (window.lucide) lucide.createIcons();
+  }
+  Router.onLeave(() => {
+    const el = document.getElementById('scroll-float-btns');
+    if (el) el.remove();
+  });
 }
 
 function filterProducts() {
@@ -492,37 +519,11 @@ async function bulkEditProducts() {
   const catOptions = `<option value="">— Choisir —</option>` + allCats.map(c => `<option value="${c}">${c}</option>`).join('');
   const formOptions = `<option value="">— Choisir —</option>` + allForms.map(f => `<option value="${f}">${f}</option>`).join('');
 
-  const gridRows = products.filter(Boolean).map(p => {
-    const margin = p.salePrice && p.purchasePrice ? ((p.salePrice - p.purchasePrice) / p.salePrice * 100).toFixed(1) : 0;
-    return `
-      <tr id="bulk-row-${p.id}">
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${p.name}</strong></td>
-        <td><input type="number" id="bulk-row-pa-${p.id}" value="${p.purchasePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="updateBulkRowMargin(${p.id})"></td>
-        <td><input type="number" id="bulk-row-pv-${p.id}" value="${p.salePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="updateBulkRowMargin(${p.id})"></td>
-        <td><strong id="bulk-row-marge-${p.id}" style="color:var(--primary);">${margin}%</strong></td>
-        <td><input type="number" id="bulk-row-min-${p.id}" value="${p.minStock || 10}" class="form-input" style="width:70px;padding:4px 8px;"></td>
-        <td><input type="date" id="bulk-row-exp-${p.id}" value="${p.expiryDate || ''}" class="form-input" style="width:125px;padding:4px 8px;"></td>
-        <td>
-          <select id="bulk-row-cat-${p.id}" class="form-select" style="width:130px;padding:4px 8px;">
-            <option value="">— Choisir —</option>
-            ${allCats.map(c => `<option value="${c}" ${p.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select id="bulk-row-form-${p.id}" class="form-select" style="width:110px;padding:4px 8px;">
-            <option value="">— Choisir —</option>
-            ${allForms.map(f => `<option value="${f}" ${(p.form || p.forme) === f ? 'selected' : ''}>${f}</option>`).join('')}
-          </select>
-        </td>
-        <td>
-          <select id="bulk-row-sup-${p.id}" class="form-select" style="width:120px;padding:4px 8px;">
-            <option value="">— Aucun —</option>
-            ${suppliers.map(s => `<option value="${s.id}" ${p.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
-          </select>
-        </td>
-      </tr>
-    `;
-  }).join('');
+  // Stocker les données pour la pagination
+  window._bulkEditProducts = products.filter(Boolean);
+  window._bulkSuppliers = suppliers;
+  window._bulkGridPage = 1;
+  window._bulkGridPerPage = 10;
 
   UI.modal(
     `<i data-lucide="layers" class="modal-icon-inline"></i> Modification en lot — ${ids.length} produit${ids.length > 1 ? 's' : ''}`,
@@ -564,12 +565,13 @@ async function bulkEditProducts() {
               <th>Fournisseur</th>
             </tr>
           </thead>
-          <tbody>
-            ${gridRows}
+          <tbody id="bulk-grid-tbody">
+            <!-- Contenu dynamique paginé -->
           </tbody>
         </table>
       </div>
-      <div style="padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:13px;color:var(--text-muted)">
+      <div id="bulk-grid-pagination"></div>
+      <div style="padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:13px;color:var(--text-muted);margin-top:10px;">
         ℹ️ Ajustez les valeurs individuellement pour chaque produit de la grille avant de sauvegarder.
       </div>
     </div>
@@ -584,6 +586,9 @@ async function bulkEditProducts() {
   );
   if (window.lucide) lucide.createIcons();
   
+  // Rendre la première page
+  window.renderBulkGridPage(1);
+
   // Stocker l'état actuel de l'onglet actif
   window._bulkActiveTab = 'identical';
   window._bulkSelectedIds = ids;
@@ -608,7 +613,8 @@ window.switchBulkTab = function(tab) {
     if (gridPanel) gridPanel.style.display = 'block';
     identicalBtn?.classList.remove('active');
     gridBtn?.classList.add('active');
-    if (saveBtn) saveBtn.setAttribute('onclick', 'applyBulkEditGrid()');
+    if (saveBtn) saveBtn.setAttribute('onclick', 'window.applyBulkEditGrid()');
+    window.renderBulkGridPage(window._bulkGridPage || 1);
   }
 };
 
@@ -752,41 +758,116 @@ async function applyBulkEdit() {
   Router.navigate('products');
 }
 
+window._updateBulkProductField = function(id, field, value) {
+  const p = (window._bulkEditProducts || []).find(x => x.id === id);
+  if (!p) return;
+  if (['purchasePrice', 'salePrice', 'minStock'].includes(field)) {
+    p[field] = parseFloat(value) || 0;
+  } else if (field === 'supplierId') {
+    p[field] = parseInt(value) || null;
+  } else {
+    p[field] = value;
+  }
+
+  if (field === 'purchasePrice' || field === 'salePrice') {
+    const marginSpan = document.getElementById(`bulk-row-marge-${id}`);
+    if (marginSpan) {
+      const pa = p.purchasePrice || 0;
+      const pv = p.salePrice || 0;
+      const margin = pv > 0 ? ((pv - pa) / pv * 100).toFixed(1) : 0;
+      marginSpan.innerText = `${margin}%`;
+    }
+  }
+};
+
+window.renderBulkGridPage = function(page) {
+  window._bulkGridPage = page;
+  const products = window._bulkEditProducts || [];
+  const suppliers = window._bulkSuppliers || [];
+  const categoryGroups = window._PHARMA_CATEGORIES || [];
+  const allCats = categoryGroups.flatMap(g => g.items || []);
+  const allForms = ['Comprimé','Gélule','Sirop','Suspension','Solution injectable','Pommade','Crème','Gel','Suppositoire','Ovule','Gouttes','Spray','Inhalateur','Patch','Sachet','Granulé','Lyophilisat'];
+
+  const start = (page - 1) * window._bulkGridPerPage;
+  const end = start + window._bulkGridPerPage;
+  const pageProducts = products.slice(start, end);
+
+  const tbody = document.getElementById('bulk-grid-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = pageProducts.map(p => {
+    const margin = p.salePrice && p.purchasePrice ? ((p.salePrice - p.purchasePrice) / p.salePrice * 100).toFixed(1) : 0;
+    return `
+      <tr id="bulk-row-${p.id}">
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${p.name}</strong></td>
+        <td><input type="number" id="bulk-row-pa-${p.id}" value="${p.purchasePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'purchasePrice', this.value)"></td>
+        <td><input type="number" id="bulk-row-pv-${p.id}" value="${p.salePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'salePrice', this.value)"></td>
+        <td><strong id="bulk-row-marge-${p.id}" style="color:var(--primary);">${margin}%</strong></td>
+        <td><input type="number" id="bulk-row-min-${p.id}" value="${p.minStock || 10}" class="form-input" style="width:70px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'minStock', this.value)"></td>
+        <td><input type="date" id="bulk-row-exp-${p.id}" value="${p.expiryDate || ''}" class="form-input" style="width:125px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'expiryDate', this.value)"></td>
+        <td>
+          <select id="bulk-row-cat-${p.id}" class="form-select" style="width:130px;padding:4px 8px;" onchange="window._updateBulkProductField(${p.id}, 'category', this.value)">
+            <option value="">— Choisir —</option>
+            ${allCats.map(c => `<option value="${c}" ${p.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select id="bulk-row-form-${p.id}" class="form-select" style="width:110px;padding:4px 8px;" onchange="window._updateBulkProductField(${p.id}, 'form', this.value)">
+            <option value="">— Choisir —</option>
+            ${allForms.map(f => `<option value="${f}" ${(p.form || p.forme) === f ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select id="bulk-row-sup-${p.id}" class="form-select" style="width:120px;padding:4px 8px;" onchange="window._updateBulkProductField(${p.id}, 'supplierId', this.value)">
+            <option value="">— Aucun —</option>
+            ${suppliers.map(s => `<option value="${s.id}" ${p.supplierId === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+          </select>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const totalPages = Math.ceil(products.length / window._bulkGridPerPage);
+  const pagCont = document.getElementById('bulk-grid-pagination');
+  if (pagCont) {
+    pagCont.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:13px; color:var(--text-muted)">
+        <div>Affichage de ${products.length ? start + 1 : 0} à ${Math.min(end, products.length)} sur ${products.length} produits</div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sm ${page > 1 ? 'btn-outline' : ''}" ${page === 1 ? 'disabled' : ''} onclick="window.renderBulkGridPage(${page - 1})">Précédent</button>
+          <span style="align-self:center;margin:0 4px;">Page ${page} / ${totalPages || 1}</span>
+          <button class="btn btn-sm ${page < totalPages ? 'btn-outline' : ''}" ${page === totalPages ? 'disabled' : ''} onclick="window.renderBulkGridPage(${page + 1})">Suivant</button>
+        </div>
+      </div>
+    `;
+  }
+};
+
 window.applyBulkEditGrid = async function() {
-  const ids = window._bulkSelectedIds || [];
-  if (!ids.length) return;
+  const products = window._bulkEditProducts || [];
+  if (!products.length) return;
 
   let done = 0;
 
-  for (const id of ids) {
-    const p = await DB.dbGet('products', id).catch(() => null);
-    if (!p) continue;
+  for (const p of products) {
+    const orig = await DB.dbGet('products', p.id).catch(() => null);
+    if (!orig) continue;
 
-    const pa = parseFloat(document.getElementById(`bulk-row-pa-${id}`)?.value) || 0;
-    const pv = parseFloat(document.getElementById(`bulk-row-pv-${id}`)?.value) || 0;
-    const min = parseInt(document.getElementById(`bulk-row-min-${id}`)?.value) || 10;
-    const exp = document.getElementById(`bulk-row-exp-${id}`)?.value || '';
-    const cat = document.getElementById(`bulk-row-cat-${id}`)?.value || '';
-    const form = document.getElementById(`bulk-row-form-${id}`)?.value || '';
-    const supId = parseInt(document.getElementById(`bulk-row-sup-${id}`)?.value) || null;
-
-    // Récupérer le nom du fournisseur si sélectionné
     let supName = '';
-    if (supId) {
-      const sObj = await DB.dbGet('suppliers', supId);
+    if (p.supplierId) {
+      const sObj = await DB.dbGet('suppliers', p.supplierId);
       if (sObj) supName = sObj.name;
     }
 
-    // Mettre à jour le produit
     const updatedProd = {
-      ...p,
-      purchasePrice: pa,
-      salePrice: pv,
-      minStock: min,
-      expiryDate: exp || null,
-      category: cat,
-      form: form,
-      supplierId: supId,
+      ...orig,
+      purchasePrice: p.purchasePrice,
+      salePrice: p.salePrice,
+      minStock: p.minStock,
+      expiryDate: p.expiryDate || null,
+      category: p.category,
+      form: p.form,
+      supplierId: p.supplierId,
       supplier: supName || null,
       updatedAt: Date.now()
     };
@@ -796,13 +877,13 @@ window.applyBulkEditGrid = async function() {
 
     // Mettre à jour en cascade dans les lots actifs
     const allLots = await DB.dbGetAll('lots').catch(() => []);
-    const productLots = allLots.filter(l => l.productId === id && l.status === 'active');
+    const productLots = allLots.filter(l => l.productId === p.id && l.status === 'active');
     for (const lot of productLots) {
       await DB.dbPut('lots', {
         ...lot,
-        purchasePrice: pa,
-        salePrice: pv,
-        expiryDate: exp || null,
+        purchasePrice: p.purchasePrice,
+        salePrice: p.salePrice,
+        expiryDate: p.expiryDate || null,
         supplier: supName || null,
         updatedAt: Date.now()
       });
@@ -863,7 +944,7 @@ async function viewProduct(id) {
 }
 
 // Catégories médicaments + parapharmacie (Phase 2 v9.4 — 55+ catégories)
-const _PHARMA_CATEGORIES = [
+window._PHARMA_CATEGORIES = [
   { group: 'Médicaments — Système Nerveux', items: ['Antalgique', 'Anti-inflammatoire', 'Antipyrétique', 'Anxiolytique', 'Antidépresseur', 'Antiépileptique', 'Neuroleptique', 'Myorelaxant', 'Anesthésique local'] },
   { group: 'Médicaments — Infectiologie', items: ['Antibiotique', 'Antiviral', 'Antifongique', 'Antiparasitaire', 'Antipaludique', 'Antituberculeux', 'Antiseptique'] },
   { group: 'Médicaments — Cardio & Vasculaire', items: ['Antihypertenseur', 'Antiarythmique', 'Anticoagulant', 'Vasodilatateur', 'Hypolipémiant', 'Diurétique', 'Veinotonique'] },
@@ -875,7 +956,10 @@ const _PHARMA_CATEGORIES = [
   { group: 'Parapharmacie', items: ['Parfumerie & Cosmétique', 'Hygiène & Soins', 'Huiles & Compléments', 'Nutrition & Diététique', 'Bébé & Maternité', 'Matériel Médical', 'Accessoires', 'Orthopédie', 'Optique & Lunetterie', 'Aromathérapie', 'Phytothérapie', 'Bien-être & Relaxation'] },
   { group: 'Autre', items: ['Autre'] }
 ];
-const _PARA_CATEGORIES = ['Parfumerie & Cosmétique', 'Hygiène & Soins', 'Huiles & Compléments', 'Nutrition & Diététique', 'Bébé & Maternité', 'Matériel Médical', 'Accessoires', 'Orthopédie', 'Optique & Lunetterie', 'Aromathérapie', 'Phytothérapie', 'Bien-être & Relaxation'];
+const _PHARMA_CATEGORIES = window._PHARMA_CATEGORIES;
+
+window._PARA_CATEGORIES = ['Parfumerie & Cosmétique', 'Hygiène & Soins', 'Huiles & Compléments', 'Nutrition & Diététique', 'Bébé & Maternité', 'Matériel Médical', 'Accessoires', 'Orthopédie', 'Optique & Lunetterie', 'Aromathérapie', 'Phytothérapie', 'Bien-être & Relaxation'];
+const _PARA_CATEGORIES = window._PARA_CATEGORIES;
 
 function _buildCategoryOptions(selected) {
   return _PHARMA_CATEGORIES.map(g =>

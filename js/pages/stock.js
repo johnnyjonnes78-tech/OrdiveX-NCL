@@ -96,7 +96,18 @@ async function renderStock(container) {
       </select>
       <select id="stock-filter-category" class="filter-select" onchange="filterStock()">
         <option value="">Toutes catégories</option>
-        ${[...new Set(products.map(p => (p.category || '').trim()).filter(Boolean))].sort().map(c => `<option value="${c}">${c}</option>`).join('')}
+        ${(() => {
+          const allProductCats = new Set(products.map(p => (p.category || '').trim()).filter(Boolean));
+          const builtOptions = (window._PHARMA_CATEGORIES || []).map(g => {
+            const existingItems = g.items.filter(item => allProductCats.has(item));
+            if (existingItems.length === 0) return '';
+            return `<optgroup label="${g.group}">${existingItems.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`;
+          }).join('');
+          const coveredCats = new Set((window._PHARMA_CATEGORIES || []).flatMap(g => g.items));
+          const leftoverCats = [...allProductCats].filter(c => !coveredCats.has(c)).sort();
+          const leftoversOptGroup = leftoverCats.length > 0 ? `<optgroup label="Autres">${leftoverCats.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>` : '';
+          return builtOptions + leftoversOptGroup;
+        })()}
       </select>
       <select id="stock-filter-form" class="filter-select" onchange="filterStock()">
         <option value="">Toutes les formes</option>
@@ -116,6 +127,22 @@ async function renderStock(container) {
   renderStockTable(stockData);
 
   document.getElementById('stock-search')?.focus();
+
+  if (!document.getElementById('scroll-float-btns')) {
+    const scrollWidget = document.createElement('div');
+    scrollWidget.id = 'scroll-float-btns';
+    scrollWidget.innerHTML = `
+      <button onclick="window.scrollTo({top:0,behavior:'smooth'})" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)"><i data-lucide='chevron-up'></i></button>
+      <button onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})" style="width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2)"><i data-lucide='chevron-down'></i></button>
+    `;
+    scrollWidget.style.cssText = 'position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:999';
+    document.body.appendChild(scrollWidget);
+    if (window.lucide) lucide.createIcons();
+  }
+  Router.onLeave(() => {
+    const el = document.getElementById('scroll-float-btns');
+    if (el) el.remove();
+  });
 }
 
 function filterStock() {

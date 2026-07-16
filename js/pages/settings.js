@@ -56,7 +56,7 @@ function renderLogin(container) {
         </div>
         
         <div class="login-footer-elite">
-          <span class="version-tag">OrdiveX v9.5.0</span>
+          <span class="version-tag">OrdiveX v9.7.75</span>
           <div class="network-tag ${(window.NM ? window.NM.isOnline() : navigator.onLine) ? 'online' : 'offline'}">
             <i data-lucide="${(window.NM ? window.NM.isOnline() : navigator.onLine) ? 'wifi' : 'wifi-off'}"></i>
             ${(window.NM ? window.NM.isOnline() : navigator.onLine) ? 'Système synchronisé' : 'Mode hors-ligne'}
@@ -513,7 +513,6 @@ async function renderSettings(container) {
       </div>
     </div>
 
-    <!-- ONGLETS -->
     <div class="settings-tabs">
       <button class="settings-tab-btn active" onclick="switchSettingsTab('pharmacie',this)"><i data-lucide="hospital"></i> Pharmacie</button>
       <button class="settings-tab-btn" onclick="switchSettingsTab('utilisateurs',this)"><i data-lucide="users"></i> Utilisateurs</button>
@@ -522,10 +521,6 @@ async function renderSettings(container) {
       <button class="settings-tab-btn" onclick="switchSettingsTab('cloud',this)"><i data-lucide="cloud"></i> Cloud & Sync</button>
       <button class="settings-tab-btn" onclick="switchSettingsTab('sms',this)"><i data-lucide="message-square"></i> SMS</button>
       <button class="settings-tab-btn" onclick="switchSettingsTab('paiements',this)"><i data-lucide="credit-card"></i> Paiements</button>
-      <button class="settings-tab-btn" onclick="switchSettingsTab('ventes',this)"><i data-lucide="shopping-cart"></i> Ventes</button>
-      <button class="settings-tab-btn" onclick="switchSettingsTab('achats',this)"><i data-lucide="package"></i> Achats</button>
-      <button class="settings-tab-btn" onclick="switchSettingsTab('stock_params',this)"><i data-lucide="warehouse"></i> Stock</button>
-      <button class="settings-tab-btn" onclick="switchSettingsTab('interface',this)"><i data-lucide="monitor"></i> Interface</button>
       <button class="settings-tab-btn" onclick="switchSettingsTab('permissions',this)"><i data-lucide="shield-check"></i> Permissions</button>
     </div>
 
@@ -625,7 +620,6 @@ async function renderSettings(container) {
               <div class="user-card2-actions" style="display:flex; gap:6px; width:100%; justify-content:center; flex-wrap:wrap;">
                 <button class="btn btn-sm btn-ghost" onclick="viewEmployee360(${u.id})" title="Profil 360°" style="flex:0 0 auto; width:36px; padding:6px 0;"><i data-lucide="bar-chart-3"></i></button>
                 <button class="btn btn-sm btn-secondary" onclick="editUser(${u.id})" title="Modifier" style="flex:1; white-space:nowrap;"><i data-lucide="edit-3"></i> Modifier</button>
-                <button class="btn btn-sm btn-secondary" onclick="editUserPermissions(${u.id})" title="Permissions individuelles" style="flex:1; white-space:nowrap;"><i data-lucide="shield"></i> Droits</button>
                 <button class="btn btn-sm btn-ghost" onclick="resetUserPin(${u.id},'${(u.name||'').replace(/'/g,'')}')" title="Réinitialiser PIN" style="flex:0 0 auto; width:36px; padding:6px 0;"><i data-lucide="key-round"></i></button>
               </div>
             </div>`;
@@ -658,11 +652,16 @@ async function renderSettings(container) {
                 <span id="coeff-generic-display" style="font-size:16px;font-weight:800;color:var(--primary);white-space:nowrap;min-width:60px">× ${parseFloat(gs('pricing_coeff_generic') || '1.12').toFixed(2)}</span>
               </div>
             </div>
-            <div style="background:var(--bg-secondary);border-radius:10px;padding:14px;font-size:13px;border-left:4px solid var(--primary)">
+            <div class="form-group" style="grid-column: span 2; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 16px;">
+              <label style="font-weight: 700;">Configuration de la TVA (%) ou Formule de calcul</label>
+              <input type="text" name="pharmacy_tva" id="pharmacy-tva" class="form-control" placeholder="Ex: 18 pour 18%, ou formule libre comme: subtotal * 0.18" value="${gs('pharmacy_tva') || '0'}">
+              <small style="color:var(--text-muted); display: block; margin-top: 4px;">Entrez un nombre simple (ex: 18) pour un pourcentage de 18% appliqué sur le total net de la facture. Pour une formule personnalisée, utilisez les variables : <code>subtotal</code> et <code>discount</code>.</small>
+            </div>
+            <div style="background:var(--bg-secondary);border-radius:10px;padding:14px;font-size:13px;border-left:4px solid var(--primary); grid-column: span 2;">
               <strong>Comment ça marche :</strong><br>
               Saisissez le <strong>Prix d'achat</strong> lors de la création d'un produit. Le <strong>Prix de vente</strong> est calculé automatiquement selon le type. Vous pouvez toujours l'ajuster manuellement.
             </div>
-            <button type="button" class="btn btn-primary" onclick="savePricingSettings()"><i data-lucide="save"></i> Sauvegarder les coefficients</button>
+            <button type="button" class="btn btn-primary" onclick="savePricingSettings()"><i data-lucide="save"></i> Sauvegarder les réglages</button>
           </form>
         </div>
         <div class="settings-card2" style="background:linear-gradient(135deg,var(--surface),var(--bg-secondary))">
@@ -870,123 +869,6 @@ async function renderSettings(container) {
       </div>
     </div>
 
-    <!-- ══════════════ ONGLET : VENTES ══════════════ -->
-    <div class="settings-tab-pane" id="tab-ventes">
-      <div class="settings-2col">
-        <div class="settings-card2">
-          <h3 class="settings-card2-title"><i data-lucide="shopping-cart"></i> Paramètres de Vente</h3>
-          <p style="font-size:.83rem;color:var(--text-muted);margin-bottom:16px">Configurez le comportement du Point de Vente selon vos règles métier.</p>
-          <div>
-            ${[['sale_allow_credit','Autoriser la Vente à Crédit','Permet de valider une vente sans paiement immédiat'],['sale_allow_no_stock','Vente sans Stock','Autorise la vente même si le stock est insuffisant ou nul'],['sale_allow_discount','Remise autorisée','Affiche le champ de remise sur le POS'],['sale_auto_print','Impression automatique du ticket','Imprime le reçu automatiquement après chaque vente'],['sale_open_drawer','Ouverture tiroir-caisse','Commande d\'ouverture automatique du tiroir-caisse']].map(([key,label,desc]) => `
-            <div class="settings-toggle-row">
-              <div class="settings-toggle-label"><strong>${label}</strong><span>${desc}</span></div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-${key}" ${gs(key) === 'true' ? 'checked' : ''} onchange="saveToggleSetting('${key}',this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════════════ ONGLET : ACHATS ══════════════ -->
-    <div class="settings-tab-pane" id="tab-achats">
-      <div class="settings-2col">
-        <div class="settings-card2">
-          <h3 class="settings-card2-title"><i data-lucide="package"></i> Paramètres des Achats</h3>
-          <p style="font-size:.83rem;color:var(--text-muted);margin-bottom:16px">Définissez les champs obligatoires lors de la réception de marchandises.</p>
-          <div>
-            ${[['purchase_lot_required','N° de Lot obligatoire','Exige la saisie du numéro de lot à la réception'],['purchase_expiry_required','Date d\'expiration obligatoire','Bloque la validation sans date de péremption'],['purchase_saleprice_required','Prix de Vente obligatoire','Exige la saisie du prix de vente à la réception'],['purchase_allow_edit_after','Modifier après validation','Autorise les corrections après validation d\'un bon de réception']].map(([key,label,desc]) => `
-            <div class="settings-toggle-row">
-              <div class="settings-toggle-label"><strong>${label}</strong><span>${desc}</span></div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-${key}" ${gs(key) === 'true' ? 'checked' : ''} onchange="saveToggleSetting('${key}',this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════════════ ONGLET : STOCK ══════════════ -->
-    <div class="settings-tab-pane" id="tab-stock_params">
-      <div class="settings-2col">
-        <div class="settings-card2">
-          <h3 class="settings-card2-title"><i data-lucide="warehouse"></i> Paramètres du Stock</h3>
-          <p style="font-size:.83rem;color:var(--text-muted);margin-bottom:16px">Configurez le comportement de la gestion des stocks.</p>
-          <div class="form-grid" style="gap:14px;margin-bottom:20px">
-            <div class="form-group">
-              <label>Seuil d'alerte par défaut (unités)</label>
-              <input type="number" id="set-stock_alert_threshold" class="form-control" style="max-width:160px" value="${gs('stock_alert_threshold') || '5'}" min="0" onchange="saveInputSetting('stock_alert_threshold',this.value)">
-              <small style="color:var(--text-muted)">Un produit passe en alerte sous ce seuil</small>
-            </div>
-            <div class="form-group">
-              <label>Méthode de valorisation</label>
-              <select id="set-stock_valuation_method" class="form-control" style="max-width:200px" onchange="saveInputSetting('stock_valuation_method',this.value)">
-                <option value="FEFO" ${gs('stock_valuation_method')==='FEFO'?'selected':''}>FEFO (Premier expiré, premier sorti)</option>
-                <option value="FIFO" ${gs('stock_valuation_method')==='FIFO'?'selected':''}>FIFO (Premier entré, premier sorti)</option>
-                <option value="LIFO" ${gs('stock_valuation_method')==='LIFO'?'selected':''}>LIFO (Dernier entré, premier sorti)</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            ${[['stock_allow_negative','Autoriser Stock Négatif','Permet de vendre même si le stock descend sous zéro'],['stock_block_on_rupture','Bloquer la vente en rupture','Empêche la validation au POS si le stock est à zéro']].map(([key,label,desc]) => `
-            <div class="settings-toggle-row">
-              <div class="settings-toggle-label"><strong>${label}</strong><span>${desc}</span></div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="set-${key}" ${gs(key) === 'true' ? 'checked' : ''} onchange="saveToggleSetting('${key}',this.checked)">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>`).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══════════════ ONGLET : INTERFACE ══════════════ -->
-    <div class="settings-tab-pane" id="tab-interface">
-      <div class="settings-2col">
-        <div class="settings-card2">
-          <h3 class="settings-card2-title"><i data-lucide="monitor"></i> Personnalisation de l'Interface</h3>
-          <div class="form-grid" style="gap:14px">
-            <div class="form-group">
-              <label>Devise</label>
-              <select id="set-currency" class="form-control" onchange="saveInputSetting('currency',this.value)">
-                <option value="GNF" ${gs('currency')==='GNF'||!gs('currency')?'selected':''}>GNF — Franc Guinéen</option>
-                <option value="USD" ${gs('currency')==='USD'?'selected':''}>USD — Dollar américain</option>
-                <option value="EUR" ${gs('currency')==='EUR'?'selected':''}>EUR — Euro</option>
-                <option value="XOF" ${gs('currency')==='XOF'?'selected':''}>XOF — Franc CFA BCEAO</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Format de date</label>
-              <select id="set-date_format" class="form-control" onchange="saveInputSetting('date_format',this.value)">
-                <option value="DD/MM/YYYY" ${gs('date_format')==='DD/MM/YYYY'||!gs('date_format')?'selected':''}>DD/MM/YYYY (ex: 12/07/2026)</option>
-                <option value="MM/DD/YYYY" ${gs('date_format')==='MM/DD/YYYY'?'selected':''}>MM/DD/YYYY (ex: 07/12/2026)</option>
-                <option value="YYYY-MM-DD" ${gs('date_format')==='YYYY-MM-DD'?'selected':''}>YYYY-MM-DD (ISO)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Format ticket de caisse</label>
-              <select id="set-ticket_format" class="form-control" onchange="saveInputSetting('ticket_format',this.value)">
-                <option value="compact" ${gs('ticket_format')==='compact'||!gs('ticket_format')?'selected':''}>Compact (58mm)</option>
-                <option value="standard" ${gs('ticket_format')==='standard'?'selected':''}>Standard (80mm)</option>
-                <option value="a4" ${gs('ticket_format')==='a4'?'selected':''}>A4</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Format impression A4</label>
-              <select id="set-print_format_a4" class="form-control" onchange="saveInputSetting('print_format_a4',this.value)">
-                <option value="portrait" ${gs('print_format_a4')==='portrait'||!gs('print_format_a4')?'selected':''}>Portrait</option>
-                <option value="landscape" ${gs('print_format_a4')==='landscape'?'selected':''}>Paysage</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- ══════════════ ONGLET : PERMISSIONS ══════════════ -->
     <div class="settings-tab-pane" id="tab-permissions">
@@ -1072,16 +954,37 @@ window.renderPermissionsGrid = async function() {
   const rolePerms = (window._rolePermissions || {})[roleKey] || Auth._defaultPerms[roleKey] || [];
 
   const perms = Auth.ALL_PERMISSIONS;
-  const cats = Auth.ALL_PERMISSION_CATS || [{ key: 'all', label: 'Toutes les permissions' }];
+  // Filtrer la catégorie 'modules' car elle est maintenant répartie hiérarchiquement dans les modules respectifs
+  const cats = (Auth.ALL_PERMISSION_CATS || []).filter(c => c.key !== 'modules');
 
   const badgeColors = { admin:'#7c3aed', pharmacien:'#0ea5e9', caissier:'#10b981', responsable:'#f59e0b', rh:'#ec4899', gestionnaire_stock:'#6366f1', comptable:'#14b8a6', assistant:'#94a3b8' };
   const roleColor = badgeColors[roleKey] || '#6366f1';
 
+  // Mapping des catégories de permissions de l'UI vers leur parent respectif (clé de module)
+  const CAT_PARENTS = {
+    session: 'module_shifts',
+    sales: 'module_sales',
+    stock: 'module_stock',
+    inventory: 'module_inventory',
+    achats: 'module_achats',
+    patients: 'module_patients',
+    accounting: 'module_accounting',
+    caisse: 'module_caisse',
+    hr: 'module_rh',
+    admin: 'module_settings'
+  };
+
   const catIcons = {
-    access: 'layout-dashboard', sessions: 'log-in', sales: 'shopping-cart',
-    stock: 'package', inventory: 'clipboard-list', purchases: 'truck',
-    patients: 'heart-pulse', accounting: 'calculator', hr: 'users',
-    system: 'settings'
+    session: 'clock-3',
+    sales: 'shopping-cart',
+    stock: 'package',
+    inventory: 'clipboard-list',
+    achats: 'factory',
+    patients: 'users',
+    accounting: 'landmark',
+    caisse: 'banknote',
+    hr: 'user-cog',
+    admin: 'settings-2'
   };
 
   // Recherche en direct
@@ -1122,8 +1025,26 @@ window.renderPermissionsGrid = async function() {
     }
     if (catPerms.length === 0) return;
 
-    // Compter les permissions actives dans cette catégorie
+    // Récupérer la permission d'accès globale (parent)
+    const parentKey = CAT_PARENTS[cat.key];
+    const parentPerm = perms.find(p => p.key === parentKey);
+
+    // Compter les permissions actives dans cette catégorie (y compris le parent)
     let activeCount = 0;
+    let totalCount = catPerms.length;
+    
+    // Déterminer l'état du parent
+    let parentHas = false;
+    if (parentKey) {
+      totalCount += 1; // On compte le parent dans le total
+      if (userPerms !== null && userPerms[parentKey] !== undefined) {
+        parentHas = userPerms[parentKey];
+      } else {
+        parentHas = rolePerms.includes(parentKey);
+      }
+      if (parentHas) activeCount++;
+    }
+
     catPerms.forEach(p => {
       let has;
       if (userPerms !== null && userPerms[p.key] !== undefined) { has = userPerms[p.key]; }
@@ -1133,7 +1054,7 @@ window.renderPermissionsGrid = async function() {
 
     const isOpen = searchQuery ? true : (window._permCatsOpen[cat.key] !== undefined ? window._permCatsOpen[cat.key] : catIdx === 0);
     const icon = catIcons[cat.key] || 'folder';
-    const pctActive = Math.round((activeCount / catPerms.length) * 100);
+    const pctActive = Math.round((activeCount / totalCount) * 100);
     const barColor = pctActive === 100 ? '#10b981' : pctActive > 50 ? '#f59e0b' : '#ef4444';
 
     html += `
@@ -1145,7 +1066,7 @@ window.renderPermissionsGrid = async function() {
         <i data-lucide="${isOpen ? 'chevron-down' : 'chevron-right'}" style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;transition:transform .2s"></i>
         <i data-lucide="${icon}" style="width:18px;height:18px;color:${roleColor};flex-shrink:0"></i>
         <span style="font-weight:700;font-size:.9rem;flex:1">${cat.label}</span>
-        <span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap;font-weight:600">${activeCount}/${catPerms.length}</span>
+        <span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap;font-weight:600">${activeCount}/${totalCount}</span>
         <div style="width:50px;height:5px;border-radius:10px;background:var(--border);overflow:hidden;flex-shrink:0">
           <div style="width:${pctActive}%;height:100%;background:${barColor};border-radius:10px;transition:width .3s"></div>
         </div>
@@ -1157,6 +1078,25 @@ window.renderPermissionsGrid = async function() {
 
     if (isOpen) {
       html += `<div style="border-top:1px solid var(--border)">`;
+
+      // 1. Rendu du SWITCH PARENT GLOBAL DU MODULE
+      if (parentKey && parentPerm) {
+        const isParentCustomized = userPerms !== null && userPerms[parentKey] !== undefined;
+        html += `
+          <div style="background:var(--bg-secondary, var(--bg));padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;border-left:4px solid var(--primary)">
+            <label style="display:flex;align-items:center;gap:12px;cursor:pointer;flex:1;margin:0">
+              <input type="checkbox" id="user_perm_${parentKey}" ${parentHas ? 'checked' : ''}
+                onchange="window._toggleSubPermsVisibility('${cat.key}',this.checked)"
+                style="width:19px;height:19px;cursor:pointer;accent-color:var(--primary);flex-shrink:0">
+              <span style="font-weight:800;font-size:.9rem;color:var(--text-primary)">${parentPerm.label}</span>
+            </label>
+            ${isParentCustomized ? '<span style="font-size:.68rem;color:#f59e0b;white-space:nowrap;font-weight:700;background:rgba(245,158,11,.1);padding:2px 7px;border-radius:10px">Personnalisé</span>' : '<span style="font-size:.68rem;color:var(--text-muted);white-space:nowrap">Hérité</span>'}
+          </div>`;
+      }
+
+      // 2. Rendu des SOUS-PERMISSIONS dans un conteneur pliable
+      html += `<div id="sub-perms-${cat.key}" style="display:${parentHas ? 'block' : 'none'};transition:all .3s ease">`;
+
       catPerms.forEach((perm, i) => {
         const bg = i % 2 === 0 ? 'var(--surface)' : 'var(--bg)';
         let hasPerm;
@@ -1174,10 +1114,11 @@ window.renderPermissionsGrid = async function() {
             <input type="checkbox" id="user_perm_${perm.key}" ${hasPerm ? 'checked' : ''}
               style="width:17px;height:17px;cursor:pointer;accent-color:var(--primary);flex-shrink:0">
             <span style="flex:1;font-size:.85rem;font-weight:500">${perm.label}</span>
-            ${isCustomized ? '<span style="font-size:.68rem;color:#f59e0b;white-space:nowrap;font-weight:700;background:rgba(245,158,11,.1);padding:2px 7px;border-radius:10px">Personnalise</span>' : '<span style="font-size:.68rem;color:var(--text-muted);white-space:nowrap">Herite</span>'}
+            ${isCustomized ? '<span style="font-size:.68rem;color:#f59e0b;white-space:nowrap;font-weight:700;background:rgba(245,158,11,.1);padding:2px 7px;border-radius:10px">Personnalisé</span>' : '<span style="font-size:.68rem;color:var(--text-muted);white-space:nowrap">Hérité</span>'}
           </label>`;
       });
-      html += `</div>`;
+
+      html += `</div></div>`;
     }
 
     html += `</div>`;
@@ -1189,8 +1130,38 @@ window.renderPermissionsGrid = async function() {
   if (window.lucide) lucide.createIcons({ node: container });
 };
 
+// Fonction de basculement visuel des sous-permissions en temps réel
+window._toggleSubPermsVisibility = function(catKey, checked) {
+  const el = document.getElementById(`sub-perms-${catKey}`);
+  if (el) {
+    el.style.display = checked ? 'block' : 'none';
+  }
+};
+
 // Cocher/decocher toutes les permissions d'une catégorie
 window._toggleCatPerms = function(catKey, checked) {
+  // Cocher également la permission parent
+  const CAT_PARENTS = {
+    session: 'module_shifts',
+    sales: 'module_sales',
+    stock: 'module_stock',
+    inventory: 'module_inventory',
+    achats: 'module_achats',
+    patients: 'module_patients',
+    accounting: 'module_accounting',
+    caisse: 'module_caisse',
+    hr: 'module_rh',
+    admin: 'module_settings'
+  };
+  const parentKey = CAT_PARENTS[catKey];
+  if (parentKey) {
+    const parentChk = document.getElementById(`user_perm_${parentKey}`);
+    if (parentChk) {
+      parentChk.checked = checked;
+      window._toggleSubPermsVisibility(catKey, checked);
+    }
+  }
+
   const catPerms = Auth.ALL_PERMISSIONS.filter(p => (p.cat || 'all') === catKey);
   catPerms.forEach(perm => {
     const chk = document.getElementById(`user_perm_${perm.key}`);
@@ -1205,7 +1176,23 @@ window.setAllPermissions = function(checked) {
     const chk = document.getElementById(`user_perm_${perm.key}`);
     if (chk) chk.checked = checked;
   });
-  UI.toast(checked ? 'Toutes les permissions cochees' : 'Toutes les permissions decochees', 'info', 1500);
+  // Déployer ou replier toutes les catégories d'affichage
+  const CAT_PARENTS = {
+    session: 'module_shifts',
+    sales: 'module_sales',
+    stock: 'module_stock',
+    inventory: 'module_inventory',
+    achats: 'module_achats',
+    patients: 'module_patients',
+    accounting: 'module_accounting',
+    caisse: 'module_caisse',
+    hr: 'module_rh',
+    admin: 'module_settings'
+  };
+  Object.keys(CAT_PARENTS).forEach(catKey => {
+    window._toggleSubPermsVisibility(catKey, checked);
+  });
+  UI.toast(checked ? 'Toutes les permissions cochées' : 'Toutes les permissions décochées', 'info', 1500);
 };
 
 // ─── SAUVEGARDER LES PERMISSIONS D'UN UTILISATEUR ─────────────────────────────
@@ -1536,14 +1523,8 @@ function showAddUser() {
           <label>Rôle *</label>
           <select name="role" class="form-control" required>
             <option value="admin">Administrateur</option>
-            <option value="responsable">Responsable</option>
-            <option value="rh">RH</option>
             <option value="pharmacien">Pharmacien</option>
             <option value="caissier">Caissier</option>
-            <option value="receptionniste">Réceptionniste</option>
-            <option value="gestionnaire_stock">Gestionnaire de stock</option>
-            <option value="comptable">Comptable</option>
-            <option value="assistant">Assistant</option>
           </select>
         </div>
       </div>
@@ -1602,14 +1583,8 @@ async function editUser(id) {
           <label>Rôle *</label>
           <select name="role" class="form-control" required>
             <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrateur</option>
-            <option value="responsable" ${u.role === 'responsable' ? 'selected' : ''}>Responsable</option>
-            <option value="rh" ${u.role === 'rh' ? 'selected' : ''}>RH</option>
             <option value="pharmacien" ${u.role === 'pharmacien' ? 'selected' : ''}>Pharmacien</option>
             <option value="caissier" ${u.role === 'caissier' ? 'selected' : ''}>Caissier</option>
-            <option value="receptionniste" ${u.role === 'receptionniste' ? 'selected' : ''}>Réceptionniste</option>
-            <option value="gestionnaire_stock" ${u.role === 'gestionnaire_stock' ? 'selected' : ''}>Gestionnaire de stock</option>
-            <option value="comptable" ${u.role === 'comptable' ? 'selected' : ''}>Comptable</option>
-            <option value="assistant" ${u.role === 'assistant' ? 'selected' : ''}>Assistant</option>
           </select>
         </div>
       </div>

@@ -561,6 +561,20 @@ function mcRenderReorder(contentEl) {
     consumption[si.productId] = (consumption[si.productId] || 0) + (si.quantity || 0);
   });
 
+  // Identifier les ventes d'aujourd'hui et d'hier (médicaments sortis récemment)
+  const todayStr = now.toISOString().split('T')[0];
+  const yest = new Date(now);
+  yest.setDate(yest.getDate() - 1);
+  const yesterdayStr = yest.toISOString().split('T')[0];
+
+  const soldTodayOrYesterday = {};
+  const dailySalesRecent = allSales.filter(s => s.date && (s.date.startsWith(todayStr) || s.date.startsWith(yesterdayStr)));
+  const dailySaleIdsRecent = new Set(dailySalesRecent.map(s => s.id));
+  const dailyItemsRecent = allSaleItems.filter(si => dailySaleIdsRecent.has(si.saleId));
+  dailyItemsRecent.forEach(si => {
+    soldTodayOrYesterday[si.productId] = (soldTodayOrYesterday[si.productId] || 0) + (si.quantity || 0);
+  });
+
   // Nombre de jours effectifs (entre premiere vente et aujourd'hui, max 30)
   const nbDays = 30;
 
@@ -602,7 +616,17 @@ function mcRenderReorder(contentEl) {
 
     // Quantite suggeree pour atteindre 30 jours de couverture
     const targetStock = Math.ceil(cmq * 30);
-    const suggestedQty = Math.max(0, targetStock - currentStock);
+    let suggestedQty = Math.max(0, targetStock - currentStock);
+
+    // Si le produit a été vendu aujourd'hui ou hier et n'est pas déjà critique/élevé, forcer une priorité Moyenne
+    const qtyRecent = soldTodayOrYesterday[p.id] || 0;
+    if (qtyRecent > 0 && (priority >= 4 || !priorityLabel)) {
+      priority = 3;
+      priorityLabel = 'Moyenne';
+      priorityCls = 'badge-info';
+      justification = `Vente recente (${qtyRecent} u. vendue(s) aujourd'hui/hier).`;
+      suggestedQty = Math.max(suggestedQty, qtyRecent);
+    }
 
     return {
       id: p.id, name: p.name, category: p.category, form: p.form,

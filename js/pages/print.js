@@ -57,7 +57,7 @@ const PrintEngine = {
           </div>
         </div>
         <div class="print-footer-center">
-          <p class="print-legal">Document généré par OrdiveX v9.7.58</p>
+          <p class="print-legal">Document généré par OrdiveX v9.7.75</p>
           <p class="print-legal">Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
         </div>
         <div class="print-footer-right">
@@ -139,7 +139,7 @@ const PrintEngine = {
         <p class="ticket-thanks">Merci pour votre confiance</p>
         <p class="ticket-advice">Respectez les prescriptions medicales</p>
         <p class="ticket-legal">${pResp} - Pharmacien responsable</p>
-        <p class="ticket-legal">OrdiveX v9.7.58 - ${saleDate.toLocaleDateString('fr-FR')}</p>
+        <p class="ticket-legal">OrdiveX v9.7.75 - ${saleDate.toLocaleDateString('fr-FR')}</p>
       </div>
     `);
     win.document.close();
@@ -167,7 +167,26 @@ const PrintEngine = {
     const payLabels = { cash: 'Espèces', orange_money: 'Orange Money', mtn_momo: 'MTN MoMo', credit: 'Crédit', transfer: 'Virement', assurance: 'Assurance', combined: 'Paiement Mixte' };
     const subtotal = items.reduce((a, i) => a + (i.total || 0), 0);
     const discount = sale.discount || 0;
-    const total = sale.total || subtotal - discount;
+
+    const tvaSetting = (get('pharmacy_tva') || '0').trim();
+    let tva = 0;
+    if (tvaSetting && tvaSetting !== '0') {
+      if (!isNaN(tvaSetting)) {
+        tva = Math.round((subtotal - discount) * (parseFloat(tvaSetting) / 100));
+      } else {
+        try {
+          const formula = tvaSetting
+            .replace(/subtotal/g, String(subtotal))
+            .replace(/discount/g, String(discount));
+          tva = Math.round(Function(`"use strict"; return (${formula})`)());
+        } catch (e) {
+          console.error('[TVA] Erreur formule:', e);
+          tva = 0;
+        }
+      }
+    }
+    const finalTotal = (subtotal - discount) + tva;
+
     const saleDate = sale.date ? new Date(sale.date) : new Date();
     const invoiceRef = 'FAC-' + String(saleId).padStart(8, '0');
 
@@ -298,19 +317,20 @@ const PrintEngine = {
         <div class="inv-tots"><div class="inv-tb">
           <div class="inv-tr"><span>Sous-total (${items.length} article${items.length > 1 ? 's' : ''})</span><span>${UI.formatCurrency(subtotal)}</span></div>
           ${discount > 0 ? '<div class="inv-tr disc"><span>Remise accordée</span><span>-' + UI.formatCurrency(discount) + '</span></div>' : ''}
-          <div class="inv-tr gt"><span>TOTAL TTC</span><span>${UI.formatCurrency(total)}</span></div>
+          ${tva > 0 ? '<div class="inv-tr"><span>TVA (' + tvaSetting + (!isNaN(tvaSetting) ? '%' : '') + ')</span><span>' + UI.formatCurrency(tva) + '</span></div>' : ''}
+          <div class="inv-tr gt"><span>TOTAL TTC</span><span>${UI.formatCurrency(finalTotal)}</span></div>
         </div></div>
         <div class="inv-pb">Mode de paiement : ${payLabels[sale.paymentMethod] || sale.paymentMethod || 'â€”'}</div>
-        ${sale.paymentMethod === 'cash' && sale.cashReceived ? '<div style="font-size:11px;color:#555;margin-bottom:4px;">Reçu: ' + UI.formatCurrency(sale.cashReceived) + ' · Monnaie: ' + UI.formatCurrency(sale.cashReceived - total) + '</div>' : ''}
+        ${sale.paymentMethod === 'cash' && sale.cashReceived ? '<div style="font-size:11px;color:#555;margin-bottom:4px;">Reçu: ' + UI.formatCurrency(sale.cashReceived) + ' · Monnaie: ' + UI.formatCurrency(sale.cashReceived - finalTotal) + '</div>' : ''}
         ${sale.paymentMethod === 'combined' && sale.paymentDetails ? '<div style="font-size:11px;color:#555;margin-bottom:4px;">' + (sale.paymentDetails.method1 || 'Mode 1') + ': ' + UI.formatCurrency(sale.paymentDetails.amount1 || 0) + ' · ' + (sale.paymentDetails.method2 || 'Mode 2') + ': ' + UI.formatCurrency(sale.paymentDetails.amount2 || 0) + '</div>' : ''}
-        ${sale.paymentMethod === 'assurance' && sale.insuranceDetails ? '<div style="font-size:11px;color:#1B4F72;margin-bottom:4px;">Assurance: ' + (sale.insuranceDetails.name || sale.assuranceName || '') + ' · N° ' + (sale.insuranceDetails.ref || sale.assuranceRef || '') + '<br>Part Entreprise: ' + UI.formatCurrency(sale.insuranceDetails.amount || 0) + ' · Part Patient: ' + UI.formatCurrency(total - (sale.insuranceDetails.amount || 0)) + '</div>' : ''}
+        ${sale.paymentMethod === 'assurance' && sale.insuranceDetails ? '<div style="font-size:11px;color:#1B4F72;margin-bottom:4px;">Assurance: ' + (sale.insuranceDetails.name || sale.assuranceName || '') + ' · N° ' + (sale.insuranceDetails.ref || sale.assuranceRef || '') + '<br>Part Entreprise: ' + UI.formatCurrency(sale.insuranceDetails.amount || 0) + ' · Part Patient: ' + UI.formatCurrency(finalTotal - (sale.insuranceDetails.amount || 0)) + '</div>' : ''}
         ${sale.paymentMethod === 'credit' && sale.creditDueDate ? '<div style="font-size:11px;color:#e74c3c;margin-bottom:4px;">Ã‰chéance: ' + UI.formatDate(sale.creditDueDate) + '</div>' : ''}
         <div class="inv-ft">
           <div class="inv-sig"><div class="inv-sl"></div><div class="inv-sn">${pResp}</div><div class="inv-sr">Pharmacien responsable</div></div>
           <div style="text-align:center"><div style="font-size:10px;color:#888">Ce document tient lieu de facture officielle.</div><div style="font-size:10px;color:#888">Conservez-le comme preuve d'achat.</div></div>
           <div class="inv-sig"><div class="inv-sl"></div><div class="inv-sn">Cachet</div><div class="inv-sr">& Signature</div></div>
         </div>
-        <div class="inv-lg">Document généré par OrdiveX v9.7.58 · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
+        <div class="inv-lg">Document généré par OrdiveX v9.7.75 · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
       </div>
     `);
     win.document.close();
@@ -519,8 +539,8 @@ const PrintEngine = {
     win.document.write(`
       ${this._printStyles()}
       <div class="report-container">
-        ${this.header('RAPPORT DE CAISSE JOURNALIÃˆRE')}
-        <h3>Journée du ${new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</h3>
+        ${this.header('RAPPORT DE CAISSE JOURNALIERE')}
+        <h3>Journee du ${new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</h3>
 
         <table class="report-table" style="margin-bottom:16px">
           <thead><tr><th>Mode de paiement</th><th>Nombre de ventes</th><th>Montant total</th></tr></thead>
@@ -530,20 +550,20 @@ const PrintEngine = {
             `).join('')}
           </tbody>
           <tfoot>
-            <tr><td><strong>Remises accordées</strong></td><td></td><td>-${UI.formatCurrency(totalDiscount)}</td></tr>
-            <tr class="invoice-total-row"><td colspan="2"><strong>TOTAL ENCAISSÃ‰</strong></td><td><strong>${UI.formatCurrency(total)}</strong></td></tr>
+            <tr><td><strong>Remises accordees</strong></td><td></td><td>-${UI.formatCurrency(totalDiscount)}</td></tr>
+            <tr class="invoice-total-row"><td colspan="2"><strong>TOTAL ENCAISSE</strong></td><td><strong>${UI.formatCurrency(total)}</strong></td></tr>
           </tfoot>
         </table>
 
         ${dayClosure ? `
           <div class="pv-details">
             <p><strong>Fond d'ouverture :</strong> ${UI.formatCurrency(dayClosure.openingFund || 0)}</p>
-            <p><strong>Espèces attendues :</strong> ${UI.formatCurrency(dayClosure.expectedCash || 0)}</p>
-            <p><strong>Espèces comptées :</strong> ${UI.formatCurrency(dayClosure.physicalCash || 0)}</p>
-            <p><strong>Ã‰cart de caisse :</strong> ${UI.formatCurrency((dayClosure.physicalCash || 0) - (dayClosure.expectedCash || 0))}</p>
-            <p><strong>Clôturé par :</strong> ${dayClosure.closedBy || 'â€”'}</p>
+            <p><strong>Especes attendues :</strong> ${UI.formatCurrency(dayClosure.expectedCash || 0)}</p>
+            <p><strong>Especes comptees :</strong> ${UI.formatCurrency(dayClosure.physicalCash || 0)}</p>
+            <p><strong>Ecart de caisse :</strong> ${UI.formatCurrency((dayClosure.physicalCash || 0) - (dayClosure.expectedCash || 0))}</p>
+            <p><strong>Cloture par :</strong> ${dayClosure.closedBy || '-'}</p>
             ${dayClosure.note ? `<p><strong>Observations :</strong> ${dayClosure.note}</p>` : ''}
-          </div>` : '<p class="text-warning"><strong>âš ï¸ Caisse non clôturée pour cette journée</strong></p>'}
+          </div>` : '<p class="text-warning"><strong>[!] Caisse non cloturee pour cette journee</strong></p>'}
 
         ${this.footer()}
       </div>
@@ -904,7 +924,7 @@ const PrintEngine = {
           <div style="text-align:center"><div style="font-size:10px;color:#888">Ce bon de commande engage la pharmacie émettrice.</div><div style="font-size:10px;color:#888">Veuillez nous confirmer la réception et le délai.</div></div>
           <div class="inv-sig"><div class="inv-sl"></div><div class="inv-sn">Pour le Fournisseur</div><div class="inv-sr">Bon pour Accord & Signature</div></div>
         </div>
-        <div class="inv-lg">Document généré par OrdiveX v9.7.58 · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
+        <div class="inv-lg">Document généré par OrdiveX v9.7.75 · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
       </div>
     `);
     win.document.close();
@@ -983,26 +1003,6 @@ Router.register('print', (container) => {
         <h3>Bon de Commande Fournisseur</h3>
         <p>Imprimer un bon de commande depuis les fournisseurs</p>
         <button class="btn btn-secondary">Aller aux fournisseurs <i data-lucide="arrow-right"></i></button>
-      </div>
-    </div>
-
-    <h3 style="margin:24px 0 12px;color:var(--text-primary);">Rapport des Ventes Journalières</h3>
-    <div class="print-card" style="max-width:480px">
-      <div class="print-card-icon" style="color:#2980b9"><i data-lucide="bar-chart-2"></i></div>
-      <h3>Médicaments Vendus</h3>
-      <p>Rapport détaillé par journée : médicament, quantité, prix, total, vendeur.</p>
-      <div style="margin:14px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <label style="font-size:13px;font-weight:600;color:var(--text-primary)">Date :</label>
-        <input type="date" id="rapport-ventes-date" class="form-control" style="max-width:180px"
-          value="${new Date().toISOString().slice(0,10)}">
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        <button class="btn btn-primary" onclick="printRapportVentesJour()">
-          <i data-lucide="printer"></i> Imprimer
-        </button>
-        <button class="btn btn-secondary" onclick="exportRapportVentesJourPDF()">
-          <i data-lucide="file-down"></i> Export PDF
-        </button>
       </div>
     </div>`;
   if (window.lucide) lucide.createIcons();
@@ -1192,7 +1192,7 @@ PrintEngine.printPurchaseOrder = async function(orderId) {
         <div class="bc-sig"><div class="bc-sl"></div><div class="bc-sn">${pResp}</div><div class="bc-sr">Pharmacien responsable</div></div>
         <div class="bc-sig"><div class="bc-sl"></div><div class="bc-sn">Fournisseur</div><div class="bc-sr">Signature &amp; Cachet</div></div>
       </div>
-      <div class="bc-lg">Document g&eacute;n&eacute;r&eacute; par OrdiveX v9.7.58 &middot; ${new Date().toLocaleDateString('fr-FR')} &middot; ${pName}</div>
+      <div class="bc-lg">Document g&eacute;n&eacute;r&eacute; par OrdiveX v9.7.75 &middot; ${new Date().toLocaleDateString('fr-FR')} &middot; ${pName}</div>
     </div>
   `);
   win.document.close();
@@ -1307,70 +1307,3 @@ function _buildRapportVentesHTML(dateStr, rows, pharmacyName, pharmacyAddr, phar
 </html>`;
 }
 
-window.printRapportVentesJour = async function() {
-  const dateEl   = document.getElementById('rapport-ventes-date');
-  const dateStr  = dateEl?.value || new Date().toISOString().slice(0, 10);
-  UI.showLoader('Génération du rapport…');
-  try {
-    const rows = await _getRapportVentesData(dateStr);
-    await PrintEngine.loadSettings();
-    const pharmacyName = PrintEngine.settings?.pharmacy_name || 'Pharmacie';
-    const pharmacyAddr = PrintEngine.settings?.pharmacy_address || '';
-    const pharmacyTel  = PrintEngine.settings?.pharmacy_phone  || '';
-    const html = _buildRapportVentesHTML(dateStr, rows, pharmacyName, pharmacyAddr, pharmacyTel);
-    const win  = window.open('', '_blank', 'width=900,height=700');
-    if (!win) { UI.toast('Ouvrez les popups pour imprimer', 'error'); return; }
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => win.print();
-  } catch(e) {
-    UI.toast('Erreur : ' + e.message, 'error');
-  } finally {
-    UI.hideLoader();
-  }
-};
-
-window.exportRapportVentesJourPDF = async function() {
-  const dateEl  = document.getElementById('rapport-ventes-date');
-  const dateStr = dateEl?.value || new Date().toISOString().slice(0, 10);
-  UI.showLoader('Export PDF…');
-  try {
-    const rows = await _getRapportVentesData(dateStr);
-    await PrintEngine.loadSettings();
-    const pharmacyName = PrintEngine.settings?.pharmacy_name || 'Pharmacie';
-    const pharmacyAddr = PrintEngine.settings?.pharmacy_address || '';
-    const pharmacyTel  = PrintEngine.settings?.pharmacy_phone  || '';
-    const dateLabel    = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR');
-    const totalGlobal  = rows.reduce((s, r) => s + r.total, 0);
-
-    const headers = ['Médicament', 'Quantité', 'Prix Unitaire', 'Total', 'Vendeur', 'Heure'];
-    const data    = rows.map(r => [
-      r.medicament,
-      String(r.qty),
-      r.prixUnit.toLocaleString('fr-FR') + ' GNF',
-      r.total.toLocaleString('fr-FR') + ' GNF',
-      r.vendeur,
-      r.heure,
-    ]);
-    const subHeader = [
-      pharmacyName + (pharmacyAddr ? ' — ' + pharmacyAddr : ''),
-      `Date : ${dateLabel}`,
-      `Total journée : ${totalGlobal.toLocaleString('fr-FR')} GNF`,
-    ];
-    if (window.PDFExport?.generate) {
-      await window.PDFExport.generate(
-        `Rapport Ventes — ${dateLabel}`,
-        headers,
-        data,
-        { subHeader, orientation: 'landscape' }
-      );
-    } else {
-      // Fallback : impression HTML
-      await window.printRapportVentesJour();
-    }
-  } catch(e) {
-    UI.toast('Erreur : ' + e.message, 'error');
-  } finally {
-    UI.hideLoader();
-  }
-};
