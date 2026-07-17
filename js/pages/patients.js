@@ -5,11 +5,13 @@
 
 async function renderPatients(container) {
   UI.loading(container, 'Chargement des dossiers patients...');
-  const [patients, prescriptions, sales] = await Promise.all([
+  const [patients, prescriptions, sales, insurances] = await Promise.all([
     DB.dbGetAll('patients'),
     DB.dbGetAll('prescriptions'),
     DB.dbGetAll('sales'),
+    DB.dbGetAll('insurances'),
   ]);
+  window._allInsurances = insurances || [];
 
   const sorted = patients.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
@@ -298,7 +300,9 @@ async function viewPatient(patientId) {
   await DB.writeAudit('VIEW_PATIENT', 'patients', patientId, { patientName: patient.name });
 }
 
-function showAddPatient() {
+async function showAddPatient() {
+  const insurances = await DB.dbGetAll('insurances');
+  window._allInsurances = insurances || [];
   UI.modal('<i data-lucide="user-plus" class="modal-icon-inline"></i> Nouveau Patient', `
     <form id="patient-form" class="form-grid">
       <div class="form-row">
@@ -372,6 +376,15 @@ function showAddPatient() {
   if (window.lucide) lucide.createIcons();
 }
 
+window.updateDefaultCoverage = function(select, idx) {
+  const selectedOption = select.options[select.selectedIndex];
+  const coverage = selectedOption.dataset.coverage;
+  if (coverage) {
+    const input = document.getElementById('assurCoverageInput_' + idx);
+    if (input) input.value = coverage;
+  }
+};
+
 window.addAssuranceRow = function(containerId, data = null) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -379,18 +392,27 @@ window.addAssuranceRow = function(containerId, data = null) {
   const row = document.createElement('div');
   row.className = 'assurance-row';
   row.style.cssText = "display:flex; gap:8px; margin-bottom:8px; align-items:end; background:var(--surface); padding:8px; border-radius:6px; border:1px solid var(--border);";
+
+  const insurancesList = window._allInsurances || [];
+  const optionsHtml = insurancesList.map(ins => 
+    `<option value="${ins.id}" data-coverage="${ins.coverage}" ${data?.insuranceId === ins.id || data?.name === ins.name ? 'selected' : ''}>${ins.name}</option>`
+  ).join('');
+
   row.innerHTML = `
     <div style="flex:2">
       <label style="font-size:11px;color:var(--text-muted)">Entreprise (Employeur)</label>
       <input type="text" name="assurEnterprise_${idx}" class="form-control form-control-sm" value="${data?.enterprise || ''}" placeholder="Ex: Rio Tinto, Braguinée...">
     </div>
     <div style="flex:2">
-      <label style="font-size:11px;color:var(--text-muted)">Assurance / Mutuelle</label>
-      <input type="text" name="assurName_${idx}" class="form-control form-control-sm" value="${data?.name || ''}" placeholder="Ex: ASCOMA, CNSS..." required>
+      <label style="font-size:11px;color:var(--text-muted)">Assurance / Mutuelle <span class="text-danger">*</span></label>
+      <select name="assurInsuranceId_${idx}" class="form-control form-control-sm" required onchange="updateDefaultCoverage(this, '${idx}')">
+        <option value="">-- Choisir --</option>
+        ${optionsHtml}
+      </select>
     </div>
     <div style="flex:1">
       <label style="font-size:11px;color:var(--text-muted)">Couverture (%)</label>
-      <input type="number" name="assurCoverage_${idx}" class="form-control form-control-sm" value="${data?.coverage || 80}" min="1" max="100" required>
+      <input type="number" id="assurCoverageInput_${idx}" name="assurCoverage_${idx}" class="form-control form-control-sm" value="${data?.coverage || 80}" min="1" max="100" required>
     </div>
     <div style="flex:2">
       <label style="font-size:11px;color:var(--text-muted)">N° Police / Matricule</label>
@@ -407,14 +429,21 @@ window.addAssuranceRow = function(containerId, data = null) {
 function extractAssurances(data) {
   const assurances = [];
   Object.keys(data).forEach(k => {
-    if (k.startsWith('assurName_')) {
+    if (k.startsWith('assurInsuranceId_')) {
       const idx = k.split('_')[1];
-      assurances.push({
-        name: data[k],
-        enterprise: data['assurEnterprise_' + idx] || '',
-        coverage: parseInt(data['assurCoverage_' + idx] || 0),
-        ref: data['assurRef_' + idx] || ''
-      });
+      const insuranceId = parseInt(data[k]);
+      const matched = (window._allInsurances || []).find(ins => ins.id === insuranceId);
+      
+      if (matched) {
+        assurances.push({
+          insuranceId: insuranceId,
+          name: matched.name,
+          enterprise: data['assurEnterprise_' + idx] || '',
+          coverage: parseInt(data['assurCoverage_' + idx] || 0),
+          ref: data['assurRef_' + idx] || ''
+        });
+      }
+      
       delete data[k];
       delete data['assurEnterprise_' + idx];
       delete data['assurCoverage_' + idx];
@@ -441,8 +470,12 @@ async function submitPatient() {
 }
 
 async function editPatient(patientId) {
-  const patient = await DB.dbGet('patients', patientId);
+  const [patient, insurances] = await Promise.all([
+    DB.dbGet('patients', patientId),
+    DB.dbGetAll('insurances')
+  ]);
   if (!patient) return;
+  window._allInsurances = insurances || [];
   UI.modal('<i data-lucide="edit-3" class="modal-icon-inline"></i> Modifier Patient', `
     <form id="edit-patient-form" class="form-grid">
       <div class="form-row">

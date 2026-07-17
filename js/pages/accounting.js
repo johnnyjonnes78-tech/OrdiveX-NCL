@@ -167,6 +167,20 @@
           user: userName,
           method: 'cash',
         });
+      } else if (c.type === 'debt_in') {
+        // Encaissement d'une créance assurance (tiers payant)
+        const userName = userMap[c.userId]?.name || userMap[c.userId]?.username || '—';
+        entries.push({
+          date: c.date,
+          type: 'recette',
+          category: 'Règlement Assurance',
+          label: c.reason || c.label || 'Encaissement tiers payant',
+          debit: 0,
+          credit: c.amount || 0,
+          ref: c.reference || '',
+          user: userName,
+          method: c.paymentMethod || 'transfer',
+        });
       }
     });
 

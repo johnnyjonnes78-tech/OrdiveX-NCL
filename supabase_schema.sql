@@ -1109,3 +1109,87 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS "productType" TEXT DEFAULT 'generi
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS "assuranceName" TEXT;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS "assuranceRef" TEXT;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS "assuranceAmount" NUMERIC DEFAULT 0;
+
+
+-- ============================================================
+-- OrdiveX v9.7.84 — Nouveau module Assurances & Tiers Payant
+-- Exécuter dans : Supabase → SQL Editor → New Query
+-- ✅ CREATE TABLE IF NOT EXISTS = aucune perte de données
+-- ✅ RLS activé selon le pattern des autres tables
+-- ============================================================
+-- ──────────────────────────────────────────────────────────
+-- TABLE 1 : insurances
+-- Entité assurance (organisme, conditions, couverture %)
+-- ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.insurances (
+  id                BIGINT PRIMARY KEY,
+  name              TEXT NOT NULL,           -- Nom de l'assurance / organisme
+  code              TEXT,                    -- Code interne
+  contact           TEXT,                    -- Nom du contact
+  phone             TEXT,                    -- Téléphone
+  email             TEXT,                    -- Email
+  address           TEXT,                    -- Adresse postale
+  referent          TEXT,                    -- Personne de référence
+  conditions        TEXT,                    -- Conditions de prise en charge
+  coveragePercent   NUMERIC(5,2) DEFAULT 0,  -- % de couverture (0-100)
+  paymentMode       TEXT DEFAULT 'invoice',  -- 'invoice' | 'direct'
+  status            TEXT DEFAULT 'active',   -- 'active' | 'inactive'
+  observations      TEXT,
+  createdAt         BIGINT,
+  updatedAt         BIGINT,
+  _synced           BOOLEAN DEFAULT TRUE
+);
+-- Index pour accélérer les recherches fréquentes
+CREATE INDEX IF NOT EXISTS idx_insurances_status    ON public.insurances (status);
+CREATE INDEX IF NOT EXISTS idx_insurances_name      ON public.insurances (name);
+CREATE INDEX IF NOT EXISTS idx_insurances_updatedat ON public.insurances (updatedAt);
+-- Row Level Security
+ALTER TABLE public.insurances ENABLE ROW LEVEL SECURITY;
+-- Politique : accès complet aux utilisateurs authentifiés
+DROP POLICY IF EXISTS "insurances_all" ON public.insurances;
+CREATE POLICY "insurances_all" ON public.insurances
+  FOR ALL USING (auth.role() = 'authenticated');
+-- ──────────────────────────────────────────────────────────
+-- TABLE 2 : insurancePayments
+-- Règlements reçus d'une assurance (paiements tiers payant)
+-- ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public."insurancePayments" (
+  id              BIGINT PRIMARY KEY,
+  insuranceId     BIGINT REFERENCES public.insurances(id) ON DELETE SET NULL,
+  amount          NUMERIC(15,2) DEFAULT 0,  -- Montant du règlement
+  paymentMethod   TEXT DEFAULT 'transfer',  -- 'cash' | 'transfer' | 'orange_money' | 'mtn_momo'
+  reference       TEXT,                     -- Référence virement / chèque
+  observations    TEXT,
+  userId          BIGINT,                   -- Utilisateur ayant enregistré le règlement
+  date            TEXT,                     -- Date au format YYYY-MM-DD
+  timestamp       BIGINT,                   -- Timestamp précis (ms)
+  createdAt       BIGINT,
+  updatedAt       BIGINT,
+  _synced         BOOLEAN DEFAULT TRUE
+);
+-- Index
+CREATE INDEX IF NOT EXISTS idx_inspaym_insuranceid  ON public."insurancePayments" (insuranceId);
+CREATE INDEX IF NOT EXISTS idx_inspaym_date         ON public."insurancePayments" (date);
+CREATE INDEX IF NOT EXISTS idx_inspaym_updatedat    ON public."insurancePayments" (updatedAt);
+-- Row Level Security
+ALTER TABLE public."insurancePayments" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "insurancePayments_all" ON public."insurancePayments";
+CREATE POLICY "insurancePayments_all" ON public."insurancePayments"
+  FOR ALL USING (auth.role() = 'authenticated');
+-- ──────────────────────────────────────────────────────────
+-- Colonnes insuranceId dans les tables existantes
+-- (pour les ventes en tiers payant)
+-- ──────────────────────────────────────────────────────────
+ALTER TABLE IF EXISTS public.sales
+  ADD COLUMN IF NOT EXISTS insuranceId          BIGINT,
+  ADD COLUMN IF NOT EXISTS insurancePaidAmount  NUMERIC(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS assuranceAmount      NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE IF EXISTS public.patients
+  ADD COLUMN IF NOT EXISTS assurances JSONB;   -- tableau des assurances liées
+-- ──────────────────────────────────────────────────────────
+-- Vérification : lister les nouvelles tables
+-- ──────────────────────────────────────────────────────────
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('insurances', 'insurancePayments')
+ORDER BY table_name;

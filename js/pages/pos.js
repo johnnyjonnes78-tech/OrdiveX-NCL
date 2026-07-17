@@ -324,13 +324,15 @@ async function renderPOS(container) {
       _posDataReady = true;
       _posDataTime = Date.now();
       renderFullPOSUI(container);
-      // Patients/prescriptions en arrière-plan
+      // Patients/prescriptions/assurances en arrière-plan
       Promise.all([
         DB.dbGetAll('patients'),
         DB.dbGetAll('prescriptions'),
-      ]).then(([patients, prescriptions]) => {
+        DB.dbGetAll('insurances'),
+      ]).then(([patients, prescriptions, insurances]) => {
         window._posPatients = patients;
         window._posPrescriptions = prescriptions.filter(rx => ['pending', 'validated'].includes(rx.status));
+        window._posInsurances = insurances || [];
       });
     };
     loadPOS();
@@ -1350,6 +1352,21 @@ function selectPay(btn) {
   }
 }
 
+window.onManualInsuranceChange = function(select) {
+  const selectedOption = select.options[select.selectedIndex];
+  if (!selectedOption.value) return;
+  const coverage = parseFloat(selectedOption.dataset.coverage || 0);
+  const name = selectedOption.text.split(' (')[0];
+  document.getElementById('assur-name').value = name;
+  
+  if (coverage > 0) {
+    const total = getTotal();
+    const amount = total * (coverage / 100);
+    document.getElementById('assur-amount').value = Math.round(amount);
+    calcAssurance();
+  }
+};
+
 function renderDynamicAssurances() {
   const container = document.getElementById('assur-dynamic-list');
   if (!container) return;
@@ -1365,6 +1382,7 @@ function renderDynamicAssurances() {
             <strong><i data-lucide="shield" style="width:14px;height:14px;margin-right:4px"></i>${assur.name} (${assur.coverage}%)</strong>
             <span style="color:var(--text-muted); font-size:11px">${assur.ref || 'Sans réf.'}</span>
           </div>
+          <input type="hidden" class="assur-insurance-id-field" value="${assur.insuranceId || ''}">
           <input type="hidden" class="assur-name-field" value="${assur.name}">
           <input type="hidden" class="assur-ref-field" value="${assur.ref}">
           <div style="font-size:11px;font-weight:700;color:#1A56DB; margin-bottom:6px">🛡️ Part prise en charge :</div>
@@ -1375,13 +1393,22 @@ function renderDynamicAssurances() {
     container.innerHTML = html;
     if (window.lucide) lucide.createIcons();
   } else {
-    // Default single assurance manual form
+    // Default single assurance selector
+    const insurancesList = window._posInsurances || [];
+    const optionsHtml = insurancesList.map(ins => 
+      `<option value="${ins.id}" data-coverage="${ins.coverage}">${ins.name} (${ins.coverage}%)</option>`
+    ).join('');
+
     container.innerHTML = `
-      <label class="pay-detail-label">Organisme & Prise en charge</label>
-      <input id="assur-name" type="text" class="pay-input assur-name-field" placeholder="Nom de l'assurance / Entreprise" style="margin-bottom:8px">
+      <label class="pay-detail-label">Organisme d'assurance <span class="text-danger">*</span></label>
+      <select id="assur-insurance-id" class="pay-input" onchange="onManualInsuranceChange(this)" style="margin-bottom:8px">
+        <option value="">-- Choisir une assurance --</option>
+        ${optionsHtml}
+      </select>
+      <input id="assur-name" type="hidden" class="assur-name-field">
       <input id="assur-ref" type="text" class="pay-input assur-ref-field" placeholder="Réf. Prise en charge" style="margin-bottom:8px">
       <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:#1A56DB">🛡️ Montant pris en charge par l'entreprise :</div>
-      <input id="assur-amount" type="number" class="pay-input assur-amount-field" placeholder="Part couverte par l'assurance (pas le total)" oninput="calcAssurance()" style="border-color:#1A56DB">
+      <input id="assur-amount" type="number" class="pay-input assur-amount-field" placeholder="Part couverte par l'assurance" oninput="calcAssurance()" style="border-color:#1A56DB">
     `;
   }
 }
@@ -2253,20 +2280,22 @@ async function _validerVenteLogic() {
       const blocks = document.querySelectorAll('#assur-dynamic-list .dynamic-assur-block');
       if (blocks.length > 0) {
         blocks.forEach(block => {
+          const insId = parseInt(block.querySelector('.assur-insurance-id-field')?.value || 0);
           const name = block.querySelector('.assur-name-field').value;
           const ref = block.querySelector('.assur-ref-field').value;
           const amt = parseFloat(block.querySelector('.assur-amount-field').value || 0);
           if (amt > 0) {
-            insuranceDetails.push({ name, ref, amount: amt });
+            insuranceDetails.push({ insuranceId: insId, name, ref, amount: amt });
             assurAmt += amt;
           }
         });
       } else {
+        const insId = parseInt(document.getElementById('assur-insurance-id')?.value || 0);
         const name = (document.getElementById('assur-name')?.value || '').trim();
         const ref = (document.getElementById('assur-ref')?.value || '').trim();
         const amt = parseFloat(document.getElementById('assur-amount')?.value || 0);
         if (amt > 0) {
-          insuranceDetails.push({ name, ref, amount: amt });
+          insuranceDetails.push({ insuranceId: insId, name, ref, amount: amt });
           assurAmt += amt;
         }
       }
@@ -2275,13 +2304,15 @@ async function _validerVenteLogic() {
       const pMethod = document.getElementById('assur-patient-method')?.value || 'cash';
 
       assurData = {
+        insuranceId: insuranceDetails.length === 1 ? insuranceDetails[0].insuranceId : null,
         assuranceName: insuranceDetails.length === 1 ? insuranceDetails[0].name : 'Multi-Assurances',
         assuranceRef: insuranceDetails.length === 1 ? insuranceDetails[0].ref : 'Multiple',
         assuranceAmount: assurAmt,
+        insurancePaidAmount: 0,
         insuranceDetails: insuranceDetails.length > 0 ? insuranceDetails : null
       };
 
-      combinedDetails = [...insuranceDetails.map(ins => ({ method: 'assurance', amount: ins.amount, entity: ins.name }))];
+      combinedDetails = [...insuranceDetails.map(ins => ({ method: 'assurance', amount: ins.amount, entity: ins.name, insuranceId: ins.insuranceId }))];
       if (patientPart > 0) {
         combinedDetails.push({ method: pMethod, amount: patientPart, label: 'Ticket modérateur' });
       }

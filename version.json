@@ -1,5 +1,5 @@
 {
-  "version": "9.7.82",
+  "version": "9.7.84",
   "date": "2026-07-17",
-  "changelog": "v9.7.82 : Refonte complète du système de permissions — 90+ permissions granulaires basées sur les fonctionnalités réelles, sauvegarde instantanée, garde de navigation centralisé."
+  "changelog": "v9.7.84 : Refonte complète module Assurances & Tiers Payant : nouveau module ERP indépendant (insurances.js), stores IndexedDB insurances + insurancePayments, migration automatique des données historiques, sélection assurance dans fiche patient et POS, imputation FIFO des règlements, catégorie \"Règlement Assurance\" dans comptabilité générale."
 }
