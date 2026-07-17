@@ -2105,11 +2105,16 @@ async function _internalPullFromSupabase(isManual = false) {
 
             const results = await Promise.all(batch.map(async ({ storeName: sn, tableName: tn }) => {
               try {
+                // PostgreSQL convertit les noms non-quotés en minuscules.
+                // Pour insurances et insurancePayments, la colonne s'appelle "updatedat"
+                // (sans guillemets dans le CREATE TABLE), pas "updatedAt".
+                const _insTablesNoCamel = ['insurances', 'insurancepayments'];
+                const updatedAtCol = _insTablesNoCamel.includes(tn.toLowerCase()) ? 'updatedat' : 'updatedAt';
                 const { data, error } = await _withTimeout(
                   sb.from(tn)
                     .select('*')
-                    .gte('updatedAt', pullSince)
-                    .order('updatedAt', { ascending: true })
+                    .gte(updatedAtCol, pullSince)
+                    .order(updatedAtCol, { ascending: true })
                     .limit(5000)
                 );
                 if (error) return { sn, data: null, error };

@@ -1,5 +1,5 @@
 {
-  "version": "9.7.86",
+  "version": "9.7.87",
   "date": "2026-07-17",
-  "changelog": "v9.7.86 : Correction du module Entrées/Sorties de Caisse (ne concerne pas les médicaments, réassigné à la trésorerie manuelle cashRegister), suppression des émojis du module Assurances pour les remplacer par des icônes SVG/Lucide professionnelles."
+  "changelog": "v9.7.87 : Correction bug paiement échelonné assurance (ne marque plus paid si partiel), filtre par période sur historique factures par assurance, export CSV détaillé avec état avant/après règlement, panneau de détails agrandi, correction erreur Supabase 400 sur colonnes updatedat (PostgreSQL minuscule)."
 }

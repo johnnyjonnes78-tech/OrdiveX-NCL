@@ -74,22 +74,22 @@ async function renderInsurances(container) {
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start;">
+    <div style="display:grid; grid-template-columns: 340px 1fr; gap:20px; align-items:start;">
       <!-- COLONNE GAUCHE : LISTE DES ASSURANCES -->
-      <div class="card" style="padding:16px;">
+      <div class="card" style="padding:16px; position:sticky; top:80px;">
         <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <i data-lucide="list"></i> Liste des Organismes
         </h3>
         <div class="form-group" style="margin-bottom:12px;">
           <input type="text" id="insurance-list-search" class="form-control" placeholder="Rechercher par nom, code..." oninput="filterInsurancesList()">
         </div>
-        <div id="insurances-list-container" style="max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+        <div id="insurances-list-container" style="max-height:calc(100vh - 340px); overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
           <!-- Injecté dynamiquement -->
         </div>
       </div>
 
       <!-- COLONNE DROITE : SYNTHÈSE / DÉTAILS DE L'ASSURANCE -->
-      <div id="insurance-details-container">
+      <div id="insurance-details-container" style="min-height:60vh;">
         <div class="empty-state" style="padding:60px; text-align:center; background:var(--surface); border-radius:12px; border:1px solid var(--border);">
           <div class="empty-icon" style="font-size:48px; color:var(--text-muted); margin-bottom:12px;"><i data-lucide="shield-alert"></i></div>
           <h3 style="font-size:16px; font-weight:700; margin-bottom:4px;">Aucun organisme sélectionné</h3>
@@ -166,6 +166,8 @@ async function selectInsurance(id) {
 
   // Récupérer les ventes et paiements liés à cette assurance
   const allPayments = await DB.dbGetAll('insurancePayments') || [];
+  // Stocker en cache global pour l'export CSV
+  window._insurancesPaymentsCache = allPayments;
   const payments = allPayments.filter(p => p.insuranceId === id).sort((a,b) => b.timestamp - a.timestamp);
   const sales = window._insurancesSales.filter(s => s.paymentMethod === 'assurance' && s.insuranceId === id)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -188,92 +190,113 @@ async function selectInsurance(id) {
   container.innerHTML = `
     <div class="card" style="padding:20px;">
       <!-- EN-TÊTE ASSURANCE -->
-      <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
         <div>
           <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary-color);">Dossier Assurance</span>
           <h2 style="font-size:20px; font-weight:800; margin:4px 0 2px 0; color:var(--text);">${ins.name}</h2>
-          <div style="font-size:12px; color:var(--text-muted);">
-            Code interne : <code>${ins.code}</code> &bull; Mode : <strong>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</strong>
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px;">
+            <span>Code interne : <code>${ins.code}</code></span>
+            <span>&bull;</span>
+            <span>Mode : <strong>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</strong></span>
+            ${ins.contact ? `<span>&bull;</span><span><i data-lucide="user-cog" style="width:12px;height:12px;"></i> ${ins.contact}</span>` : ''}
+            ${ins.phone ? `<span><i data-lucide="phone" style="width:12px;height:12px;"></i> ${ins.phone}</span>` : ''}
           </div>
         </div>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" onclick="showEditInsuranceModal(${ins.id})"><i data-lucide="edit"></i> Modifier</button>
           <button class="btn btn-success btn-sm" ${totalDue <= 0 ? 'disabled' : ''} onclick="showAddPaymentModal(${ins.id}, ${totalDue})"><i data-lucide="credit-card"></i> Enregistrer Règlement</button>
         </div>
       </div>
 
       <!-- KPIs FINANCIERS DE L'ASSURANCE -->
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:20px;">
-        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:12px; border-radius:10px; text-align:center;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:14px 12px; border-radius:10px; text-align:center;">
           <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase;">Total Facturé</div>
           <div style="font-size:18px; font-weight:800; color:#0F172A; margin-top:4px;">${UI.formatCurrency(totalBilled)}</div>
+          <div style="font-size:10px; color:#94A3B8; margin-top:2px;">${sales.length} facture(s)</div>
         </div>
-        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:12px; border-radius:10px; text-align:center;">
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:14px 12px; border-radius:10px; text-align:center;">
           <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase;">Total Encaissé</div>
           <div style="font-size:18px; font-weight:800; color:#16A34A; margin-top:4px;">${UI.formatCurrency(totalPaid)}</div>
+          <div style="font-size:10px; color:#94A3B8; margin-top:2px;">${payments.length} règlement(s)</div>
         </div>
-        <div style="background:${totalDue > 0 ? '#FEF2F2' : '#F0FDF4'}; border:1px solid ${totalDue > 0 ? '#FEE2E2' : '#DCFCE7'}; padding:12px; border-radius:10px; text-align:center;">
+        <div style="background:${totalDue > 0 ? '#FEF2F2' : '#F0FDF4'}; border:1px solid ${totalDue > 0 ? '#FEE2E2' : '#DCFCE7'}; padding:14px 12px; border-radius:10px; text-align:center;">
           <div style="font-size:10px; color:${totalDue > 0 ? '#991B1B' : '#166534'}; font-weight:700; text-transform:uppercase;">Solde Restant</div>
           <div style="font-size:18px; font-weight:800; color:${totalDue > 0 ? '#DC2626' : '#15803D'}; margin-top:4px;">${UI.formatCurrency(totalDue)}</div>
+          <div style="font-size:10px; color:#94A3B8; margin-top:2px;">${totalDue > 0 ? 'Encours dû' : 'Soldé'}</div>
+        </div>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; padding:14px 12px; border-radius:10px; text-align:center;">
+          <div style="font-size:10px; color:#64748B; font-weight:700; text-transform:uppercase;">Couverture</div>
+          <div style="font-size:18px; font-weight:800; color:var(--primary-color); margin-top:4px;">${ins.coveragePercent || ins.coverage || 70}%</div>
+          <div style="font-size:10px; color:#94A3B8; margin-top:2px;">Part assurance</div>
         </div>
       </div>
 
       <!-- INFORMATIONS COMPLÉMENTAIRES -->
-      <div style="display:flex; flex-direction:column; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; font-size:14px; line-height:1.6;">
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:20px; border-bottom:1px solid var(--border); padding-bottom:14px;">
-          <div>
-            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
-              <i data-lucide="user-cog" style="width:16px;height:16px;"></i> Contact & Coordonnées
-            </h4>
-            <strong>Référent :</strong> ${ins.contact || 'Non renseigné'}<br>
-            <strong>Téléphone :</strong> ${ins.phone || '—'}<br>
-            <strong>E-mail :</strong> ${ins.email || '—'}<br>
-            <strong>Adresse :</strong> ${ins.address || '—'}
-          </div>
-          <div>
-            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
-              <i data-lucide="settings" style="width:16px;height:16px;"></i> Paramètres Tiers Payant
-            </h4>
-            <strong>Réf. Interne :</strong> ${ins.refPerson || '—'}<br>
-            <strong>Couverture standard :</strong> <span class="badge badge-info" style="font-size:12px; font-weight:700;">${ins.coveragePercent || ins.coverage || 70}%</span><br>
-            <strong>Mode règlement :</strong> <span>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</span><br>
-            <strong>Statut :</strong> <span class="badge badge-${ins.status === 'active' ? 'success' : 'danger'}">${ins.status === 'active' ? 'Active' : 'Inactive'}</span>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; font-size:14px; line-height:1.8;">
+        <div>
+          <h4 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); padding-bottom:6px;">
+            <i data-lucide="user-cog" style="width:14px;height:14px;"></i> Contact & Coordonnées
+          </h4>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div><span style="color:var(--text-muted); min-width:80px; display:inline-block;">Référent</span> <strong>${ins.contact || '—'}</strong></div>
+            <div><span style="color:var(--text-muted); min-width:80px; display:inline-block;">Téléphone</span> <strong>${ins.phone || '—'}</strong></div>
+            <div><span style="color:var(--text-muted); min-width:80px; display:inline-block;">E-mail</span> <strong>${ins.email || '—'}</strong></div>
+            <div><span style="color:var(--text-muted); min-width:80px; display:inline-block;">Adresse</span> <strong>${ins.address || '—'}</strong></div>
           </div>
         </div>
         <div>
-          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="file-text" style="width:16px;height:16px;"></i> Conditions de Prise en Charge
+          <h4 style="margin:0 0 10px 0; font-size:12px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); padding-bottom:6px;">
+            <i data-lucide="settings" style="width:14px;height:14px;"></i> Paramètres Tiers Payant
           </h4>
-          <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); font-style:italic; white-space:pre-wrap; color:var(--text);">${ins.conditions || 'Aucune condition spécifique définie.'}</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Réf. Interne</span> <code>${ins.refPerson || '—'}</code></div>
+            <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Couverture</span> <span class="badge badge-info" style="font-size:12px; font-weight:700;">${ins.coveragePercent || ins.coverage || 70}%</span></div>
+            <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Règlement</span> <span>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</span></div>
+            <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Statut</span> <span class="badge badge-${ins.status === 'active' ? 'success' : 'danger'}">${ins.status === 'active' ? 'Active' : 'Inactive'}</span></div>
+          </div>
         </div>
-        ${ins.observations ? `
-        <div>
-          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="notepad-text" style="width:16px;height:16px;"></i> Observations & Notes
+        <div style="grid-column:1/-1;">
+          <h4 style="margin:0 0 8px 0; font-size:12px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); padding-bottom:6px;">
+            <i data-lucide="file-text" style="width:14px;height:14px;"></i> Conditions de Prise en Charge
           </h4>
-          <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); white-space:pre-wrap; color:var(--text-muted);">${ins.observations}</div>
+          <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); font-style:italic; white-space:pre-wrap; color:var(--text); font-size:13px;">${ins.conditions || 'Aucune condition spécifique définie.'}</div>
+          ${ins.observations ? `<div style="margin-top:10px;"><h4 style="margin:0 0 6px 0; font-size:12px; font-weight:700; color:var(--primary-color); text-transform:uppercase; display:flex; align-items:center; gap:6px;"><i data-lucide="notepad-text" style="width:14px;height:14px;"></i> Observations</h4><div style="background:rgba(0,0,0,0.02); padding:10px 14px; border-radius:8px; border:1px dashed var(--border); white-space:pre-wrap; color:var(--text-muted); font-size:13px;">${ins.observations}</div></div>` : ''}
         </div>
-        ` : ''}
       </div>
 
       <!-- NAVIGATION PAR ONGLETS -->
-      <div style="display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; gap:16px;">
+      <div style="display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; gap:0; overflow-x:auto;">
         <button class="tab-header active" id="tab-btn-factures" onclick="switchInsuranceTab('factures')" 
-          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--primary-color); border-bottom:2px solid var(--primary-color); display:inline-flex; align-items:center; gap:6px;">
+          style="padding:10px 16px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--primary-color); border-bottom:2px solid var(--primary-color); display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
           <i data-lucide="receipt" style="width:16px;height:16px;"></i> Historique Factures (${sales.length})
         </button>
         <button class="tab-header" id="tab-btn-payments" onclick="switchInsuranceTab('payments')" 
-          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px;">
-          <i data-lucide="wallet" style="width:16px;height:16px;"></i> Règlements Reçus (${payments.length})
+          style="padding:10px 16px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
+          <i data-lucide="wallet" style="width:16px;height:16px;"></i> Règlements (${payments.length})
         </button>
         <button class="tab-header" id="tab-btn-group" onclick="switchInsuranceTab('group')" 
-          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px;">
-          <i data-lucide="building" style="width:16px;height:16px;"></i> Facturation Groupée & Relevés
+          style="padding:10px 16px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
+          <i data-lucide="building" style="width:16px;height:16px;"></i> Facturation Groupée
         </button>
       </div>
 
       <!-- ONGLET HISTORIQUE DES FACTURES -->
       <div class="insurance-tab-content" id="tab-content-factures">
+        <!-- Barre de filtre par période -->
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+          <i data-lucide="calendar-range" style="width:16px;height:16px; color:var(--text-muted);"></i>
+          <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Filtrer :</span>
+          <input type="date" id="sales-filter-from" class="form-control" style="width:auto; font-size:12px;" oninput="renderInsuranceSalesTableFiltered()">
+          <span style="color:var(--text-muted);">→</span>
+          <input type="date" id="sales-filter-to" class="form-control" style="width:auto; font-size:12px;" oninput="renderInsuranceSalesTableFiltered()">
+          <div style="display:flex; gap:6px; margin-left:4px;">
+            <button class="btn btn-secondary btn-sm" onclick="setInsuranceSalesPeriod('month')" style="font-size:11px;">Ce mois</button>
+            <button class="btn btn-secondary btn-sm" onclick="setInsuranceSalesPeriod('quarter')" style="font-size:11px;">Ce trimestre</button>
+            <button class="btn btn-secondary btn-sm" onclick="setInsuranceSalesPeriod('year')" style="font-size:11px;">Cette année</button>
+            <button class="btn btn-secondary btn-sm" onclick="setInsuranceSalesPeriod('all')" style="font-size:11px;">Tout afficher</button>
+          </div>
+        </div>
         <div id="insurance-sales-table"></div>
       </div>
 
@@ -331,38 +354,75 @@ function renderInsuranceSalesTable(sales) {
   const container = document.getElementById('insurance-sales-table');
   if (!container) return;
 
+  // Stocker pour usage par le filtre
+  window._currentInsuranceSales = sales;
+
   const columns = [
-    { label: 'Facture', render: r => `<code class="code-tag">#${String(r.id).padStart(6, '0')}</code>` },
-    { label: 'Date', render: r => UI.formatDate(r.date.split('T')[0]) },
+    { label: 'N° Facture', render: r => `<code class="code-tag">#${String(r.id).padStart(6, '0')}</code>` },
+    { label: 'Date', render: r => UI.formatDate(r.date ? r.date.split('T')[0] : '') },
     { label: 'Patient', render: r => `<strong>${r.patientName || 'Anonyme'}</strong>` },
     { label: 'Total Vente', render: r => UI.formatCurrency(r.total) },
-    { label: 'Prise en Charge', render: r => `<span class="text-primary" style="font-weight:700;">${UI.formatCurrency(r.assuranceAmount || r.total)}</span>` },
-    { label: 'Règlements Assurance', render: r => `<span class="text-success">${UI.formatCurrency(r.insurancePaidAmount || 0)}</span>` },
+    { label: 'Part Assurance', render: r => `<span class="text-primary" style="font-weight:700;">${UI.formatCurrency(r.assuranceAmount != null ? r.assuranceAmount : r.total)}</span>` },
+    { label: 'Déjà Réglé', render: r => `<span class="text-success">${UI.formatCurrency(r.insurancePaidAmount || 0)}</span>` },
     { 
       label: 'Reste à payer', 
       render: r => {
-        const due = Math.max(0, (r.assuranceAmount || r.total) - (r.insurancePaidAmount || 0));
+        const amt = r.assuranceAmount != null ? r.assuranceAmount : r.total;
+        const due = Math.max(0, amt - (r.insurancePaidAmount || 0));
         return due > 0 
           ? `<strong class="text-danger">${UI.formatCurrency(due)}</strong>` 
-          : `<span class="badge badge-success">Solder</span>`;
+          : `<span class="badge badge-success">Soldé</span>`;
       } 
     },
     {
       label: 'Statut',
       render: r => {
-        const due = Math.max(0, (r.assuranceAmount || r.total) - (r.insurancePaidAmount || 0));
-        return due === 0 
+        const amt = r.assuranceAmount != null ? r.assuranceAmount : r.total;
+        const due = Math.max(0, amt - (r.insurancePaidAmount || 0));
+        return due <= 0 
           ? `<span class="badge badge-success">Payé</span>` 
-          : `<span class="badge badge-warning">En cours</span>`;
+          : (r.insurancePaidAmount > 0)
+            ? `<span class="badge badge-warning">Partiel</span>`
+            : `<span class="badge badge-danger">Impayé</span>`;
       }
     }
   ];
 
   UI.table(container, columns, sales, {
-    emptyMessage: "Aucune facture associée à cet organisme.",
+    emptyMessage: "Aucune facture trouvée pour la période.",
     emptyIcon: 'file-text'
   });
 }
+
+window.renderInsuranceSalesTableFiltered = function() {
+  const fromVal = document.getElementById('sales-filter-from')?.value;
+  const toVal = document.getElementById('sales-filter-to')?.value;
+  let filtered = window._currentInsuranceSales || [];
+  if (fromVal) filtered = filtered.filter(s => (s.date || '') >= fromVal);
+  if (toVal) filtered = filtered.filter(s => (s.date || '').split('T')[0] <= toVal);
+  renderInsuranceSalesTable(filtered);
+};
+
+window.setInsuranceSalesPeriod = function(period) {
+  const today = new Date();
+  let from, to = today.toISOString().split('T')[0];
+  if (period === 'month') {
+    from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+  } else if (period === 'quarter') {
+    const q = Math.floor(today.getMonth() / 3);
+    from = new Date(today.getFullYear(), q * 3, 1).toISOString().split('T')[0];
+  } else if (period === 'year') {
+    from = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+  } else {
+    from = '';
+    to = '';
+  }
+  const fromEl = document.getElementById('sales-filter-from');
+  const toEl = document.getElementById('sales-filter-to');
+  if (fromEl) fromEl.value = from;
+  if (toEl) toEl.value = to;
+  renderInsuranceSalesTableFiltered();
+};
 
 function renderInsurancePaymentsTable(payments) {
   const container = document.getElementById('insurance-payments-table');
@@ -725,8 +785,15 @@ window.submitInsurancePayment = async function(event, insuranceId) {
     const paymentId = await DB.dbAdd('insurancePayments', paymentRecord);
 
     // 2. Imputer le paiement sur les créances (ventes en tiers payant) par FIFO
+    // On ne considère que les ventes avec un solde dû > 0 (non entièrement réglées)
     const activeSales = window._insurancesSales
-      .filter(s => s.paymentMethod === 'assurance' && s.insuranceId === insuranceId)
+      .filter(s => {
+        if (s.paymentMethod !== 'assurance' || s.insuranceId !== insuranceId) return false;
+        // Calculer la part assurance de cette vente
+        const saleAmt = s.assuranceAmount != null ? s.assuranceAmount : s.total;
+        const salePaid = s.insurancePaidAmount || 0;
+        return Math.max(0, saleAmt - salePaid) > 0; // uniquement celles avec solde > 0
+      })
       .sort((a,b) => new Date(a.date) - new Date(b.date)); // Du plus ancien au plus récent
 
     let amountRemaining = amount;
@@ -734,18 +801,28 @@ window.submitInsurancePayment = async function(event, insuranceId) {
     for (const sale of activeSales) {
       if (amountRemaining <= 0) break;
 
-      const saleDue = Math.max(0, (sale.assuranceAmount || sale.total) - (sale.insurancePaidAmount || 0));
+      // Utiliser assuranceAmount en priorité (part exacte prise en charge par l'assurance)
+      // Si absent, utiliser total (100% prise en charge)
+      const saleAssuranceAmt = sale.assuranceAmount != null ? sale.assuranceAmount : sale.total;
+      const alreadyPaid = sale.insurancePaidAmount || 0;
+      const saleDue = Math.max(0, saleAssuranceAmt - alreadyPaid);
       if (saleDue <= 0) continue;
 
       const paymentToApply = Math.min(amountRemaining, saleDue);
-      sale.insurancePaidAmount = (sale.insurancePaidAmount || 0) + paymentToApply;
+      sale.insurancePaidAmount = Math.round((alreadyPaid + paymentToApply) * 100) / 100;
       
-      const newDue = Math.max(0, (sale.assuranceAmount || sale.total) - sale.insurancePaidAmount);
-      if (newDue === 0) {
+      // Ne marquer comme 'paid' que si le solde restant est nul (avec tolérance 1 FCFA)
+      const newDue = Math.max(0, saleAssuranceAmt - sale.insurancePaidAmount);
+      if (newDue <= 1) {
+        // Entièrement soldé
         sale.status = 'paid';
         sale.paidAt = Date.now();
         sale.paidDate = todayStr;
         sale.paidMethod = data.paymentMethod;
+        sale.insurancePaidAmount = saleAssuranceAmt; // corriger les écarts d'arrondi
+      } else {
+        // Partiellement soldé — NE PAS marquer paid
+        sale.status = 'partial';
       }
       
       await DB.dbPut('sales', sale);
@@ -955,19 +1032,59 @@ window.exportGroupedCSV = function() {
   const sales = window._groupedFilteredSales || [];
   if (sales.length === 0) return UI.toast("Aucune donnée à exporter", "warning");
 
-  let csvContent = "\ufeff"; // BOM UTF-8
-  csvContent += "N° Facture;Date;Patient;Montant Total;Part Assurance;Montant Réglé;Reste à Payer\n";
+  // ─── Récupérer les paiements associés ───
+  const allPayments = window._insurancesPaymentsCache || [];
+  const insPayments = allPayments.filter(p => p.insuranceId === ins.id)
+    .sort((a,b) => a.timestamp - b.timestamp);
 
+  let csvContent = "\ufeff"; // BOM UTF-8
+
+  // Section 1 : Détail des factures avec état avant/après règlement
+  csvContent += `RELEVÉ DES CRÉANCES — ${ins.name} (Code: ${ins.code})\n`;
+  csvContent += `Organisme;${ins.name}\n`;
+  csvContent += `Code Interne;${ins.code}\n`;
+  csvContent += `Mode Règlement;${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}\n`;
+  csvContent += `Date d'export;${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}\n`;
+  csvContent += `\n`;
+
+  csvContent += `=== DÉTAIL DES FACTURES ===\n`;
+  csvContent += `N° Facture;Date;Patient / Assuré;Montant Total Vente;Part Assurance Initiale;Montant Réglé;Reste à Percevoir;Statut\n`;
+
+  let totalFacture = 0, totalPartAss = 0, totalRegle = 0, totalReste = 0;
   sales.forEach(s => {
-    const due = Math.max(0, (s.assuranceAmount || s.total) - (s.insurancePaidAmount || 0));
+    const partAss = s.assuranceAmount != null ? s.assuranceAmount : s.total;
+    const regle = s.insurancePaidAmount || 0;
+    const reste = Math.max(0, partAss - regle);
+    const statut = reste <= 0 ? 'SOLDÉ' : (regle > 0 ? 'PARTIEL' : 'IMPAYÉ');
+    totalFacture += s.total || 0;
+    totalPartAss += partAss;
+    totalRegle += regle;
+    totalReste += reste;
     csvContent += [
       '#' + String(s.id).padStart(6, '0'),
-      new Date(s.date).toLocaleDateString('fr-FR'),
-      s.patientName || 'Anonyme',
+      s.date ? new Date(s.date).toLocaleDateString('fr-FR') : '—',
+      `"${(s.patientName || 'Anonyme').replace(/"/g, "'")}"`  ,
       s.total,
-      s.assuranceAmount || s.total,
-      s.insurancePaidAmount || 0,
-      due
+      partAss,
+      regle,
+      reste,
+      statut
+    ].join(';') + "\n";
+  });
+
+  csvContent += `TOTAUX;;;${totalFacture};${totalPartAss};${totalRegle};${totalReste};\n`;
+  csvContent += `\n`;
+
+  // Section 2 : Historique des règlements reçus
+  csvContent += `=== HISTORIQUE DES RÈGLEMENTS REÇUS ===\n`;
+  csvContent += `Date Règlement;Montant Perçu;Mode Paiement;Référence / Chèque;Observations\n`;
+  insPayments.forEach(p => {
+    csvContent += [
+      p.timestamp ? new Date(p.timestamp).toLocaleDateString('fr-FR') : (p.date || '—'),
+      p.amount,
+      p.paymentMethod || '—',
+      `"${(p.reference || '').replace(/"/g, "'")}"`,
+      `"${(p.observations || '').replace(/"/g, "'")}"`
     ].join(';') + "\n";
   });
 
@@ -975,11 +1092,15 @@ window.exportGroupedCSV = function() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", url);
-  link.setAttribute("download", `Releve_Assurance_${ins.name.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+  const fromDate = document.getElementById('group-date-from')?.value || '';
+  const toDate = document.getElementById('group-date-to')?.value || '';
+  const suffix = fromDate && toDate ? `_${fromDate}_${toDate}` : `_${new Date().toISOString().split('T')[0]}`;
+  link.setAttribute("download", `Releve_Assurance_${ins.name.replace(/[^a-zA-Z0-9]/g, '_')}${suffix}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  UI.toast("Fichier CSV téléchargé", "success");
+  URL.revokeObjectURL(url);
+  UI.toast("Fichier CSV détaillé téléchargé", "success");
 };
 
 // Enregistrer la page dans le routeur principal
