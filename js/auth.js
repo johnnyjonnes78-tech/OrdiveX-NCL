@@ -98,7 +98,8 @@ const Auth = {
     return rolePerms.includes(action);
   },
 
-  // Permissions par défaut pour chaque rôle (modifiables depuis les  _defaultPerms: {
+  // Permissions par défaut pour chaque rôle (modifiables depuis les Paramètres)
+  _defaultPerms: {
     responsable: [
       'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_hr', 'module_shifts', 'module_settings',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
