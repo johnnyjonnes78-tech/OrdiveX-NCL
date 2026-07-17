@@ -101,7 +101,7 @@ const Auth = {
   // Permissions par défaut pour chaque rôle (modifiables depuis les Paramètres)
   _defaultPerms: {
     responsable: [
-      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_hr', 'module_shifts', 'module_settings',
+      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts', 'module_settings',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
       'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_price', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart',
       'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
@@ -118,11 +118,11 @@ const Auth = {
       'settings_view', 'settings_edit', 'settings_users', 'settings_permissions', 'settings_backup', 'settings_sync', 'settings_device'
     ],
     rh: [
-      'module_hr',
+      'module_rh',
       'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_manage_leaves', 'hr_write_caisse', 'hr_view_compta', 'hr_export_pdf'
     ],
     pharmacien: [
-      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_hr', 'module_shifts',
+      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
       'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart',
       'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
@@ -180,7 +180,7 @@ const Auth = {
     { key: 'module_traceability',      label: 'Accéder à la Traçabilité & Pharmacovigilance', cat: 'modules' },
     { key: 'module_management_control', label: 'Accéder au Pilotage & Contrôle',              cat: 'modules' },
     { key: 'module_accounting',        label: 'Accéder à la Comptabilité Générale',           cat: 'modules' },
-    { key: 'module_hr',                label: 'Accéder aux Ressources Humaines',              cat: 'modules' },
+    { key: 'module_rh',                label: 'Accéder aux Ressources Humaines',              cat: 'modules' },
     { key: 'module_shifts',            label: 'Accéder aux Équipes Matin / Soir',             cat: 'modules' },
     { key: 'module_settings',          label: 'Accéder aux Paramètres Généraux',              cat: 'modules' },
 
