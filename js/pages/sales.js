@@ -44,7 +44,7 @@ async function renderSales(container) {
         <p class="page-subtitle">Historique complet des transactions</p>
       </div>
       <div class="header-actions">
-        ${Auth.can('sales_view_stats') ? `<button class="btn btn-secondary" onclick="Router.navigate('reports')"><i data-lucide="bar-chart-3"></i> Rapports avancés</button>` : ''}
+        ${Auth.can('dash_view_top_products') ? `<button class="btn btn-secondary" onclick="Router.navigate('reports')"><i data-lucide="bar-chart-3"></i> Rapports avancés</button>` : ''}
         <button class="btn btn-primary" onclick="Router.navigate('pos')"><i data-lucide="shopping-cart"></i> Nouvelle Vente</button>
       </div>
     </div>
@@ -53,12 +53,12 @@ async function renderSales(container) {
       <div class="kpi-card kpi-blue">
         <div class="kpi-icon"><i data-lucide="banknote"></i></div>
         <div class="kpi-content">
-          <div class="kpi-value">${Auth.can('sales_view_ca') ? UI.formatCurrency(netRevMonth) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
+          <div class="kpi-value">${Auth.can('dash_view_month_sales') ? UI.formatCurrency(netRevMonth) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
           <div class="kpi-label">CA du mois (Net)</div>
           <div class="kpi-sub">${monthSales.length} ventes · ${monthReturns.length} retours</div>
         </div>
       </div>
-      ${Auth.can('sales_view_profit') ? `
+      ${Auth.can('dash_view_margin') ? `
       <div class="kpi-card kpi-green">
         <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
         <div class="kpi-content">
@@ -70,7 +70,7 @@ async function renderSales(container) {
       <div class="kpi-card kpi-orange">
         <div class="kpi-icon"><i data-lucide="shopping-bag"></i></div>
         <div class="kpi-content">
-          <div class="kpi-value">${Auth.can('sales_view_ca') ? (monthSales.length > 0 ? UI.formatCurrency(netRevMonth / monthSales.length) : '—') : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
+          <div class="kpi-value">${Auth.can('dash_view_month_sales') ? (monthSales.length > 0 ? UI.formatCurrency(netRevMonth / monthSales.length) : '—') : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
           <div class="kpi-label">Panier moyen (Net)</div>
           <div class="kpi-sub">Ce mois</div>
         </div>
@@ -96,7 +96,7 @@ async function renderSales(container) {
         <option value="partially_returned">Retour partiel</option>
         <option value="fully_returned">Entièrement retourné</option>
       </select>
-      ${Auth.can('sales_view_stats') ? `
+      ${Auth.can('dash_view_sales_chart') ? `
         <button class="btn btn-ghost" onclick="exportSalesPDF()"><i data-lucide="printer"></i> PDF</button>
         <button class="btn btn-ghost" onclick="exportSales()"><i data-lucide="download"></i> CSV</button>
       ` : ''}

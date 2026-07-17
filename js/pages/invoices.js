@@ -111,7 +111,7 @@ function filterInvoices() {
       label: 'Actions', render: r => {
         const gs = (key) => (window._appSettings || {})[key];
         const canCorriger = r.status === 'validated' && (gs('purchase_allow_edit_after') === 'true' || DB.AppState.currentUser?.role === 'admin');
-        const canDelete = r.status === 'draft' && (Auth.can('achats_delete') || DB.AppState.currentUser?.role === 'admin');
+        const canDelete = r.status === 'draft' && (Auth.can('invoices_delete') || DB.AppState.currentUser?.role === 'admin');
         return `
         <div class="actions-cell">
           <button class="btn btn-xs btn-primary" onclick="viewInvoice(${r.id})"><i data-lucide="eye"></i> Voir</button>
@@ -1379,7 +1379,7 @@ async function unvalidateInvoice(invoiceId) {
 }
 
 async function deleteInvoice(invoiceId) {
-  if (window.Auth && !Auth.can('achats_delete') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('invoices_delete') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de supprimer des factures.', 'error', 5000);
     return;
   }

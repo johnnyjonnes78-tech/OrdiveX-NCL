@@ -68,9 +68,9 @@ async function renderStock(container) {
       </div>
       <div class="header-actions">
         ${Auth.can('stock_print') || Auth.can('stock_export') ? `<button class="btn btn-secondary" onclick="exportStockPDF()"><i data-lucide="printer"></i> PDF</button>` : ''}
-        ${Auth.can('stock_import') || Auth.can('stock_product_edit') ? `<button class="btn btn-secondary" onclick="showImportStockModal()"><i data-lucide="upload"></i> Importer Stock (CSV)</button>` : ''}
+        ${Auth.can('stock_import') ? `<button class="btn btn-secondary" onclick="showImportStockModal()"><i data-lucide="upload"></i> Importer Stock (CSV)</button>` : ''}
         <input type="file" id="import-stock-file" accept=".csv" style="display:none" onchange="importStockCsv(event)">
-        ${Auth.can('achats_receive') || Auth.can('stock_adjust') ? `<button class="btn btn-primary" onclick="renderStockEntry()"><i data-lucide="plus"></i> Entrée Stock</button>` : ''}
+        ${Auth.can('po_receive') || Auth.can('stock_adjust') ? `<button class="btn btn-primary" onclick="renderStockEntry()"><i data-lucide="plus"></i> Entrée Stock</button>` : ''}
       </div>
     </div>
 
@@ -249,7 +249,7 @@ function renderStockTable(data) {
         <button class="btn btn-xs btn-primary" onclick="viewProductLots(${r.id})" title="Voir les lots"><i data-lucide="package"></i></button>
         <button class="btn btn-xs btn-secondary" onclick="showStockMovements(${r.id})" title="Mouvements"><i data-lucide="clipboard-list"></i></button>
         ${Auth.can('inventory_adjust') || Auth.can('stock_adjust') || DB.AppState.currentUser?.role === 'admin' ? `<button class="btn btn-xs btn-warning" onclick="showAdjustStock(${r.id})" title="Ajuster le stock"><i data-lucide="pencil"></i></button>` : ''}
-        ${Auth.can('stock_product_edit') ? `<button class="btn btn-xs btn-ghost" onclick="editProduct(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
+        ${Auth.can('products_edit') ? `<button class="btn btn-xs btn-ghost" onclick="editProduct(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
       </div>` },
   ];
 

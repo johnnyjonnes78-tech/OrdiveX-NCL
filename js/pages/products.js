@@ -151,18 +151,18 @@ async function renderProducts(container) {
         <p class="page-subtitle">${products.length} produits référencés</p>
       </div>
       <div class="header-actions">
-        ${Auth.can('stock_import') || Auth.can('stock_product_edit') ? `<button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>` : ''}
-        ${Auth.can('stock_export') ? `
+        ${Auth.can('products_import') ? `<button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>` : ''}
+        ${Auth.can('products_export') ? `
           <button class="btn btn-secondary" onclick="exportProductsPDF()"><i data-lucide="printer"></i> PDF</button>
           <button class="btn btn-secondary" onclick="exportProducts()"><i data-lucide="download"></i> CSV</button>
         ` : ''}
-        ${Auth.can('stock_product_create') ? `<button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>` : ''}
+        ${Auth.can('products_create') ? `<button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>` : ''}
       </div>
     </div>
 
     <!-- Dashboard Inventaire KPIs -->
     <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 16px;">
-      ${Auth.can('stock_view_purchase_price') ? `<div class="kpi-card">
+      ${Auth.can('products_view_purchase_price') ? `<div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(46,134,193,0.1);color:#2E86C1"><i data-lucide="package"></i></div>
         <div class="kpi-info"><div class="kpi-value">${UI.formatCurrency(valAchat)}</div><div class="kpi-label">Valeur Stock (Achat)</div></div>
       </div>` : ''}
@@ -170,7 +170,7 @@ async function renderProducts(container) {
         <div class="kpi-icon" style="background:rgba(30,132,73,0.1);color:#1E8449"><i data-lucide="banknote"></i></div>
         <div class="kpi-info"><div class="kpi-value">${UI.formatCurrency(valVente)}</div><div class="kpi-label">Valeur Stock (Vente)</div></div>
       </div>
-      ${Auth.can('stock_view_profit') ? `<div class="kpi-card">
+      ${Auth.can('products_view_profit') ? `<div class="kpi-card">
         <div class="kpi-icon" style="background:rgba(142,68,173,0.1);color:#8E44AD"><i data-lucide="trending-up"></i></div>
         <div class="kpi-info"><div class="kpi-value">${UI.formatCurrency(profit)}</div><div class="kpi-label">Profit Potentiel</div></div>
       </div>` : ''}
@@ -364,10 +364,10 @@ function renderProductsTable(data) {
     }},
   ];
 
-  if (Auth.can('stock_view_purchase_price')) {
+  if (Auth.can('products_view_purchase_price')) {
     columns.push({ label: 'Prix Achat', render: r => UI.formatCurrency(r.purchasePrice) });
   }
-  if (Auth.can('stock_view_margin')) {
+  if (Auth.can('products_view_margin')) {
     columns.push({ label: 'Marge', render: r => {
         const m = r.salePrice && r.purchasePrice ? ((r.salePrice - r.purchasePrice) / r.salePrice * 100).toFixed(0) : 0;
         return `<span class="badge badge-${m >= 30 ? 'success' : m >= 20 ? 'warning' : 'danger'}">${m}%</span>`;
@@ -378,8 +378,8 @@ function renderProductsTable(data) {
     label: 'Actions', render: r => `
     <div class="actions-cell">
       <button class="btn btn-xs btn-primary" onclick="viewProduct(${r.id})" title="Détails"><i data-lucide="eye"></i></button>
-      ${Auth.can('stock_product_edit') ? `<button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
-      ${Auth.can('stock_product_delete') ? `<button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>` : ''}
+      ${Auth.can('products_edit') ? `<button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
+      ${Auth.can('products_delete') ? `<button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>` : ''}
     </div>`
   });
 
@@ -439,7 +439,7 @@ function clearProductSelection() {
 async function bulkDeleteProducts() {
   const ids = [...(window._selectedProductIds || [])];
   if (!ids.length) return;
-  if (window.Auth && !Auth.can('stock_product_delete') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('products_delete') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de désactiver des produits.', 'error', 5000);
     return;
   }
@@ -1499,7 +1499,7 @@ async function updateProduct(id) {
 }
 
 async function deleteProduct(id) {
-  if (window.Auth && !Auth.can('stock_product_delete') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('products_delete') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de désactiver des produits.', 'error', 5000);
     return;
   }

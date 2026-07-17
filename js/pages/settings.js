@@ -870,9 +870,9 @@ async function renderSettings(container) {
           </div>
         </div>
 
-        <div style="margin-top:20px;display:none;gap:10px" id="perm-save-btn-container">
-          <button class="btn btn-danger btn-sm" onclick="window.resetSelectedUserPermissions()"><i data-lucide="rotate-ccw"></i> Réinitialiser</button>
-          <button class="btn btn-primary" onclick="window.saveSelectedUserPermissions()"><i data-lucide="save"></i> Enregistrer les permissions</button>
+        <div style="margin-top:20px;display:none;align-items:center;justify-content:space-between;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);padding:10px 16px;border-radius:8px;" id="perm-save-btn-container">
+          <span style="font-size:.82rem;color:#10b981;font-weight:600;display:flex;align-items:center;gap:6px"><i data-lucide="check-circle" style="width:14px;height:14px"></i> Sauvegarde instantanée active</span>
+          <button class="btn btn-danger btn-xs" onclick="window.resetSelectedUserPermissions()"><i data-lucide="rotate-ccw" style="width:12px;height:12px"></i> Réinitialiser</button>
         </div>
       </div>
     </div>
@@ -959,29 +959,37 @@ window.renderPermissionsGrid = async function() {
 
   // Mapping des catégories de permissions de l'UI vers leur parent respectif (clé de module)
   const CAT_PARENTS = {
-    shifts:     'module_shifts',
-    session:    'module_caisse',
-    sales:      'module_sales',
-    stock:      'module_stock',
-    inventory:  'module_inventory',
-    achats:     'module_achats',
-    patients:   'module_patients',
-    accounting: 'module_accounting',
-    hr:         'module_rh',
-    admin:      'module_settings'
+    dashboard:    'module_dashboard',
+    pos:          'module_sales',
+    caisse:       'module_caisse',
+    products:     'module_products',
+    stock:        'module_stock',
+    inventory:    'module_inventory',
+    reorder:      'module_reorder',
+    achats:       'module_invoices',
+    patients:     'module_patients',
+    traceability: 'module_traceability',
+    accounting:   'module_accounting',
+    hr:           'module_rh',
+    shifts:       'module_shifts',
+    admin:        'module_settings'
   };
 
   const catIcons = {
-    shifts:     'clock-3',
-    session:    'shield-check',
-    sales:      'shopping-cart',
-    stock:      'package',
-    inventory:  'clipboard-list',
-    achats:     'factory',
-    patients:   'users',
-    accounting: 'landmark',
-    hr:         'user-cog',
-    admin:      'settings-2'
+    dashboard:    'layout-dashboard',
+    pos:          'monitor-smartphone',
+    caisse:       'banknote',
+    products:     'pill',
+    stock:        'package-search',
+    inventory:    'clipboard-list',
+    reorder:      'refresh-ccw-dot',
+    achats:       'factory',
+    patients:     'users',
+    traceability: 'shield-check',
+    accounting:   'landmark',
+    hr:           'user-cog',
+    shifts:       'clock-3',
+    admin:        'settings-2'
   };
 
   // Recherche en direct
@@ -1120,6 +1128,16 @@ window.renderPermissionsGrid = async function() {
 window._setUserPermOverride = function(key, checked) {
   if (window._userPermOverrides) {
     window._userPermOverrides[key] = checked;
+    // Sauvegarde instantanée en base de données
+    const userId = window._selectedPermUserId;
+    if (userId) {
+      DB.dbPut('settings', { key: `user_permissions_${userId}`, value: JSON.stringify(window._userPermOverrides) }).then(() => {
+        if (DB.AppState.currentUser && DB.AppState.currentUser.id === userId) {
+          DB.AppState.currentUser.permissions = { ...window._userPermOverrides };
+          if (typeof initSidebar === 'function') initSidebar();
+        }
+      }).catch(e => console.error('[Permissions] Erreur sauvegarde auto:', e));
+    }
   }
 };
 
@@ -1134,16 +1152,20 @@ window._toggleSubPermsVisibility = function(catKey, checked) {
 // Cocher/decocher toutes les permissions d'une catégorie
 window._toggleCatPerms = function(catKey, checked) {
   const CAT_PARENTS = {
-    shifts:     'module_shifts',
-    session:    'module_caisse',
-    sales:      'module_sales',
-    stock:      'module_stock',
-    inventory:  'module_inventory',
-    achats:     'module_achats',
-    patients:   'module_patients',
-    accounting: 'module_accounting',
-    hr:         'module_rh',
-    admin:      'module_settings'
+    dashboard:    'module_dashboard',
+    pos:          'module_sales',
+    caisse:       'module_caisse',
+    products:     'module_products',
+    stock:        'module_stock',
+    inventory:    'module_inventory',
+    reorder:      'module_reorder',
+    achats:       'module_invoices',
+    patients:     'module_patients',
+    traceability: 'module_traceability',
+    accounting:   'module_accounting',
+    hr:           'module_rh',
+    shifts:       'module_shifts',
+    admin:        'module_settings'
   };
   const parentKey = CAT_PARENTS[catKey];
   if (parentKey) {
@@ -1173,16 +1195,20 @@ window.setAllPermissions = function(checked) {
   });
   
   const CAT_PARENTS = {
-    shifts:     'module_shifts',
-    session:    'module_caisse',
-    sales:      'module_sales',
-    stock:      'module_stock',
-    inventory:  'module_inventory',
-    achats:     'module_achats',
-    patients:   'module_patients',
-    accounting: 'module_accounting',
-    hr:         'module_rh',
-    admin:      'module_settings'
+    dashboard:    'module_dashboard',
+    pos:          'module_sales',
+    caisse:       'module_caisse',
+    products:     'module_products',
+    stock:        'module_stock',
+    inventory:    'module_inventory',
+    reorder:      'module_reorder',
+    achats:       'module_invoices',
+    patients:     'module_patients',
+    traceability: 'module_traceability',
+    accounting:   'module_accounting',
+    hr:           'module_rh',
+    shifts:       'module_shifts',
+    admin:        'module_settings'
   };
   Object.keys(CAT_PARENTS).forEach(catKey => {
     window._toggleSubPermsVisibility(catKey, checked);

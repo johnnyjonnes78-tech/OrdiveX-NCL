@@ -98,189 +98,263 @@ const Auth = {
     return rolePerms.includes(action);
   },
 
-  // Permissions par défaut pour chaque rôle (modifiables depuis les Paramètres)
-  _defaultPerms: {
+  // Permissions par défaut pour chaque rôle (modifiables depuis les  _defaultPerms: {
     responsable: [
-      'module_dashboard', 'module_sales', 'module_caisse', 'module_stock', 'module_products', 'module_inventory', 'module_achats', 'module_patients', 'module_accounting', 'module_rh', 'module_settings', 'module_naomi', 'module_shifts',
-      'sales_create', 'sales_edit', 'sales_cancel', 'sales_delete', 'sales_discount', 'sales_modify_price', 'sales_modify_qty', 'sales_reprint', 'sales_invoice_print', 'sales_pay_cash', 'sales_pay_mobile', 'sales_pay_credit', 'sales_pay_assurance', 'sales_view_ca', 'sales_view_profit', 'sales_view_margin', 'sales_view_stats', 'sales_export',
-      'stock_view', 'stock_view_purchase_price', 'stock_view_sale_price', 'stock_view_profit', 'stock_view_margin', 'stock_view_value', 'stock_product_create', 'stock_product_edit', 'stock_product_delete', 'stock_lot_edit', 'stock_transfer', 'stock_adjust', 'stock_exit', 'stock_import', 'stock_export', 'stock_print',
+      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_hr', 'module_shifts', 'module_settings',
+      'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
+      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_price', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart',
+      'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
+      'products_view', 'products_view_kpis', 'products_view_purchase_price', 'products_view_profit', 'products_view_margin', 'products_create', 'products_edit', 'products_delete', 'products_bulk_edit', 'products_import', 'products_export', 'products_filter',
+      'stock_view', 'stock_view_kpis', 'stock_view_purchase_price', 'stock_view_value', 'stock_adjust', 'stock_exit', 'stock_import', 'stock_export', 'stock_print', 'stock_view_expiry', 'stock_view_exits_history',
       'inventory_view', 'inventory_create', 'inventory_edit', 'inventory_adjust', 'inventory_delete', 'inventory_export',
-      'achats_view', 'achats_create', 'achats_edit', 'achats_send', 'achats_receive', 'achats_cancel', 'achats_delete', 'achats_supplier_edit', 'achats_supplier_delete',
-      'patients_view', 'patients_create', 'patients_edit', 'patients_delete', 'patients_credit_limit', 'patients_debt_settle', 'patients_assurance_edit', 'patients_debt_print',
-      'accounting_view_journal', 'accounting_view_reports', 'accounting_write', 'accounting_export',
-      'caisse_depot_retrait', 'caisse_cloture', 'caisse_voir_historique',
-      'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_write_caisse',
-      'settings_view', 'settings_edit', 'settings_users', 'settings_permissions', 'settings_backup', 'settings_sync', 'settings_naomi'
+      'reorder_view', 'reorder_create_po', 'po_view', 'po_create', 'po_send', 'po_receive', 'po_cancel', 'po_delete',
+      'invoices_view', 'invoices_create', 'invoices_edit', 'invoices_delete', 'suppliers_view', 'suppliers_create', 'suppliers_edit', 'suppliers_delete',
+      'patients_view', 'patients_create', 'patients_edit', 'patients_delete', 'patients_credit_limit', 'patients_debt_settle', 'patients_debt_print', 'claims_view', 'claims_export',
+      'traceability_view', 'traceability_view_expired', 'traceability_financial_loss', 'traceability_destroy_lot', 'traceability_recalls',
+      'accounting_view_journal', 'accounting_view_reports', 'accounting_write', 'accounting_export', 'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export',
+      'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_manage_leaves', 'hr_write_caisse', 'hr_view_compta', 'hr_export_pdf',
+      'shifts_view', 'shifts_open_close', 'shifts_manage_teams', 'shifts_manage_tasks', 'shifts_manage_absences', 'shifts_view_history', 'shifts_view_reports',
+      'settings_view', 'settings_edit', 'settings_users', 'settings_permissions', 'settings_backup', 'settings_sync', 'settings_device'
     ],
     rh: [
-      'module_rh',
-      'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_write_caisse'
+      'module_hr',
+      'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_manage_leaves', 'hr_write_caisse', 'hr_view_compta', 'hr_export_pdf'
     ],
     pharmacien: [
-      'module_dashboard', 'module_sales', 'module_caisse', 'module_stock', 'module_products', 'module_inventory', 'module_achats', 'module_patients', 'module_accounting', 'module_rh', 'module_shifts',
-      'sales_create', 'sales_cancel', 'sales_discount', 'sales_modify_qty', 'sales_reprint', 'sales_invoice_print', 'sales_pay_cash', 'sales_pay_mobile', 'sales_pay_credit', 'sales_pay_assurance', 'sales_view_ca', 'sales_view_margin', 'sales_view_stats',
-      'stock_view', 'stock_view_purchase_price', 'stock_view_sale_price', 'stock_view_profit', 'stock_view_margin', 'stock_view_value', 'stock_product_create', 'stock_product_edit', 'stock_lot_edit', 'stock_transfer', 'stock_adjust', 'stock_exit', 'stock_export', 'stock_print',
+      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_hr', 'module_shifts',
+      'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
+      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart',
+      'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
+      'products_view', 'products_view_kpis', 'products_view_purchase_price', 'products_view_profit', 'products_view_margin', 'products_create', 'products_edit', 'products_bulk_edit', 'products_export', 'products_filter',
+      'stock_view', 'stock_view_kpis', 'stock_view_purchase_price', 'stock_view_value', 'stock_adjust', 'stock_exit', 'stock_export', 'stock_print', 'stock_view_expiry', 'stock_view_exits_history',
       'inventory_view', 'inventory_create', 'inventory_edit', 'inventory_adjust', 'inventory_export',
-      'achats_view', 'achats_create', 'achats_edit', 'achats_send', 'achats_receive', 'achats_supplier_edit',
-      'patients_view', 'patients_create', 'patients_edit', 'patients_debt_settle', 'patients_assurance_edit', 'patients_debt_print',
-      'accounting_view_journal', 'accounting_view_reports',
-      'caisse_depot_retrait', 'caisse_cloture', 'caisse_voir_historique',
-      'hr_manage_employees', 'hr_manage_attendance'
+      'reorder_view', 'reorder_create_po', 'po_view', 'po_create', 'po_send', 'po_receive', 'po_cancel',
+      'invoices_view', 'invoices_create', 'invoices_edit', 'suppliers_view', 'suppliers_create', 'suppliers_edit',
+      'patients_view', 'patients_create', 'patients_edit', 'patients_debt_settle', 'patients_debt_print', 'claims_view', 'claims_export',
+      'traceability_view', 'traceability_view_expired', 'traceability_financial_loss', 'traceability_destroy_lot', 'traceability_recalls',
+      'accounting_view_journal', 'accounting_view_reports', 'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export',
+      'hr_manage_employees', 'hr_manage_attendance',
+      'shifts_view', 'shifts_open_close', 'shifts_manage_teams', 'shifts_manage_tasks', 'shifts_manage_absences', 'shifts_view_history', 'shifts_view_reports'
     ],
     caissier: [
       'module_sales', 'module_caisse',
-      'sales_create', 'sales_discount', 'sales_modify_qty', 'sales_reprint', 'sales_pay_cash', 'sales_pay_mobile'
+      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_session_tabs',
+      'caisse_view'
     ],
     receptionniste: [
       'module_sales',
-      'sales_create', 'sales_reprint', 'sales_pay_cash'
+      'pos_view', 'pos_sales_create', 'pos_pay_cash'
     ],
     gestionnaire_stock: [
-      'module_stock', 'module_products', 'module_inventory', 'module_achats',
-      'stock_view', 'stock_view_sale_price', 'stock_product_create', 'stock_product_edit', 'stock_lot_edit', 'stock_transfer', 'stock_adjust', 'stock_exit', 'stock_export', 'stock_print',
+      'module_stock', 'module_products', 'module_inventory', 'module_reorder', 'module_suppliers', 'module_purchase_orders',
+      'products_view', 'products_filter',
+      'stock_view', 'stock_view_kpis', 'stock_view_expiry', 'stock_adjust', 'stock_exit', 'stock_export', 'stock_print',
       'inventory_view', 'inventory_create', 'inventory_edit', 'inventory_export',
-      'achats_view', 'achats_receive'
+      'reorder_view', 'reorder_create_po', 'po_view', 'po_receive'
     ],
     comptable: [
-      'module_dashboard', 'module_accounting',
-      'sales_view_ca', 'sales_view_profit', 'sales_view_margin', 'sales_view_stats', 'sales_export',
-      'stock_view_value', 'stock_export',
-      'accounting_view_journal', 'accounting_view_reports', 'accounting_export'
+      'module_dashboard', 'module_accounting', 'module_management_control',
+      'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_sales_chart', 'dash_view_payments_chart',
+      'accounting_view_journal', 'accounting_view_reports', 'accounting_export',
+      'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export'
     ],
     assistant: [],
   },
 
   ALL_PERMISSIONS: [
-    // === ACCÈS MODULES ===
+    // === ACCÈS AUX MODULES (SIDEBAR) ===
     { key: 'module_dashboard',         label: 'Accéder au Tableau de Bord',                   cat: 'modules' },
     { key: 'module_sales',             label: 'Accéder aux Ventes (POS/Historique)',          cat: 'modules' },
     { key: 'module_caisse',            label: 'Accéder à la Caisse Journalière',              cat: 'modules' },
-    { key: 'module_stock',             label: 'Accéder au module Stock & Mouvements',         cat: 'modules' },
     { key: 'module_products',          label: 'Accéder au Catalogue Produits',                cat: 'modules' },
+    { key: 'module_stock',             label: 'Accéder à la Gestion des Stocks',              cat: 'modules' },
     { key: 'module_inventory',         label: 'Accéder aux Inventaires Physiques',            cat: 'modules' },
-    { key: 'module_achats',            label: 'Accéder au module Achats & Fournisseurs',      cat: 'modules' },
-    { key: 'module_patients',          label: 'Accéder aux Dossiers Patients & Assurances',   cat: 'modules' },
-    { key: 'module_accounting',        label: 'Accéder au module Comptabilité',               cat: 'modules' },
-    { key: 'module_rh',                label: 'Accéder aux Ressources Humaines',              cat: 'modules' },
+    { key: 'module_reorder',           label: 'Accéder au Réapprovisionnement',               cat: 'modules' },
+    { key: 'module_prescriptions',     label: 'Accéder aux Ordonnances',                      cat: 'modules' },
+    { key: 'module_patients',          label: 'Accéder aux Dossiers Patients',                cat: 'modules' },
+    { key: 'module_claims',            label: 'Accéder aux Créances & Assurances',            cat: 'modules' },
+    { key: 'module_suppliers',         label: 'Accéder aux Fournisseurs',                     cat: 'modules' },
+    { key: 'module_purchase_orders',   label: 'Accéder aux Bons de Commande',                 cat: 'modules' },
+    { key: 'module_invoices',          label: 'Accéder aux Factures Fournisseurs',            cat: 'modules' },
+    { key: 'module_traceability',      label: 'Accéder à la Traçabilité & Pharmacovigilance', cat: 'modules' },
+    { key: 'module_management_control', label: 'Accéder au Pilotage & Contrôle',              cat: 'modules' },
+    { key: 'module_accounting',        label: 'Accéder à la Comptabilité Générale',           cat: 'modules' },
+    { key: 'module_hr',                label: 'Accéder aux Ressources Humaines',              cat: 'modules' },
+    { key: 'module_shifts',            label: 'Accéder aux Équipes Matin / Soir',             cat: 'modules' },
     { key: 'module_settings',          label: 'Accéder aux Paramètres Généraux',              cat: 'modules' },
-    { key: 'module_naomi',             label: 'Accéder à l\'assistant Naomi IA',              cat: 'modules' },
 
-    // === EQUIPES MATIN / SOIR / NUIT ===
-    { key: 'module_shifts',            label: 'Accéder et gérer le module Équipes Matin / Soir / Nuit (accès complet)', cat: 'shifts' },
+    // === TABLEAU DE BORD ===
+    { key: 'dash_view_today_sales',    label: "Voir le chiffre d'affaires du jour",           cat: 'dashboard' },
+    { key: 'dash_view_month_sales',    label: 'Voir le chiffre d\'affaires du mois',          cat: 'dashboard' },
+    { key: 'dash_view_margin',         label: 'Voir le pourcentage de marge du mois',         cat: 'dashboard' },
+    { key: 'dash_view_active_products',label: 'Voir le nombre de produits actifs',            cat: 'dashboard' },
+    { key: 'dash_view_active_alerts',  label: 'Voir le nombre d\'alertes actives',            cat: 'dashboard' },
+    { key: 'dash_view_sales_chart',    label: 'Voir le graphique d\'évolution des ventes',    cat: 'dashboard' },
+    { key: 'dash_view_payments_chart', label: 'Voir le graphique des modes de paiement',      cat: 'dashboard' },
+    { key: 'dash_view_top_products',   label: 'Voir les Top Produits du mois',                cat: 'dashboard' },
+    { key: 'dash_view_recent_alerts',  label: 'Voir les alertes récentes',                    cat: 'dashboard' },
+    { key: 'dash_view_low_stock',      label: 'Voir les alertes de stocks bas',               cat: 'dashboard' },
+    { key: 'alerts_view',              label: 'Consulter le centre d\'alertes',               cat: 'dashboard' },
+    { key: 'alerts_resolve',           label: 'Marquer les alertes comme lues',               cat: 'dashboard' },
 
-    // === SESSIONS DE CAISSE (FONCTIONNALITÉS RÉELLES DE LA CAISSE JOURNALIÈRE) ===
-    { key: 'caisse_depot_retrait',     label: 'Mouvements manuels de caisse (dépôt/retrait)',  cat: 'session' },
-    { key: 'caisse_cloture',           label: 'Faire la clôture journalière de la caisse',     cat: 'session' },
-    { key: 'caisse_voir_historique',   label: 'Consulter l\'historique des clôtures',          cat: 'session' },
+    // === CAISSE & POINT DE VENTE (POS) ===
+    { key: 'pos_view',                 label: 'Accéder à l\'interface de vente',               cat: 'pos' },
+    { key: 'pos_sales_create',         label: 'Créer et valider des ventes',                  cat: 'pos' },
+    { key: 'pos_discount',             label: 'Appliquer des remises au POS',                 cat: 'pos' },
+    { key: 'pos_modify_price',         label: 'Modifier les prix au panier',                  cat: 'pos' },
+    { key: 'pos_modify_qty',           label: 'Modifier la quantité d\'un article au panier',  cat: 'pos' },
+    { key: 'pos_pay_cash',             label: 'Autoriser l\'encaissement en Espèces',         cat: 'pos' },
+    { key: 'pos_pay_mobile',           label: 'Autoriser l\'encaissement via Mobile Money',   cat: 'pos' },
+    { key: 'pos_pay_credit',           label: 'Autoriser la vente à crédit (dette client)',   cat: 'pos' },
+    { key: 'pos_pay_assurance',        label: 'Autoriser la vente avec mutuelle/assurance',   cat: 'pos' },
+    { key: 'pos_create_prescription',  label: 'Associer des ordonnances aux ventes',          cat: 'pos' },
+    { key: 'pos_session_tabs',         label: 'Gérer plusieurs onglets de vente simultanés',  cat: 'pos' },
+    { key: 'pos_clear_cart',           label: 'Vider le panier en cours',                     cat: 'pos' },
 
-    // === VENTES ===
-    { key: 'sales_create',             label: 'Créer de nouvelles ventes au POS',             cat: 'sales' },
-    { key: 'sales_edit',               label: 'Modifier des ventes existantes (devis)',       cat: 'sales' },
-    { key: 'sales_cancel',             label: 'Annuler ou rembourser des ventes',             cat: 'sales' },
-    { key: 'sales_delete',             label: 'Supprimer une vente de l\'historique',         cat: 'sales' },
-    { key: 'sales_discount',           label: 'Appliquer des remises au POS',                 cat: 'sales' },
-    { key: 'sales_modify_price',       label: 'Modifier manuellement un prix au panier',      cat: 'sales' },
-    { key: 'sales_modify_qty',         label: 'Modifier la quantité d\'un article au panier', cat: 'sales' },
-    { key: 'sales_reprint',            label: 'Réimprimer les tickets / reçus',               cat: 'sales' },
-    { key: 'sales_invoice_print',      label: 'Générer et imprimer des factures A4',          cat: 'sales' },
-    { key: 'sales_pay_cash',           label: 'Autoriser l\'encaissement en Espèces',         cat: 'sales' },
-    { key: 'sales_pay_mobile',         label: 'Autoriser l\'encaissement via Mobile Money',   cat: 'sales' },
-    { key: 'sales_pay_credit',         label: 'Autoriser la vente à crédit (dette client)',   cat: 'sales' },
-    { key: 'sales_pay_assurance',      label: 'Autoriser la vente avec mutuelle/assurance',   cat: 'sales' },
-    { key: 'sales_view_ca',            label: 'Voir les indicateurs de chiffre d\'affaires',  cat: 'sales' },
-    { key: 'sales_view_profit',        label: 'Voir les indicateurs de bénéfices nets',       cat: 'sales' },
-    { key: 'sales_view_margin',        label: 'Voir le pourcentage de marge sur les ventes',  cat: 'sales' },
-    { key: 'sales_view_stats',         label: 'Voir les graphiques et rapports de ventes',    cat: 'sales' },
-    { key: 'sales_export',             label: 'Exporter l\'historique des ventes',            cat: 'sales' },
+    // === CAISSE JOURNALIÈRE ===
+    { key: 'caisse_view',              label: 'Voir le résumé de caisse',                     cat: 'caisse' },
+    { key: 'caisse_view_details',      label: 'Accéder au détail du calcul financier',        cat: 'caisse' },
+    { key: 'caisse_view_stats',        label: 'Accéder aux statistiques & clôtures',          cat: 'caisse' },
+    { key: 'caisse_depot_retrait',     label: 'Mouvements manuels de caisse (dépôt/retrait)',  cat: 'caisse' },
+    { key: 'caisse_cloture',           label: 'Faire la clôture journalière de la caisse',     cat: 'caisse' },
+    { key: 'caisse_export_csv',        label: 'Exporter les transactions du jour en CSV',     cat: 'caisse' },
+    { key: 'caisse_view_manual_movements', label: 'Consulter la liste des flux manuels',      cat: 'caisse' },
 
-    // === STOCK & CATALOGUE ===
-    { key: 'stock_view',               label: 'Voir les quantités de stock physique',          cat: 'stock' },
-    { key: 'stock_view_purchase_price',label: 'Voir les prix d\'achat fournisseur',           cat: 'stock' },
-    { key: 'stock_view_sale_price',    label: 'Voir les prix de vente publics',               cat: 'stock' },
-    { key: 'stock_view_profit',        label: 'Voir le bénéfice potentiel par produit/lot',   cat: 'stock' },
-    { key: 'stock_view_margin',        label: 'Voir le taux de marge des produits',           cat: 'stock' },
-    { key: 'stock_view_value',         label: 'Voir la valeur financière totale du stock',    cat: 'stock' },
-    { key: 'stock_product_create',     label: 'Créer un nouveau produit au catalogue',        cat: 'stock' },
-    { key: 'stock_product_edit',       label: 'Modifier la fiche d\'un produit existant',     cat: 'stock' },
-    { key: 'stock_product_delete',     label: 'Désactiver ou archiver un produit',            cat: 'stock' },
-    { key: 'stock_lot_edit',           label: 'Modifier les informations d\'un lot (exp/n°)', cat: 'stock' },
-    { key: 'stock_transfer',           label: 'Transférer du stock Rayon <-> Réserve',        cat: 'stock' },
-    { key: 'stock_adjust',             label: 'Effectuer un ajustement manuel de quantité',   cat: 'stock' },
+    // === CATALOGUE PRODUITS ===
+    { key: 'products_view',            label: 'Consulter la liste des produits',              cat: 'products' },
+    { key: 'products_view_kpis',       label: 'Voir les indicateurs financiers du catalogue', cat: 'products' },
+    { key: 'products_view_purchase_price', label: 'Voir les prix d\'achat fournisseur',       cat: 'products' },
+    { key: 'products_view_profit',     label: 'Voir le bénéfice estimé par produit',          cat: 'products' },
+    { key: 'products_view_margin',     label: 'Voir le taux de marge des produits',           cat: 'products' },
+    { key: 'products_create',          label: 'Ajouter un nouveau produit',                   cat: 'products' },
+    { key: 'products_edit',            label: 'Modifier un produit existant',                 cat: 'products' },
+    { key: 'products_delete',          label: 'Désactiver ou archiver un produit',            cat: 'products' },
+    { key: 'products_bulk_edit',       label: 'Effectuer des modifications groupées',         cat: 'products' },
+    { key: 'products_import',          label: 'Importer des produits (CSV)',                  cat: 'products' },
+    { key: 'products_export',          label: 'Exporter le catalogue (PDF/CSV)',              cat: 'products' },
+    { key: 'products_filter',          label: 'Rechercher et filtrer les produits',           cat: 'products' },
+
+    // === GESTION DES STOCKS ===
+    { key: 'stock_view',               label: 'Consulter la grille des stocks',               cat: 'stock' },
+    { key: 'stock_view_kpis',          label: 'Voir les indicateurs clés de stocks',          cat: 'stock' },
+    { key: 'stock_view_purchase_price',label: 'Voir les prix d\'achat dans le stock',         cat: 'stock' },
+    { key: 'stock_view_value',         label: 'Voir la valeur totale du stock',               cat: 'stock' },
+    { key: 'stock_adjust',             label: 'Ajuster manuellement les quantités de stock',  cat: 'stock' },
     { key: 'stock_exit',               label: 'Déclarer des pertes, casses, vols ou dons',    cat: 'stock' },
-    { key: 'stock_import',             label: 'Importer le catalogue de produits (CSV)',       cat: 'stock' },
+    { key: 'stock_import',             label: 'Importer des données de stock (CSV)',          cat: 'stock' },
     { key: 'stock_export',             label: 'Exporter l\'état des stocks (PDF/CSV)',        cat: 'stock' },
-    { key: 'stock_print',              label: 'Imprimer les fiches physiques de stock',       cat: 'stock' },
+    { key: 'stock_print',              label: 'Imprimer des fiches physiques de stock',       cat: 'stock' },
+    { key: 'stock_view_expiry',        label: 'Voir les dates d\'expiration des lots',        cat: 'stock' },
+    { key: 'stock_view_exits_history', label: 'Voir l\'historique des sorties de stock',      cat: 'stock' },
 
-    // === INVENTAIRE ===
+    // === INVENTAIRES PHYSIQUES ===
     { key: 'inventory_view',           label: 'Voir l\'historique des inventaires',            cat: 'inventory' },
     { key: 'inventory_create',         label: 'Lancer un nouvel inventaire physique',         cat: 'inventory' },
     { key: 'inventory_edit',           label: 'Saisir les comptages dans l\'inventaire',      cat: 'inventory' },
     { key: 'inventory_adjust',         label: 'Valider et appliquer les écarts de stock',     cat: 'inventory' },
-    { key: 'inventory_delete',         label: 'Annuler ou supprimer un inventaire en cours',  cat: 'inventory' },
+    { key: 'inventory_delete',         label: 'Annuler ou supprimer un inventaire',           cat: 'inventory' },
     { key: 'inventory_export',         label: 'Exporter le Procès-Verbal d\'inventaire',      cat: 'inventory' },
 
-    // === ACHATS & FOURNISSEURS ===
-    { key: 'achats_view',              label: 'Voir le journal des commandes d\'achat',       cat: 'achats' },
-    { key: 'achats_create',            label: 'Créer un nouveau bon de commande',             cat: 'achats' },
-    { key: 'achats_edit',              label: 'Modifier un bon de commande en brouillon',     cat: 'achats' },
-    { key: 'achats_send',              label: 'Envoyer/valider le bon de commande',           cat: 'achats' },
-    { key: 'achats_receive',           label: 'Réceptionner les commandes (entrée stock)',    cat: 'achats' },
-    { key: 'achats_cancel',            label: 'Annuler un bon de commande en cours',          cat: 'achats' },
-    { key: 'achats_delete',            label: 'Supprimer définitivement un bon de commande',  cat: 'achats' },
-    { key: 'achats_supplier_edit',     label: 'Créer ou éditer une fiche de fournisseur',     cat: 'achats' },
-    { key: 'achats_supplier_delete',   label: 'Supprimer un fournisseur de la base',          cat: 'achats' },
+    // === RÉAPPROVISIONNEMENT & BONS DE COMMANDE ===
+    { key: 'reorder_view',             label: 'Consulter les suggestions de réappro',         cat: 'reorder' },
+    { key: 'reorder_create_po',        label: 'Générer un bon de commande depuis les sugg.',  cat: 'reorder' },
+    { key: 'po_view',                  label: 'Voir la liste des bons de commande',           cat: 'reorder' },
+    { key: 'po_create',                label: 'Créer un bon de commande manuel',              cat: 'reorder' },
+    { key: 'po_send',                  label: 'Envoyer/valider un bon de commande',           cat: 'reorder' },
+    { key: 'po_receive',               label: 'Réceptionner les commandes (entrée stock)',    cat: 'reorder' },
+    { key: 'po_cancel',                label: 'Annuler un bon de commande en cours',          cat: 'reorder' },
+    { key: 'po_delete',                label: 'Supprimer définitivement un bon de commande',  cat: 'reorder' },
 
-    // === PATIENTS & ASSURANCES ===
+    // === FACTURES & FOURNISSEURS ===
+    { key: 'invoices_view',            label: 'Consulter le journal des factures',            cat: 'achats' },
+    { key: 'invoices_create',          label: 'Enregistrer une nouvelle facture',             cat: 'achats' },
+    { key: 'invoices_edit',            label: 'Modifier une facture existante (brouillon)',   cat: 'achats' },
+    { key: 'invoices_delete',          label: 'Supprimer une facture d\'achat',               cat: 'achats' },
+    { key: 'suppliers_view',           label: 'Consulter la liste des fournisseurs',          cat: 'achats' },
+    { key: 'suppliers_create',         label: 'Ajouter un nouveau fournisseur',               cat: 'achats' },
+    { key: 'suppliers_edit',           label: 'Modifier les informations d\'un fournisseur',  cat: 'achats' },
+    { key: 'suppliers_delete',         label: 'Supprimer un fournisseur',                     cat: 'achats' },
+
+    // === PATIENTS & CRÉANCES ===
     { key: 'patients_view',            label: 'Consulter la liste des patients',              cat: 'patients' },
-    { key: 'patients_create',          label: 'Créer une nouvelle fiche patient',             cat: 'patients' },
+    { key: 'patients_create',          label: 'Créer une fiche patient',                      cat: 'patients' },
     { key: 'patients_edit',            label: 'Modifier les informations d\'un patient',      cat: 'patients' },
-    { key: 'patients_delete',          label: 'Supprimer définitivement un patient',          cat: 'patients' },
-    { key: 'patients_credit_limit',    label: 'Modifier le plafond de crédit autorisé',       cat: 'patients' },
+    { key: 'patients_delete',          label: 'Supprimer un patient',                         cat: 'patients' },
+    { key: 'patients_credit_limit',    label: 'Modifier le plafond de crédit patient',        cat: 'patients' },
     { key: 'patients_debt_settle',     label: 'Encaisser le remboursement d\'une dette',      cat: 'patients' },
-    { key: 'patients_assurance_edit',  label: 'Associer mutuelles et taux de couverture',     cat: 'patients' },
     { key: 'patients_debt_print',      label: 'Imprimer les relevés de dettes clients',       cat: 'patients' },
+    { key: 'claims_view',              label: 'Consulter le module des créances mutuelles',   cat: 'patients' },
+    { key: 'claims_export',            label: 'Exporter les récapitulatifs des créances',     cat: 'patients' },
 
-    // === COMPTABILITÉ ===
+    // === TRAÇABILITÉ ===
+    { key: 'traceability_view',        label: 'Consulter le module de traçabilité',           cat: 'traceability' },
+    { key: 'traceability_view_expired', label: 'Voir les produits périmés / proches',         cat: 'traceability' },
+    { key: 'traceability_financial_loss', label: 'Consulter la perte financière',              cat: 'traceability' },
+    { key: 'traceability_destroy_lot', label: 'Effectuer la destruction officielle d\'un lot',cat: 'traceability' },
+    { key: 'traceability_recalls',     label: 'Consulter les alertes de rappels de lots',     cat: 'traceability' },
+
+    // === COMPTABILITÉ & PILOTAGE ===
     { key: 'accounting_view_journal',  label: 'Consulter le journal des écritures',           cat: 'accounting' },
-    { key: 'accounting_view_reports',  label: 'Consulter la balance et les bilans financiers',cat: 'accounting' },
-    { key: 'accounting_write',         label: 'Saisir des écritures comptables manuelles',    cat: 'accounting' },
+    { key: 'accounting_view_reports',  label: 'Consulter la balance et bilans financiers',    cat: 'accounting' },
+    { key: 'accounting_write',         label: 'Saisir des écritures manuelles',               cat: 'accounting' },
     { key: 'accounting_export',        label: 'Exporter les rapports et journaux de compta',  cat: 'accounting' },
+    { key: 'mc_view',                  label: 'Accéder au module Pilotage & Contrôle',        cat: 'accounting' },
+    { key: 'mc_view_kpis',             label: 'Voir les indicateurs financiers de pilotage',  cat: 'accounting' },
+    { key: 'mc_view_charts',           label: 'Voir les graphiques d\'évolution de pilotage',  cat: 'accounting' },
+    { key: 'mc_export',                label: 'Exporter les données de pilotage en PDF',      cat: 'accounting' },
 
     // === RESSOURCES HUMAINES ===
-    { key: 'hr_view_salary',           label: 'Consulter la masse salariale et les fiches',   cat: 'hr' },
-    { key: 'hr_manage_employees',      label: 'Créer, éditer ou licencier des employés',      cat: 'hr' },
-    { key: 'hr_manage_attendance',     label: 'Valider et corriger les pointages/présences',  cat: 'hr' },
-    { key: 'hr_manage_payroll',        label: 'Gérer paies, acomptes, primes et retenues',   cat: 'hr' },
-    { key: 'hr_write_caisse',          label: 'Autoriser les décaissements RH depuis la caisse',cat: 'hr' },
+    { key: 'hr_view_salary',           label: 'Consulter la masse salariale globale',         cat: 'hr' },
+    { key: 'hr_manage_employees',      label: 'Gérer les dossiers des employés',              cat: 'hr' },
+    { key: 'hr_manage_attendance',     label: 'Valider pointages et présences',               cat: 'hr' },
+    { key: 'hr_manage_payroll',        label: 'Gérer les fiches de paie et salaires',         cat: 'hr' },
+    { key: 'hr_manage_leaves',         label: 'Gérer et approuver les congés',                cat: 'hr' },
+    { key: 'hr_write_caisse',          label: 'Autoriser les décaissements RH depuis la caisse', cat: 'hr' },
+    { key: 'hr_view_compta',           label: 'Accéder à l\'onglet comptabilité RH',          cat: 'hr' },
+    { key: 'hr_export_pdf',            label: 'Exporter les fiches de paie / états RH',       cat: 'hr' },
 
-    // === SYSTEME & PARAMETRES ===
-    { key: 'settings_view',            label: 'Consulter les paramètres généraux',            cat: 'admin' },
-    { key: 'settings_edit',            label: 'Modifier les infos de la pharmacie / devise',  cat: 'admin' },
+    // === ÉQUIPES / SHIFTS ===
+    { key: 'shifts_view',              label: 'Consulter le planning des équipes',            cat: 'shifts' },
+    { key: 'shifts_open_close',        label: 'Ouvrir et clôturer un Shift d\'équipe',        cat: 'shifts' },
+    { key: 'shifts_manage_teams',      label: 'Gérer la configuration des équipes',           cat: 'shifts' },
+    { key: 'shifts_manage_tasks',      label: 'Gérer et attribuer des tâches',                cat: 'shifts' },
+    { key: 'shifts_manage_absences',   label: 'Gérer les absences des membres d\'équipe',     cat: 'shifts' },
+    { key: 'shifts_view_history',      label: 'Voir l\'historique des ventes par équipe',     cat: 'shifts' },
+    { key: 'shifts_view_reports',      label: 'Consulter les rapports rapides des équipes',   cat: 'shifts' },
+
+    // === PARAMÈTRES & SYSTÈME ===
+    { key: 'settings_view',            label: 'Consulter les paramètres système',             cat: 'admin' },
+    { key: 'settings_edit',            label: 'Modifier les infos de pharmacie / devise',     cat: 'admin' },
     { key: 'settings_users',           label: 'Gérer les comptes utilisateurs et rôles',      cat: 'admin' },
-    { key: 'settings_permissions',     label: 'Modifier la grille des permissions',           cat: 'admin' },
-    { key: 'settings_backup',          label: 'Créer et restaurer des sauvegardes',           cat: 'admin' },
-    { key: 'settings_sync',            label: 'Gérer et forcer la synchronisation Supabase',  cat: 'admin' },
+    { key: 'settings_permissions',     label: 'Modifier la grille de permissions',            cat: 'admin' },
+    { key: 'settings_backup',          label: 'Sauvegarder et restaurer les données',         cat: 'admin' },
+    { key: 'settings_sync',            label: 'Gérer la synchronisation Supabase',            cat: 'admin' },
+    { key: 'settings_device',          label: 'Configurer le nom du terminal/caisse',         cat: 'admin' }
   ],
 
   ALL_PERMISSION_CATS: [
     { key: 'modules',    label: 'Accès aux Modules de l\'ERP' },
-    { key: 'shifts',     label: 'Equipes Matin / Soir / Nuit' },
-    { key: 'session',    label: 'Sessions de Caisse' },
-    { key: 'sales',      label: 'Point de Vente & Ventes' },
-    { key: 'stock',      label: 'Catalogue & Stock' },
+    { key: 'dashboard',  label: 'Tableau de Bord & Centre d\'Alertes' },
+    { key: 'pos',        label: 'Point de Vente (Panier & Caisse)' },
+    { key: 'caisse',     label: 'Caisse Journalière & Clôtures' },
+    { key: 'products',   label: 'Catalogue des Médicaments' },
+    { key: 'stock',      label: 'Gestion des Stocks & Mouvements' },
     { key: 'inventory',  label: 'Inventaires Physiques' },
-    { key: 'achats',     label: 'Fournisseurs & Achats' },
-    { key: 'patients',   label: 'Patients & Assurances' },
-    { key: 'accounting', label: 'Comptabilité Générale' },
+    { key: 'reorder',    label: 'Aide à la Commande & Bons d\'Achat' },
+    { key: 'achats',     label: 'Factures d\'Achat & Fournisseurs' },
+    { key: 'patients',   label: 'Patients, Créances & Assurances' },
+    { key: 'traceability',label: 'Traçabilité & Pharmacovigilance' },
+    { key: 'accounting', label: 'Comptabilité & Pilotage de Gestion' },
     { key: 'hr',         label: 'Ressources Humaines' },
-    { key: 'admin',      label: 'Paramètres & Système' },
+    { key: 'shifts',     label: 'Gestion des Équipes (Shifts)' },
+    { key: 'admin',      label: 'Paramètres & Système' }
   ],
 
   ALL_ROLES: [
     { key: 'admin',      label: 'Administrateur' },
     { key: 'pharmacien', label: 'Pharmacien' },
-    { key: 'caissier',   label: 'Caissier' },
-  ],
+    { key: 'caissier',   label: 'Caissier' }
+  ]
 };
 
 const Router = {
@@ -317,6 +391,21 @@ const Router = {
     if (!DB.AppState.currentUser && page !== 'login' && page !== 'onboarding') {
       page = 'login';
     }
+    
+    // Garde de sécurité centralisé basé sur les permissions de NAV_ITEMS
+    if (DB.AppState.currentUser && typeof NAV_ITEMS !== 'undefined') {
+      const navItem = NAV_ITEMS.find(item => item.page === page);
+      if (navItem && navItem.permission && typeof Auth !== 'undefined' && typeof Auth.can === 'function') {
+        if (!Auth.can(navItem.permission)) {
+          console.warn(`[Router] Navigation bloquée pour ${page} - Droits insuffisants.`);
+          if (typeof UI !== 'undefined' && typeof UI.toast === 'function') {
+            UI.toast('⛔ Accès refusé : vous n\'avez pas les droits nécessaires.', 'error', 4000);
+          }
+          page = 'dashboard';
+        }
+      }
+    }
+
     // Cleanup de la page precedente AVANT de changer
     this._runCleanup();
     this.currentPage = page;

@@ -137,7 +137,7 @@ async function _refreshDashboard(container) {
         <div class="kpi-card kpi-blue">
           <div class="kpi-icon"><i data-lucide="banknote"></i></div>
           <div class="kpi-content">
-            <div class="kpi-value">${Auth.can('sales_view_ca') ? UI.formatCurrency(todayRevenue) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
+            <div class="kpi-value">${Auth.can('dash_view_today_sales') ? UI.formatCurrency(todayRevenue) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
             <div class="kpi-label">Ventes Aujourd'hui</div>
             <div class="kpi-sub">${todaySales.length} transactions</div>
           </div>
@@ -145,9 +145,9 @@ async function _refreshDashboard(container) {
         <div class="kpi-card kpi-green">
           <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
           <div class="kpi-content">
-            <div class="kpi-value">${Auth.can('sales_view_ca') ? UI.formatCurrency(monthRevenue) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
+            <div class="kpi-value">${Auth.can('dash_view_month_sales') ? UI.formatCurrency(monthRevenue) : '<span style="font-size:13px;opacity:.5">Non disponible</span>'}</div>
             <div class="kpi-label">CA du Mois</div>
-            <div class="kpi-sub">${Auth.can('stock_view_margin') ? `Marge : ${marginPct}%` : 'Performance mensuelle'}</div>
+            <div class="kpi-sub">${Auth.can('dash_view_margin') ? `Marge : ${marginPct}%` : 'Performance mensuelle'}</div>
           </div>
         </div>
         <div class="kpi-card kpi-orange ${lowStockProducts.length > 0 ? 'kpi-alert' : ''}">
@@ -174,13 +174,13 @@ async function _refreshDashboard(container) {
           <div class="chart-header">
             <h3 class="chart-title">Ventes des 15 derniers jours</h3>
           </div>
-          ${Auth.can('sales_view_ca') ? `<canvas id="chart-sales" width="500" height="280"></canvas>` : `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px"><i data-lucide="lock" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:.3"></i>Réservé aux profils autorisés</div>`}
+          ${Auth.can('dash_view_sales_chart') ? `<canvas id="chart-sales" width="500" height="280"></canvas>` : `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px"><i data-lucide="lock" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:.3"></i>Réservé aux profils autorisés</div>`}
         </div>
         <div class="chart-card">
           <div class="chart-header">
             <h3 class="chart-title">Modes de paiement (mois)</h3>
           </div>
-          ${Auth.can('sales_view_ca') ? `<canvas id="chart-payments" width="500" height="280"></canvas>` : `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px"><i data-lucide="lock" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:.3"></i>Réservé aux profils autorisés</div>`}
+          ${Auth.can('dash_view_payments_chart') ? `<canvas id="chart-payments" width="500" height="280"></canvas>` : `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px"><i data-lucide="lock" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:.3"></i>Réservé aux profils autorisés</div>`}
         </div>
       </div>
 
@@ -190,10 +190,10 @@ async function _refreshDashboard(container) {
         <div class="dash-panel">
           <div class="panel-header">
             <h3 class="panel-title"><i data-lucide="award"></i> Top Produits du Mois</h3>
-            ${Auth.can('sales_view_stats') ? `<button class="btn btn-sm btn-ghost" onclick="Router.navigate('reports')">Voir tout <i data-lucide="arrow-right"></i></button>` : ''}
+            ${Auth.can('dash_view_top_products') ? `<button class="btn btn-sm btn-ghost" onclick="Router.navigate('reports')">Voir tout <i data-lucide="arrow-right"></i></button>` : ''}
           </div>
           <div class="top-products-list">
-            ${!Auth.can('sales_view_stats') ? `<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:12px"><i data-lucide="lock" style="width:24px;height:24px;display:block;margin:0 auto 8px;opacity:.3"></i>Statistiques réservées aux profils autorisés</div>` :
+            ${!Auth.can('dash_view_top_products') ? `<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:12px"><i data-lucide="lock" style="width:24px;height:24px;display:block;margin:0 auto 8px;opacity:.3"></i>Statistiques réservées aux profils autorisés</div>` :
         (topProducts.length === 0 ? '<p class="text-muted text-center">Aucune vente ce mois</p>' :
           topProducts.map(([name, rev], i) => `
                 <div class="top-product-item">

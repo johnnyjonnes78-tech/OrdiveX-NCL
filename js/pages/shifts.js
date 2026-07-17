@@ -21,7 +21,7 @@ let _shiftsState = { tab: 'planning', sortField: 'name', sortDir: 'asc', filterT
 // ─── Rendu principal ──────────────────────────────────────────────────
 async function renderShifts(container) {
   const user = DB.AppState.currentUser;
-  const isAdmin = user && (user.role === 'admin' || Auth.can('module_shifts'));
+  const isAdmin = user && (user.role === 'admin' || Auth.can('shifts_manage_teams'));
 
   const [allUsers, allSales, allShifts, allSettings] = await Promise.all([
     DB.dbGetAll('users'),

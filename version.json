@@ -1,5 +1,5 @@
 {
-  "version": "9.7.81",
-  "date": "2026-07-16",
-  "changelog": "v9.7.81 : Ajout de la mise en gras automatique sur l'impression thermique 80mm et nettoyage de la structure des permissions de session."
+  "version": "9.7.82",
+  "date": "2026-07-17",
+  "changelog": "v9.7.82 : Refonte complète du système de permissions — 90+ permissions granulaires basées sur les fonctionnalités réelles, sauvegarde instantanée, garde de navigation centralisé."
 }

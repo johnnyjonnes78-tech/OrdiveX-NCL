@@ -729,7 +729,7 @@ async function validatePrescription(rxId) {
   const rx = await DB.dbGet('prescriptions', rxId);
   if (!rx) return;
 
-  if (!Auth.can('validate_prescription')) {
+  if (!Auth.can('pos_create_prescription')) {
     UI.toast('Droits insuffisants — Validation réservée au pharmacien', 'error');
     return;
   }

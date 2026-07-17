@@ -842,12 +842,12 @@ async function renderPurchaseOrders(container) {
       </div>
       <div class="header-actions">
         <button class="btn btn-secondary" onclick="Router.navigate('suppliers')"><i data-lucide="factory"></i> Fournisseurs</button>
-        ${Auth.can('stock_export') ? `
+        ${Auth.can('suppliers_view') ? `
           <button class="btn btn-secondary" onclick="exportOrdersPDF()"><i data-lucide="printer"></i> PDF</button>
           <button class="btn btn-secondary" onclick="exportAllOrders()"><i data-lucide="download"></i> Exporter CSV</button>
           <label class="btn btn-secondary" style="cursor:pointer"><i data-lucide="upload"></i> Importer<input type="file" accept=".json,.csv" style="display:none" onchange="importOrdersFile(this.files[0])"></label>
         ` : ''}
-        ${Auth.can('achats_create') ? `<button class="btn btn-primary" onclick="showNewOrderForm()"><i data-lucide="plus"></i> Nouvelle Commande</button>` : ''}
+        ${Auth.can('po_create') ? `<button class="btn btn-primary" onclick="showNewOrderForm()"><i data-lucide="plus"></i> Nouvelle Commande</button>` : ''}
       </div>
     </div>
 
@@ -935,9 +935,9 @@ function filterOrders() {
       label: 'Actions', render: r => `
       <div class="actions-cell">
         <button class="btn btn-xs btn-primary" onclick="viewOrder(${r.id})"><i data-lucide="eye"></i> Voir</button>
-        ${r.status === 'pending' && Auth.can('achats_create') ? `<button class="btn btn-xs btn-secondary" onclick="sendOrder(${r.id})"><i data-lucide="send"></i> Envoyer</button>` : ''}
-        ${['sent', 'partial'].includes(r.status) && Auth.can('achats_receive') ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
-        ${['pending', 'sent'].includes(r.status) && Auth.can('achats_cancel') ? `<button class="btn btn-xs btn-danger" onclick="cancelOrder(${r.id})" title="Annuler cette commande"><i data-lucide="x-circle"></i> Annuler</button>` : ''}
+        ${r.status === 'pending' && Auth.can('po_send') ? `<button class="btn btn-xs btn-secondary" onclick="sendOrder(${r.id})"><i data-lucide="send"></i> Envoyer</button>` : ''}
+        ${['sent', 'partial'].includes(r.status) && Auth.can('po_receive') ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
+        ${['pending', 'sent'].includes(r.status) && Auth.can('po_cancel') ? `<button class="btn btn-xs btn-danger" onclick="cancelOrder(${r.id})" title="Annuler cette commande"><i data-lucide="x-circle"></i> Annuler</button>` : ''}
       </div>` },
   ], data, { emptyMessage: 'Aucune commande', emptyIcon: 'file-text', pageSize: 100 });
   if (window.lucide) lucide.createIcons();
