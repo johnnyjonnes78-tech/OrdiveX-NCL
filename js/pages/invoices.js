@@ -6,6 +6,19 @@
 const INVOICE_PAGE_SIZE = 50;
 
 async function renderInvoices(container) {
+  // Garde d'accès module
+  if (window.Auth && !Auth.can('module_invoices') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:60px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:56px; height:56px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter les factures fournisseurs.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   UI.loading(container, 'Chargement des factures...');
   const [invoices, suppliers, products] = await Promise.all([
     DB.dbGetAll('invoices'),
@@ -32,11 +45,11 @@ async function renderInvoices(container) {
         <p class="page-subtitle">${invoices.length} factures — ${draft.length} en brouillon</p>
       </div>
       <div class="header-actions">
-        <input type="file" id="inv-csv-file" accept=".csv" style="display:none" onchange="importInvoiceCsv(event)">
-        <button class="btn btn-secondary" onclick="document.getElementById('inv-csv-file').click()"><i data-lucide="upload-cloud"></i> Importer Facture (CSV)</button>
+        ${Auth.can('invoices_create') ? `<input type="file" id="inv-csv-file" accept=".csv" style="display:none" onchange="importInvoiceCsv(event)">` : ''}
+        ${Auth.can('invoices_create') ? `<button class="btn btn-secondary" onclick="document.getElementById('inv-csv-file').click()"><i data-lucide="upload-cloud"></i> Importer Facture (CSV)</button>` : ''}
         <button class="btn btn-secondary" onclick="exportInvoicesPDF()"><i data-lucide="printer"></i> PDF</button>
         <button class="btn btn-secondary" onclick="exportInvoicesCsv()"><i data-lucide="file-spreadsheet"></i> Exporter CSV</button>
-        <button class="btn btn-primary" onclick="showNewInvoiceForm()"><i data-lucide="plus"></i> Nouvelle Facture</button>
+        ${Auth.can('invoices_create') ? `<button class="btn btn-primary" onclick="showNewInvoiceForm()"><i data-lucide="plus"></i> Nouvelle Facture</button>` : ''}
       </div>
     </div>
 
@@ -112,13 +125,15 @@ function filterInvoices() {
         const gs = (key) => (window._appSettings || {})[key];
         const canCorriger = r.status === 'validated' && (gs('purchase_allow_edit_after') === 'true' || DB.AppState.currentUser?.role === 'admin');
         const canDelete = r.status === 'draft' && (Auth.can('invoices_delete') || DB.AppState.currentUser?.role === 'admin');
+        const canEdit   = r.status === 'draft' && (Auth.can('invoices_edit')   || DB.AppState.currentUser?.role === 'admin');
+        const canValidate = r.status === 'draft' && (Auth.can('invoices_create') || DB.AppState.currentUser?.role === 'admin');
         return `
         <div class="actions-cell">
           <button class="btn btn-xs btn-primary" onclick="viewInvoice(${r.id})"><i data-lucide="eye"></i> Voir</button>
-          ${r.status === 'draft' ? `<button class="btn btn-xs btn-success" onclick="validateInvoice(${r.id})"><i data-lucide="check-circle"></i> Valider & Stock</button>` : ''}
-          ${r.status === 'draft' ? `<button class="btn btn-xs btn-warning" onclick="showNewInvoiceForm(${r.id})"><i data-lucide="edit"></i> Modifier</button>` : ''}
+          ${canValidate ? `<button class="btn btn-xs btn-success" onclick="validateInvoice(${r.id})"><i data-lucide="check-circle"></i> Valider &amp; Stock</button>` : ''}
+          ${canEdit    ? `<button class="btn btn-xs btn-warning" onclick="showNewInvoiceForm(${r.id})"><i data-lucide="edit"></i> Modifier</button>` : ''}
           ${canCorriger ? `<button class="btn btn-xs btn-warning" onclick="unvalidateInvoice(${r.id})"><i data-lucide="rotate-ccw"></i> Corriger</button>` : ''}
-          ${canDelete ? `<button class="btn btn-xs btn-danger" onclick="deleteInvoice(${r.id})"><i data-lucide="trash-2"></i></button>` : ''}
+          ${canDelete  ? `<button class="btn btn-xs btn-danger" onclick="deleteInvoice(${r.id})"><i data-lucide="trash-2"></i></button>` : ''}
           <button class="btn btn-xs btn-secondary" onclick="printInvoicePDF(${r.id})"><i data-lucide="printer"></i> PDF</button>
         </div>`;
       }
@@ -650,8 +665,13 @@ async function submitInvoice(status) {
 }
 
 async function validateInvoice(invoiceId) {
+  if (window.Auth && !Auth.can('invoices_create') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de valider des factures.', 'error', 4000);
+    return;
+  }
   const invoice = await DB.dbGet('invoices', invoiceId);
   if (!invoice || invoice.status === 'validated') return;
+
   
   // Ensure all items have lot and expiry
   const missingData = invoice.items.find(i => !i.expiryDate);

@@ -377,7 +377,7 @@ function exportSales() {
 }
 
 async function renderReports(container) {
-  if (window.Auth && !Auth.can('mc_view') && !Auth.can('dash_view_margin') && DB.AppState.currentUser?.role !== 'admin') {
+  if (window.Auth && !Auth.can('module_reports') && DB.AppState.currentUser?.role !== 'admin') {
     container.innerHTML = `
       <div style="padding:40px; text-align:center; color:var(--text-muted)">
         <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>

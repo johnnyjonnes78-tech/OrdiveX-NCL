@@ -970,6 +970,8 @@ window.renderPermissionsGrid = async function() {
     patients:     'module_patients',
     traceability: 'module_traceability',
     accounting:   'module_accounting',
+    reports:      'module_reports',
+    metrics:      'module_metrics',
     hr:           'module_rh',
     shifts:       'module_shifts',
     admin:        'module_settings'
@@ -987,6 +989,8 @@ window.renderPermissionsGrid = async function() {
     patients:     'users',
     traceability: 'shield-check',
     accounting:   'landmark',
+    reports:      'bar-chart-3',
+    metrics:      'bar-chart-2',
     hr:           'user-cog',
     shifts:       'clock-3',
     admin:        'settings-2'
@@ -1163,6 +1167,8 @@ window._toggleCatPerms = function(catKey, checked) {
     patients:     'module_patients',
     traceability: 'module_traceability',
     accounting:   'module_accounting',
+    reports:      'module_reports',
+    metrics:      'module_metrics',
     hr:           'module_rh',
     shifts:       'module_shifts',
     admin:        'module_settings'
@@ -1206,6 +1212,8 @@ window.setAllPermissions = function(checked) {
     patients:     'module_patients',
     traceability: 'module_traceability',
     accounting:   'module_accounting',
+    reports:      'module_reports',
+    metrics:      'module_metrics',
     hr:           'module_rh',
     shifts:       'module_shifts',
     admin:        'module_settings'

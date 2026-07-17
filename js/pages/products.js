@@ -795,12 +795,14 @@ window.renderBulkGridPage = function(page) {
 
   tbody.innerHTML = pageProducts.map(p => {
     const margin = p.salePrice && p.purchasePrice ? ((p.salePrice - p.purchasePrice) / p.salePrice * 100).toFixed(1) : 0;
+    const canPA = Auth.can('products_view_purchase_price');
+    const canMarge = Auth.can('products_view_margin');
     return `
       <tr id="bulk-row-${p.id}">
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${p.name}</strong></td>
-        <td><input type="number" id="bulk-row-pa-${p.id}" value="${p.purchasePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'purchasePrice', this.value)"></td>
+        <td>${canPA ? `<input type="number" id="bulk-row-pa-${p.id}" value="${p.purchasePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'purchasePrice', this.value)">` : '<span class="text-muted">—</span>'}</td>
         <td><input type="number" id="bulk-row-pv-${p.id}" value="${p.salePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'salePrice', this.value)"></td>
-        <td><strong id="bulk-row-marge-${p.id}" style="color:var(--primary);">${margin}%</strong></td>
+        <td>${canMarge ? `<strong id="bulk-row-marge-${p.id}" style="color:var(--primary);">${margin}%</strong>` : '<span class="text-muted">—</span>'}</td>
         <td><input type="number" id="bulk-row-min-${p.id}" value="${p.minStock || 10}" class="form-input" style="width:70px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'minStock', this.value)"></td>
         <td><input type="date" id="bulk-row-exp-${p.id}" value="${p.expiryDate || ''}" class="form-input" style="width:125px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'expiryDate', this.value)"></td>
         <td>
@@ -910,8 +912,8 @@ async function viewProduct(id) {
       <div class="detail-row"><span class="detail-label">Catégorie</span><span><span class="category-tag">${p.category}</span></span></div>
       <div class="detail-row"><span class="detail-label">Statut</span><span>${p.requiresPrescription ? '<span class="badge badge-warning">Ordonnance requise</span>' : '<span class="badge badge-success">OTC</span>'}${p.isControlled ? ` <span class="badge badge-danger">${p.controlledClass || 'Substance Contrôlée'}</span>` : ''}</span></div>
       <div class="detail-row"><span class="detail-label">Prix Vente</span><span class="text-success font-bold">${UI.formatCurrency(p.salePrice)}</span></div>
-      <div class="detail-row"><span class="detail-label">Prix Achat</span><span>${UI.formatCurrency(p.purchasePrice)}</span></div>
-      <div class="detail-row"><span class="detail-label">Marge</span><span class="font-bold">${margin}%</span></div>
+      ${Auth.can('products_view_purchase_price') ? `<div class="detail-row"><span class="detail-label">Prix Achat</span><span>${UI.formatCurrency(p.purchasePrice)}</span></div>` : ''}
+      ${Auth.can('products_view_margin') ? `<div class="detail-row"><span class="detail-label">Marge</span><span class="font-bold">${margin}%</span></div>` : ''}
       <div class="detail-row"><span class="detail-label">Date de Péremption</span><span>${p.expiryDate ? (UI.expiryBadge ? UI.expiryBadge(p.expiryDate) : p.expiryDate) : '<span class="text-muted">Non renseignée</span>'}</span></div>
       <div class="detail-row"><span class="detail-label">Seuil minimum</span><span>${p.minStock} unités</span></div>
       ${p.allowUnitSale ? `
@@ -1517,7 +1519,7 @@ async function deleteProduct(id) {
 function exportProducts() {
   const data = window._productsData || [];
   const csv = '\uFEFFCode,Nom,DCI,Marque,Categorie,Prix Vente,Prix Achat,Rx\n' +
-    data.map(p => [p.code, '"' + (p.name || '').replace(/"/g, '""') + '"', p.dci || '', p.brand || '', p.category, p.salePrice, p.purchasePrice || 0, p.requiresPrescription ? 'Oui' : 'Non'].join(',')).join('\n');
+    data.map(p => [p.code, '"' + (p.name || '').replace(/"/g, '""') + '"', p.dci || '', p.brand || '', p.category, p.salePrice, Auth.can('products_view_purchase_price') ? (p.purchasePrice || 0) : '***', p.requiresPrescription ? 'Oui' : 'Non'].join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'produits_pharma_' + new Date().toISOString().split('T')[0] + '.csv';

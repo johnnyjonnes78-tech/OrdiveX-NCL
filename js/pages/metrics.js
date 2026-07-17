@@ -4,6 +4,18 @@
  */
 
 async function renderMetrics(container) {
+  if (window.Auth && !Auth.can('module_metrics') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:60px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:56px; height:56px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter les métriques business.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   // Cache de session : ne pas recalculer si on revient dans les 2 minutes
   const cacheKey = (window._metricsStartDate || '') + '|' + (window._metricsEndDate || '');
   if (window._metricsCache && window._metricsCache.key === cacheKey && (Date.now() - window._metricsCache.time < 120000)) {

@@ -101,7 +101,7 @@ const Auth = {
   // Permissions par défaut pour chaque rôle (modifiables depuis les Paramètres)
   _defaultPerms: {
     responsable: [
-      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts', 'module_settings',
+      'module_dashboard', 'module_reports', 'module_metrics', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts', 'module_settings',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
       'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_price', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart', 'sales_cancel',
       'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
@@ -113,6 +113,8 @@ const Auth = {
       'patients_view', 'patients_create', 'patients_edit', 'patients_delete', 'patients_credit_limit', 'patients_debt_settle', 'patients_debt_print', 'claims_view', 'claims_export',
       'traceability_view', 'traceability_view_expired', 'traceability_financial_loss', 'traceability_destroy_lot', 'traceability_recalls',
       'accounting_view_journal', 'accounting_view_reports', 'accounting_write', 'accounting_export', 'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export',
+      'reports_view', 'reports_view_financial', 'reports_view_sales', 'reports_export',
+      'metrics_view', 'metrics_view_kpis', 'metrics_view_charts', 'metrics_export',
       'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_manage_leaves', 'hr_write_caisse', 'hr_view_compta', 'hr_export_pdf',
       'shifts_view', 'shifts_open_close', 'shifts_manage_teams', 'shifts_manage_tasks', 'shifts_manage_absences', 'shifts_view_history', 'shifts_view_reports',
       'settings_view', 'settings_edit', 'settings_users', 'settings_permissions', 'settings_backup', 'settings_sync', 'settings_device'
@@ -122,7 +124,7 @@ const Auth = {
       'hr_view_salary', 'hr_manage_employees', 'hr_manage_attendance', 'hr_manage_payroll', 'hr_manage_leaves', 'hr_write_caisse', 'hr_view_compta', 'hr_export_pdf'
     ],
     pharmacien: [
-      'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts',
+      'module_dashboard', 'module_reports', 'module_metrics', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
       'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart', 'sales_cancel',
       'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
@@ -134,6 +136,8 @@ const Auth = {
       'patients_view', 'patients_create', 'patients_edit', 'patients_debt_settle', 'patients_debt_print', 'claims_view', 'claims_export',
       'traceability_view', 'traceability_view_expired', 'traceability_financial_loss', 'traceability_destroy_lot', 'traceability_recalls',
       'accounting_view_journal', 'accounting_view_reports', 'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export',
+      'reports_view', 'reports_view_financial', 'reports_view_sales', 'reports_export',
+      'metrics_view', 'metrics_view_kpis', 'metrics_view_charts', 'metrics_export',
       'hr_manage_employees', 'hr_manage_attendance',
       'shifts_view', 'shifts_open_close', 'shifts_manage_teams', 'shifts_manage_tasks', 'shifts_manage_absences', 'shifts_view_history', 'shifts_view_reports'
     ],
@@ -157,7 +161,8 @@ const Auth = {
       'module_dashboard', 'module_accounting', 'module_management_control',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_sales_chart', 'dash_view_payments_chart',
       'accounting_view_journal', 'accounting_view_reports', 'accounting_export',
-      'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export'
+      'mc_view', 'mc_view_kpis', 'mc_view_charts', 'mc_export',
+      'reports_view', 'reports_view_financial'
     ],
     assistant: [],
   },
@@ -165,6 +170,8 @@ const Auth = {
   ALL_PERMISSIONS: [
     // === ACCÈS AUX MODULES (SIDEBAR) ===
     { key: 'module_dashboard',         label: 'Accéder au Tableau de Bord',                   cat: 'modules' },
+    { key: 'module_reports',           label: 'Accéder aux Rapports & Analytique',            cat: 'reports' },
+    { key: 'module_metrics',           label: 'Accéder aux Métriques Business',               cat: 'metrics' },
     { key: 'module_sales',             label: 'Accéder aux Ventes (POS/Historique)',          cat: 'modules' },
     { key: 'module_caisse',            label: 'Accéder à la Caisse Journalière',              cat: 'modules' },
     { key: 'module_products',          label: 'Accéder au Catalogue Produits',                cat: 'modules' },
@@ -288,6 +295,18 @@ const Auth = {
     { key: 'claims_view',              label: 'Consulter le module des créances mutuelles',   cat: 'patients' },
     { key: 'claims_export',            label: 'Exporter les récapitulatifs des créances',     cat: 'patients' },
 
+    // === RAPPORTS & ANALYTIQUE ===
+    { key: 'reports_view',             label: 'Consulter les rapports de ventes & financiers', cat: 'reports' },
+    { key: 'reports_view_financial',   label: 'Voir les indicateurs financiers (CA, marge)',   cat: 'reports' },
+    { key: 'reports_view_sales',       label: 'Voir les statistiques de ventes détaillées',    cat: 'reports' },
+    { key: 'reports_export',           label: 'Exporter les rapports (PDF/CSV)',               cat: 'reports' },
+
+    // === MÉTRIQUES BUSINESS ===
+    { key: 'metrics_view',             label: 'Consulter le tableau des métriques business',   cat: 'metrics' },
+    { key: 'metrics_view_kpis',        label: 'Voir les KPIs avancés (ROI, panier moyen...)',  cat: 'metrics' },
+    { key: 'metrics_view_charts',      label: "Voir les graphiques d'évolution des métriques", cat: 'metrics' },
+    { key: 'metrics_export',           label: 'Exporter les métriques en PDF',                 cat: 'metrics' },
+
     // === TRAÇABILITÉ ===
     { key: 'traceability_view',        label: 'Consulter le module de traçabilité',           cat: 'traceability' },
     { key: 'traceability_view_expired', label: 'Voir les produits périmés / proches',         cat: 'traceability' },
@@ -347,6 +366,8 @@ const Auth = {
     { key: 'patients',   label: 'Patients, Créances & Assurances' },
     { key: 'traceability',label: 'Traçabilité & Pharmacovigilance' },
     { key: 'accounting', label: 'Comptabilité & Pilotage de Gestion' },
+    { key: 'reports',    label: 'Rapports Analytiques & Financiers' },
+    { key: 'metrics',    label: 'Métriques Business & Tableaux de Bord' },
     { key: 'hr',         label: 'Ressources Humaines' },
     { key: 'shifts',     label: 'Gestion des Équipes (Shifts)' },
     { key: 'admin',      label: 'Paramètres & Système' }

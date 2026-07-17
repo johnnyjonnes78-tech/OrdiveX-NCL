@@ -1,5 +1,5 @@
 {
-  "version": "9.7.93",
+  "version": "9.7.94",
   "date": "2026-07-17",
-  "changelog": "v9.7.93 : Sécurisation granulaire globale de tous les modules de l'ERP (Patients, Assurances/Tiers payant, Traçabilité, Comptabilité générale, Ressources Humaines, Retours médicaments, Mouvements manuels de caisse). Remplacement des contrôles basés sur les rôles par des vérifications Auth.can précises."
+  "changelog": "v9.7.94 : Corrections majeures des permissions — (1) Rapports & Métriques désormais visibles dans la grille des permissions avec leurs propres catégories et sous-permissions dédiées. (2) Catalogue : prix d'achat et marge masqués dans la fiche détail et la grille d'édition en lot selon les permissions, export CSV protégé. (3) Factures fournisseurs : garde d'accès module ajoutée, boutons Valider/Modifier/Importer conditionnels selon les permissions, garde serveur dans validateInvoice."
 }
