@@ -1,44 +1,33 @@
 /**
- * OrdiveX — Registre des Entrées et Sorties Manuelles de Stock
- * Traçabilité complète, historique immuable, filtres, pagination, impressions et exports.
+ * OrdiveX — Registre des Entrées et Sorties de Caisse (Dépenses / Recettes)
+ * Gestion professionnelle des mouvements financiers manuels hors ventes.
  */
 
-const MAN_MOV_PAGE_SIZE = 50;
+const CASH_MOV_PAGE_SIZE = 50;
 
 async function renderStockExits(container) {
-  UI.loading(container, 'Chargement du registre des mouvements...');
+  UI.loading(container, 'Chargement du registre de trésorerie...');
 
   try {
-    const [movements, products, users, stock] = await Promise.all([
-      DB.dbGetAll('movements'),
-      DB.dbGetAll('products'),
-      DB.dbGetAll('users'),
-      DB.dbGetAll('stock')
+    const [cashRegisterRaw, users] = await Promise.all([
+      DB.dbGetAll('cashRegister'),
+      DB.dbGetAll('users')
     ]);
 
-    // Filtrer les mouvements manuels (ceux qui ne sont pas des ventes automatiques ou des commandes d'achat d'invoice)
-    let manualMovements = movements.filter(m => 
-      m.subType === 'MANUAL_ENTRY' || 
-      m.subType === 'MANUAL_EXIT' || 
-      m.subType === 'ADMIN_ADJUSTMENT' ||
-      m.subType === 'MANUAL' ||
-      !m.subType
+    // Filtrer les opérations manuelles (exclure les ventes, retours, paies RH d'ici)
+    const manualMovements = cashRegisterRaw.filter(c => 
+      c.type === 'manual_in' || 
+      c.type === 'manual_out'
     );
-
-    // Dictionnaires pour jointures rapides
-    const productMap = {};
-    products.forEach(p => { productMap[p.id] = p; });
 
     const userMap = {};
     users.forEach(u => { userMap[u.id] = u.name || u.username; });
 
-    // Stocker dans le scope global pour le filtrage et la pagination
-    window._manualMovements = manualMovements;
-    window._manMovProductMap = productMap;
-    window._manMovUserMap = userMap;
-    window._manMovProducts = products;
-    window._manMovUsers = users;
-    window._manMovCurrentPage = 1;
+    // Stocker dans le scope global pour le filtrage, pagination et actions
+    window._cashMovements = manualMovements;
+    window._cashMovUserMap = userMap;
+    window._cashMovUsers = users;
+    window._cashMovCurrentPage = 1;
 
     // Date par défaut : Début de ce mois à aujourd'hui
     const today = new Date();
@@ -49,38 +38,45 @@ async function renderStockExits(container) {
     container.innerHTML = `
       <div class="page-header">
         <div>
-          <h1 class="page-title">Entrées et Sorties Manuelles</h1>
-          <p class="page-subtitle">Historique complet et registre professionnel des mouvements manuels de stock</p>
+          <h1 class="page-title">Entrées et Sorties de Caisse</h1>
+          <p class="page-subtitle">Registre de traçabilité des dépenses et recettes manuelles hors-vente</p>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" onclick="exportManualMovementsPDF()"><i data-lucide="printer"></i> PDF</button>
-          <button class="btn btn-secondary" onclick="exportManualMovementsCSV()"><i data-lucide="file-spreadsheet"></i> Exporter CSV</button>
-          <button class="btn btn-success" onclick="showNewManualMovementForm('ENTRY')"><i data-lucide="plus-circle"></i> Nouvelle Entrée</button>
-          <button class="btn btn-danger" onclick="showNewManualMovementForm('EXIT')"><i data-lucide="minus-circle"></i> Nouvelle Sortie</button>
+          <button class="btn btn-secondary" onclick="exportCashMovementsPDF()"><i data-lucide="printer"></i> PDF</button>
+          <button class="btn btn-secondary" onclick="exportCashMovementsCSV()"><i data-lucide="file-spreadsheet"></i> Exporter CSV</button>
+          <button class="btn btn-success" onclick="showNewCashMovementForm('manual_in')"><i data-lucide="plus-circle"></i> Nouveau Dépôt (Entrée)</button>
+          <button class="btn btn-danger" onclick="showNewCashMovementForm('manual_out')"><i data-lucide="minus-circle"></i> Nouvelle Dépense (Sortie)</button>
         </div>
       </div>
 
       <!-- BLOCS KPI -->
       <div class="kpi-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
         <div class="kpi-card kpi-blue">
-          <div class="kpi-icon"><i data-lucide="list"></i></div>
+          <div class="kpi-icon"><i data-lucide="calculator"></i></div>
           <div class="kpi-content">
-            <div class="kpi-value" id="kpi-mov-count">0</div>
-            <div class="kpi-label">Total opérations</div>
+            <div class="kpi-value" id="kpi-cash-count">0</div>
+            <div class="kpi-label">Nombre d'opérations</div>
           </div>
         </div>
         <div class="kpi-card kpi-green">
           <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
           <div class="kpi-content">
-            <div class="kpi-value" id="kpi-mov-entries">0</div>
-            <div class="kpi-label">Quantités Entrées</div>
+            <div class="kpi-value" id="kpi-cash-entries">0 GNF</div>
+            <div class="kpi-label">Total Entrées (Dépôts)</div>
           </div>
         </div>
         <div class="kpi-card kpi-red">
           <div class="kpi-icon"><i data-lucide="trending-down"></i></div>
           <div class="kpi-content">
-            <div class="kpi-value" id="kpi-mov-exits">0</div>
-            <div class="kpi-label">Quantités Sorties</div>
+            <div class="kpi-value" id="kpi-cash-exits">0 GNF</div>
+            <div class="kpi-label">Total Sorties (Dépenses)</div>
+          </div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-icon"><i data-lucide="wallet"></i></div>
+          <div class="kpi-content">
+            <div class="kpi-value" id="kpi-cash-balance">0 GNF</div>
+            <div class="kpi-label">Solde Net</div>
           </div>
         </div>
       </div>
@@ -89,37 +85,40 @@ async function renderStockExits(container) {
       <div class="filter-bar" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--surface); padding:16px; border-radius:12px; border:1px solid var(--border); margin-bottom:20px;">
         <div class="form-group" style="margin-bottom:0; flex:2; min-width:200px;">
           <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Recherche</label>
-          <input type="text" id="mov-search" class="form-control" placeholder="Rechercher par médicament, motif, réf..." oninput="filterManualMovements()">
+          <input type="text" id="cash-search" class="form-control" placeholder="Rechercher par libellé, référence..." oninput="filterCashMovements()">
         </div>
         <div class="form-group" style="margin-bottom:0; flex:1; min-width:150px;">
           <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Type</label>
-          <select id="mov-type" class="form-control" onchange="filterManualMovements()">
-            <option value="">Tous les types</option>
-            <option value="ENTRY">Entrée Manuelle</option>
-            <option value="EXIT">Sortie Manuelle</option>
+          <select id="cash-type" class="form-control" onchange="filterCashMovements()">
+            <option value="">Tous les flux</option>
+            <option value="manual_in">Dépôt (Entrée)</option>
+            <option value="manual_out">Dépense (Sortie)</option>
           </select>
         </div>
         <div class="form-group" style="margin-bottom:0; flex:1; min-width:150px;">
-          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Utilisateur</label>
-          <select id="mov-user" class="form-control" onchange="filterManualMovements()">
-            <option value="">Tous les utilisateurs</option>
-            ${users.map(u => `<option value="${u.id}">${u.name || u.username}</option>`).join('')}
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Mode</label>
+          <select id="cash-method" class="form-control" onchange="filterCashMovements()">
+            <option value="">Tous les modes</option>
+            <option value="cash">Espèces</option>
+            <option value="orange_money">Orange Money</option>
+            <option value="mtn_momo">MTN MoMo</option>
+            <option value="transfer">Virement</option>
           </select>
         </div>
         <div class="form-group" style="margin-bottom:0; width:140px;">
           <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Du</label>
-          <input type="date" id="mov-date-from" class="form-control" value="${fromDefault}" onchange="filterManualMovements()">
+          <input type="date" id="cash-date-from" class="form-control" value="${fromDefault}" onchange="filterCashMovements()">
         </div>
         <div class="form-group" style="margin-bottom:0; width:140px;">
           <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; display:block;">Au</label>
-          <input type="date" id="mov-date-to" class="form-control" value="${toDefault}" onchange="filterManualMovements()">
+          <input type="date" id="cash-date-to" class="form-control" value="${toDefault}" onchange="filterCashMovements()">
         </div>
       </div>
 
-      <div id="mov-table-container"></div>
+      <div id="cash-table-container"></div>
     `;
 
-    filterManualMovements();
+    filterCashMovements();
     if (window.lucide) lucide.createIcons();
 
   } catch (err) {
@@ -127,112 +126,106 @@ async function renderStockExits(container) {
   }
 }
 
-function filterManualMovements() {
-  const query = (document.getElementById('mov-search')?.value || '').toLowerCase().trim();
-  const type = document.getElementById('mov-type')?.value || '';
-  const userId = document.getElementById('mov-user')?.value || '';
-  const fromDate = document.getElementById('mov-date-from')?.value;
-  const toDate = document.getElementById('mov-date-to')?.value;
+function filterCashMovements() {
+  const query = (document.getElementById('cash-search')?.value || '').toLowerCase().trim();
+  const type = document.getElementById('cash-type')?.value || '';
+  const method = document.getElementById('cash-method')?.value || '';
+  const fromDate = document.getElementById('cash-date-from')?.value;
+  const toDate = document.getElementById('cash-date-to')?.value;
 
-  let filtered = [...(window._manualMovements || [])];
+  let filtered = [...(window._cashMovements || [])];
 
   // Filtre période
   if (fromDate) {
-    filtered = filtered.filter(m => m.date && m.date.split('T')[0] >= fromDate);
+    filtered = filtered.filter(c => c.date && c.date >= fromDate);
   }
   if (toDate) {
-    filtered = filtered.filter(m => m.date && m.date.split('T')[0] <= toDate);
+    filtered = filtered.filter(c => c.date && c.date <= toDate);
   }
 
   // Filtre type
   if (type) {
-    filtered = filtered.filter(m => m.type === type);
+    filtered = filtered.filter(c => c.type === type);
   }
 
-  // Filtre utilisateur
-  if (userId) {
-    filtered = filtered.filter(m => String(m.userId) === String(userId));
+  // Filtre mode règlement
+  if (method) {
+    filtered = filtered.filter(c => c.paymentMethod === method);
   }
 
   // Recherche libre
   if (query) {
-    filtered = filtered.filter(m => {
-      const prod = window._manMovProductMap[m.productId];
-      const prodName = prod ? (prod.name || '').toLowerCase() : '';
-      const prodDci = prod ? (prod.dci || '').toLowerCase() : '';
-      const reason = (m.note || m.reason || '').toLowerCase();
-      const ref = (m.reference || '').toLowerCase();
-      const obs = (m.observations || '').toLowerCase();
-      const supplier = (m.supplier || '').toLowerCase();
-      const destination = (m.destination || '').toLowerCase();
-      return prodName.includes(query) || prodDci.includes(query) || reason.includes(query) || ref.includes(query) || obs.includes(query) || supplier.includes(query) || destination.includes(query);
+    filtered = filtered.filter(c => {
+      const reason = (c.reason || '').toLowerCase();
+      const ref = (c.reference || '').toLowerCase();
+      const obs = (c.observations || '').toLowerCase();
+      return reason.includes(query) || ref.includes(query) || obs.includes(query);
     });
   }
 
-  // Trier par date décroissante
-  filtered.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  // Trier par date/timestamp décroissant
+  filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-  window._manMovFilteredData = filtered;
+  window._cashMovFilteredData = filtered;
 
   // Calcul statistiques KPIs
   const count = filtered.length;
-  const entriesQty = filtered.filter(m => m.type === 'ENTRY').reduce((acc, m) => acc + Math.abs(m.quantity || 0), 0);
-  const exitsQty = filtered.filter(m => m.type === 'EXIT').reduce((acc, m) => acc + Math.abs(m.quantity || 0), 0);
+  const totalEntries = filtered.filter(c => c.type === 'manual_in').reduce((acc, c) => acc + (c.amount || 0), 0);
+  const totalExits = filtered.filter(c => c.type === 'manual_out').reduce((acc, c) => acc + (c.amount || 0), 0);
+  const netBalance = totalEntries - totalExits;
 
-  document.getElementById('kpi-mov-count').textContent = count;
-  document.getElementById('kpi-mov-entries').textContent = entriesQty;
-  document.getElementById('kpi-mov-exits').textContent = exitsQty;
+  document.getElementById('kpi-cash-count').textContent = count;
+  document.getElementById('kpi-cash-entries').textContent = UI.formatCurrency(totalEntries);
+  document.getElementById('kpi-cash-exits').textContent = UI.formatCurrency(totalExits);
+  
+  const balanceEl = document.getElementById('kpi-cash-balance');
+  balanceEl.textContent = UI.formatCurrency(netBalance);
+  balanceEl.style.color = netBalance >= 0 ? '#16A34A' : '#DC2626';
 
-  const container = document.getElementById('mov-table-container');
+  const container = document.getElementById('cash-table-container');
   if (!container) return;
 
   UI.table(container, [
     {
       label: 'Date & Heure',
       render: r => {
-        const d = new Date(r.date);
+        const d = r.timestamp ? new Date(r.timestamp) : (r.date ? new Date(r.date) : new Date());
         return `<strong>${d.toLocaleDateString('fr-FR')}</strong> <span class="text-muted" style="font-size:11px">${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>`;
       }
     },
     {
-      label: 'Utilisateur',
-      render: r => window._manMovUserMap[r.userId] || '<span class="text-muted">Système</span>'
-    },
-    {
-      label: 'Médicament',
-      render: r => {
-        const p = window._manMovProductMap[r.productId];
-        return p ? `<strong>${p.name}</strong> <span class="text-muted" style="font-size:11px; display:block;">${p.code || ''}</span>` : '<span class="text-danger">Produit supprimé</span>';
-      }
-    },
-    {
-      label: 'Catégorie',
-      render: r => {
-        const p = window._manMovProductMap[r.productId];
-        return p ? `<span class="badge badge-neutral">${p.category || 'Non classé'}</span>` : '—';
-      }
+      label: 'Libellé / Objet',
+      render: r => `<strong>${r.reason || '—'}</strong>`
     },
     {
       label: 'Type',
       render: r => {
-        const isEntry = r.type === 'ENTRY';
-        return `<span class="badge ${isEntry ? 'badge-success' : 'badge-danger'}">${isEntry ? 'Entrée' : 'Sortie'}</span>`;
+        const isEntry = r.type === 'manual_in';
+        return `<span class="badge ${isEntry ? 'badge-success' : 'badge-danger'}">${isEntry ? 'Dépôt (Entrée)' : 'Dépense (Sortie)'}</span>`;
       }
     },
     {
-      label: 'Quantité',
+      label: 'Montant',
       render: r => {
-        const isEntry = r.type === 'ENTRY';
-        return `<strong class="${isEntry ? 'text-success' : 'text-danger'}">${isEntry ? '+' : '-'}${Math.abs(r.quantity)}</strong>`;
+        const isEntry = r.type === 'manual_in';
+        return `<strong class="${isEntry ? 'text-success' : 'text-danger'}">${isEntry ? '+' : '-'}${UI.formatCurrency(r.amount || 0)}</strong>`;
       }
     },
     {
-      label: 'Motif / Réf',
-      render: r => `<strong>${r.note || r.reason || '—'}</strong> ${r.reference ? `<code style="display:block; font-size:10px;">Réf: ${r.reference}</code>` : ''}`
+      label: 'Mode de règlement',
+      render: r => {
+        const m = r.paymentMethod || 'cash';
+        const labels = { cash: 'Espèces', orange_money: 'Orange Money', mtn_momo: 'MTN MoMo', transfer: 'Virement' };
+        return `<span class="badge badge-neutral">${labels[m] || m}</span>`;
+      }
     },
     {
-      label: 'Fourn. / Dest.',
-      render: r => r.type === 'ENTRY' ? (r.supplier || '<span class="text-muted">—</span>') : (r.destination || '<span class="text-muted">—</span>')
+      label: 'Utilisateur',
+      render: r => window._cashMovUserMap[r.userId] || '<span class="text-muted">Système</span>'
+    },
+    {
+      label: 'Référence / Pièce',
+      render: r => r.reference ? `<code>${r.reference}</code>` : '<span class="text-muted">—</span>'
     },
     {
       label: 'Observations',
@@ -241,239 +234,103 @@ function filterManualMovements() {
     {
       label: 'Actions',
       render: r => `
-        <button class="btn btn-xs btn-warning" onclick="showEditManualMovementForm(${r.id})" title="Modifier l'opération (audit log généré)"><i data-lucide="edit-3"></i></button>
+        <button class="btn btn-xs btn-warning" onclick="showEditCashMovementForm(${r.id})" title="Modifier l'opération (audit log généré)"><i data-lucide="edit-3"></i></button>
       `
     }
   ], filtered, {
-    emptyMessage: "Aucun mouvement manuel trouvé dans l'historique.",
-    emptyIcon: 'shuffle',
-    pageSize: MAN_MOV_PAGE_SIZE
+    emptyMessage: "Aucun mouvement manuel de trésorerie trouvé.",
+    emptyIcon: 'banknote',
+    pageSize: CASH_MOV_PAGE_SIZE
   });
 
   if (window.lucide) lucide.createIcons();
 }
 
-async function showNewManualMovementForm(type) {
-  const products = window._manMovProducts || [];
-  const title = type === 'ENTRY' ? "Nouvelle Entrée Manuelle" : "Nouvelle Sortie Manuelle";
+function showNewCashMovementForm(type) {
+  const isEntry = type === 'manual_in';
+  const title = isEntry ? "Nouveau Dépôt en Caisse (Entrée)" : "Nouvelle Dépense (Sortie de Caisse)";
   
   const formHTML = `
-    <form id="man-mov-form" class="form-grid">
-      <div class="form-group" style="position:relative;">
-        <label>Médicament *</label>
-        <input type="text" id="man-mov-search" class="form-control" placeholder="Rechercher par nom..." autocomplete="off" oninput="manMovProductSearch(this.value)">
-        <input type="hidden" name="productId" id="man-mov-prod-id" required>
-        <div id="man-mov-dropdown" class="order-product-dropdown" style="display:none"></div>
-      </div>
-      
-      <div id="man-mov-lot-container" style="display:none; margin-bottom: 12px;">
-        <!-- Sera rempli dynamiquement pour les sorties -->
-      </div>
-
+    <form id="cash-mov-form" class="form-grid">
       <div class="form-row">
         <div class="form-group">
-          <label>Quantité *</label>
-          <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+          <label>Montant (GNF) *</label>
+          <input type="number" name="amount" class="form-control" min="1" placeholder="Ex: 50000" required>
         </div>
         <div class="form-group">
-          <label>Motif *</label>
-          <select name="reason" class="form-control" required>
-            <option value="">Sélectionner...</option>
-            ${type === 'ENTRY' ? `
-              <option value="Réajustement / Inventaire">Réajustement / Inventaire</option>
-              <option value="Retour client">Retour client</option>
-              <option value="Don reçu">Don reçu</option>
-              <option value="Autre">Autre</option>
-            ` : `
-              <option value="Périmé / Expire">Périmé / Expire</option>
-              <option value="Cassé / Endommagé">Cassé / Endommagé</option>
-              <option value="Perte">Perte</option>
-              <option value="Don offert">Don offert</option>
-              <option value="Vol / Ecart stock">Vol / Écart stock</option>
-              <option value="Consommation interne">Consommation interne</option>
-              <option value="Autre">Autre</option>
-            `}
+          <label>Mode de règlement *</label>
+          <select name="paymentMethod" class="form-control" required>
+            <option value="cash">Espèces</option>
+            <option value="orange_money">Orange Money</option>
+            <option value="mtn_momo">MTN MoMo</option>
+            <option value="transfer">Virement</option>
           </select>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>${type === 'ENTRY' ? 'Fournisseur' : 'Destination'}</label>
-          <input type="text" name="${type === 'ENTRY' ? 'supplier' : 'destination'}" class="form-control" placeholder="Ex: ${type === 'ENTRY' ? 'Grossiste Pharma' : 'Destruction / Poubelle'}">
+          <label>Libellé / Objet *</label>
+          <input type="text" name="reason" class="form-control" placeholder="Ex: ${isEntry ? 'Apport de fonds monnaie' : 'Achat de rames de papier'}" required>
         </div>
         <div class="form-group">
-          <label>Référence (Optionnel)</label>
-          <input type="text" name="reference" class="form-control" placeholder="Ex: LOT-1234, FACT-XYZ">
+          <label>Référence / N° Pièce</label>
+          <input type="text" name="reference" class="form-control" placeholder="Ex: CHQ-99, FAC-88">
         </div>
       </div>
 
       <div class="form-group">
         <label>Observations / Notes</label>
-        <textarea name="observations" class="form-control" rows="2" placeholder="Détails supplémentaires..."></textarea>
+        <textarea name="observations" class="form-control" rows="2" placeholder="Informations complémentaires..."></textarea>
       </div>
     </form>
   `;
 
-  UI.modal(`<i data-lucide="${type === 'ENTRY' ? 'plus-circle' : 'minus-circle'}" class="modal-icon-inline"></i> ${title}`, formHTML, {
+  UI.modal(`<i data-lucide="${isEntry ? 'plus-circle' : 'minus-circle'}" class="modal-icon-inline"></i> ${title}`, formHTML, {
     footer: `
       <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-      <button class="btn ${type === 'ENTRY' ? 'btn-success' : 'btn-danger'}" onclick="submitNewManualMovement('${type}')"><i data-lucide="check"></i> Confirmer</button>
+      <button class="btn ${isEntry ? 'btn-success' : 'btn-danger'}" onclick="submitNewCashMovement('${type}')"><i data-lucide="check"></i> Confirmer</button>
     `
   });
   if (window.lucide) lucide.createIcons();
 }
 
-function manMovProductSearch(q) {
-  const dropdown = document.getElementById('man-mov-dropdown');
-  if (!dropdown) return;
-  const val = q.trim().toLowerCase();
-  if (val.length < 2) { dropdown.style.display = 'none'; return; }
-
-  const products = window._manMovProducts || [];
-  const matches = products.filter(p =>
-    (p.name || '').toLowerCase().includes(val) ||
-    (p.code || '').toLowerCase().includes(val)
-  ).slice(0, 10);
-
-  if (!matches.length) {
-    dropdown.innerHTML = '<div class="order-dd-empty">Aucun produit trouvé</div>';
-    dropdown.style.display = 'block';
-    return;
-  }
-
-  dropdown.innerHTML = matches.map(p => `
-    <div class="order-dd-item" onclick="selectManMovProduct(${p.id})">
-      <strong>${p.name}</strong> <span style="color:var(--text-muted);font-size:11px">(${p.code})</span>
-    </div>
-  `).join('');
-  dropdown.style.display = 'block';
-}
-
-async function selectManMovProduct(productId) {
-  const prod = window._manMovProducts.find(p => p.id === productId);
-  if (!prod) return;
-
-  const searchInput = document.getElementById('man-mov-search');
-  const hiddenInput = document.getElementById('man-mov-prod-id');
-  const dropdown = document.getElementById('man-mov-dropdown');
-
-  if (searchInput) searchInput.value = prod.name;
-  if (hiddenInput) hiddenInput.value = prod.id;
-  if (dropdown) dropdown.style.display = 'none';
-
-  // S'il s'agit d'une sortie, charger les lots actifs pour proposer la déduction
-  const lotContainer = document.getElementById('man-mov-lot-container');
-  if (lotContainer) {
-    lotContainer.style.display = 'none';
-    try {
-      const lots = await DB.dbGetAll('lots');
-      const prodLots = lots.filter(l => l.productId === productId && l.status === 'active' && l.quantity > 0);
-      if (prodLots.length > 0) {
-        lotContainer.innerHTML = `
-          <label>Sélectionner le lot spécifique à déduire (Recommandé)</label>
-          <select id="man-mov-lot-select" class="form-control" style="background:var(--bg-secondary);font-weight:600">
-            <option value="">Sortir du stock global (Premier lot expiré en premier)</option>
-            ${prodLots.map(l => `<option value="${l.id}">Lot: ${l.lotNumber || 'Sans lot'} - Expire: ${l.expiryDate ? UI.formatDate(l.expiryDate) : 'N/A'} (Dispo: ${l.quantity})</option>`).join('')}
-          </select>
-        `;
-        lotContainer.style.display = 'block';
-      }
-    } catch(err) {
-      console.error(err);
-    }
-  }
-}
-
-async function submitNewManualMovement(type) {
-  const form = document.getElementById('man-mov-form');
+async function submitNewCashMovement(type) {
+  const form = document.getElementById('cash-mov-form');
   if (!form || !form.checkValidity()) { form?.reportValidity(); return; }
 
   const formData = Object.fromEntries(new FormData(form));
-  const productId = parseInt(formData.productId);
-  const qty = parseInt(formData.quantity);
+  const amount = parseFloat(formData.amount);
   
-  if (isNaN(productId)) { UI.toast('Veuillez sélectionner un médicament', 'warning'); return; }
-  if (qty <= 0) { UI.toast('La quantité doit être supérieure à 0', 'warning'); return; }
+  if (isNaN(amount) || amount <= 0) { UI.toast('Veuillez saisir un montant valide', 'warning'); return; }
 
   try {
-    const stocks = await DB.dbGetAll('stock');
-    const existingStock = stocks.find(s => s.productId === productId);
-    const stockQty = existingStock ? existingStock.quantity : 0;
-
-    if (type === 'EXIT' && stockQty < qty) {
-      const confirm = await UI.confirm(`Le stock disponible (${stockQty}) est inférieur à la quantité demandée (${qty}). Voulez-vous forcer la sortie en stock négatif ?`);
-      if (!confirm) return;
-    }
-
-    // Mettre à jour le stock global
-    const newQty = type === 'ENTRY' ? (stockQty + qty) : (stockQty - qty);
-    if (existingStock) {
-      await DB.dbPut('stock', { ...existingStock, quantity: newQty, lastUpdated: Date.now() });
-    } else {
-      await DB.dbAdd('stock', { productId, quantity: newQty, reservedQuantity: 0, lastUpdated: Date.now() });
-    }
-
-    // Mettre à jour les lots associés
-    let selectedLotId = document.getElementById('man-mov-lot-select')?.value;
-    if (selectedLotId) {
-      selectedLotId = parseInt(selectedLotId);
-      const lotObj = await DB.dbGet('lots', selectedLotId);
-      if (lotObj) {
-        const nextLotQty = type === 'ENTRY' ? (lotObj.quantity + qty) : (lotObj.quantity - qty);
-        await DB.dbPut('lots', { 
-          ...lotObj, 
-          quantity: Math.max(0, nextLotQty), 
-          status: nextLotQty <= 0 ? 'depleted' : 'active',
-          updatedAt: Date.now()
-        });
-      }
-    } else if (type === 'EXIT') {
-      // Stratégie FIFO par date d'expiration pour déduire les lots automatiquement
-      const lots = await DB.dbGetAll('lots');
-      const activeLots = lots.filter(l => l.productId === productId && l.status === 'active' && l.quantity > 0)
-                            .sort((a,b) => new Date(a.expiryDate || 0) - new Date(b.expiryDate || 0));
-      
-      let remainingToDeduct = qty;
-      for (const lot of activeLots) {
-        if (remainingToDeduct <= 0) break;
-        const toDeduct = Math.min(lot.quantity, remainingToDeduct);
-        lot.quantity -= toDeduct;
-        if (lot.quantity <= 0) lot.status = 'depleted';
-        lot.updatedAt = Date.now();
-        await DB.dbPut('lots', lot);
-        remainingToDeduct -= toDeduct;
-      }
-    }
-
-    // Enregistrer l'opération dans movements
-    const movId = await DB.dbAdd('movements', {
-      productId,
-      type,
-      subType: type === 'ENTRY' ? 'MANUAL_ENTRY' : 'MANUAL_EXIT',
-      quantity: type === 'ENTRY' ? qty : -qty,
-      date: new Date().toISOString(),
-      userId: DB.AppState.currentUser?.id || null,
-      note: formData.reason,
-      supplier: type === 'ENTRY' ? (formData.supplier || '') : null,
-      destination: type === 'EXIT' ? (formData.destination || '') : null,
+    const todayStr = new Date().toISOString().split('T')[0];
+    const movementRecord = {
+      type: type,
+      amount: amount,
+      paymentMethod: formData.paymentMethod,
+      reason: formData.reason,
       reference: formData.reference || '',
-      observations: formData.observations || ''
-    });
+      observations: formData.observations || '',
+      date: todayStr,
+      timestamp: Date.now(),
+      userId: DB.AppState.currentUser?.id || null
+    };
 
-    // Écrire dans le journal d'audit
-    await DB.writeAudit(type === 'ENTRY' ? 'MANUAL_STOCK_ENTRY' : 'MANUAL_STOCK_EXIT', 'movements', movId, {
-      productId,
-      quantity: qty,
+    const movId = await DB.dbAdd('cashRegister', movementRecord);
+
+    // Enregistrer dans l'audit log
+    await DB.writeAudit(type === 'manual_in' ? 'CASH_MANUAL_IN' : 'CASH_MANUAL_OUT', 'cashRegister', movId, {
+      amount,
       reason: formData.reason,
       reference: formData.reference || '',
       user: DB.AppState.currentUser?.name || DB.AppState.currentUser?.username
     });
 
     UI.closeModal();
-    UI.toast('Mouvement enregistré avec succès', 'success');
+    UI.toast('Opération enregistrée avec succès', 'success');
 
-    // Recharger la page
     if (typeof DB.syncToSupabase === 'function') DB.syncToSupabase();
     renderStockExits(document.getElementById('app-content'));
 
@@ -482,62 +339,45 @@ async function submitNewManualMovement(type) {
   }
 }
 
-async function showEditManualMovementForm(movId) {
+async function showEditCashMovementForm(movId) {
   try {
-    const movObj = await DB.dbGet('movements', movId);
+    const movObj = await DB.dbGet('cashRegister', movId);
     if (!movObj) return;
 
-    const prod = window._manMovProductMap[movObj.productId];
-    const type = movObj.type;
+    const isEntry = movObj.type === 'manual_in';
     
     const formHTML = `
-      <form id="man-mov-edit-form" class="form-grid">
-        <div class="form-group">
-          <label>Médicament</label>
-          <input type="text" class="form-control" value="${prod ? prod.name : 'Inconnu'}" disabled style="background:var(--bg-secondary)">
-        </div>
-
+      <form id="cash-mov-edit-form" class="form-grid">
         <div class="form-row">
           <div class="form-group">
-            <label>Quantité *</label>
-            <input type="number" name="quantity" class="form-control" min="1" value="${Math.abs(movObj.quantity)}" required>
+            <label>Montant (GNF) *</label>
+            <input type="number" name="amount" class="form-control" min="1" value="${movObj.amount}" required>
           </div>
           <div class="form-group">
-            <label>Motif de modification *</label>
-            <input type="text" id="edit-audit-reason" class="form-control" placeholder="Justification de la correction..." required>
+            <label>Motif de la modification *</label>
+            <input type="text" id="edit-audit-reason" class="form-control" placeholder="Justification obligatoire..." required>
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label>Motif de l'opération *</label>
-            <select name="reason" class="form-control" required>
-              ${type === 'ENTRY' ? `
-                <option value="Réajustement / Inventaire" ${movObj.note === 'Réajustement / Inventaire' ? 'selected' : ''}>Réajustement / Inventaire</option>
-                <option value="Retour client" ${movObj.note === 'Retour client' ? 'selected' : ''}>Retour client</option>
-                <option value="Don reçu" ${movObj.note === 'Don reçu' ? 'selected' : ''}>Don reçu</option>
-                <option value="Autre" ${movObj.note === 'Autre' ? 'selected' : ''}>Autre</option>
-              ` : `
-                <option value="Périmé / Expire" ${movObj.note === 'Périmé / Expire' ? 'selected' : ''}>Périmé / Expire</option>
-                <option value="Cassé / Endommagé" ${movObj.note === 'Cassé / Endommagé' ? 'selected' : ''}>Cassé / Endommagé</option>
-                <option value="Perte" ${movObj.note === 'Perte' ? 'selected' : ''}>Perte</option>
-                <option value="Don offert" ${movObj.note === 'Don offert' ? 'selected' : ''}>Don offert</option>
-                <option value="Vol / Ecart stock" ${movObj.note === 'Vol / Ecart stock' ? 'selected' : ''}>Vol / Écart stock</option>
-                <option value="Consommation interne" ${movObj.note === 'Consommation interne' ? 'selected' : ''}>Consommation interne</option>
-                <option value="Autre" ${movObj.note === 'Autre' ? 'selected' : ''}>Autre</option>
-              `}
+            <label>Libellé / Objet *</label>
+            <input type="text" name="reason" class="form-control" value="${movObj.reason || ''}" required>
+          </div>
+          <div class="form-group">
+            <label>Mode de règlement *</label>
+            <select name="paymentMethod" class="form-control" required>
+              <option value="cash" ${movObj.paymentMethod === 'cash' ? 'selected' : ''}>Espèces</option>
+              <option value="orange_money" ${movObj.paymentMethod === 'orange_money' ? 'selected' : ''}>Orange Money</option>
+              <option value="mtn_momo" ${movObj.paymentMethod === 'mtn_momo' ? 'selected' : ''}>MTN MoMo</option>
+              <option value="transfer" ${movObj.paymentMethod === 'transfer' ? 'selected' : ''}>Virement</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>${type === 'ENTRY' ? 'Fournisseur' : 'Destination'}</label>
-            <input type="text" name="${type === 'ENTRY' ? 'supplier' : 'destination'}" class="form-control" 
-              value="${type === 'ENTRY' ? (movObj.supplier || '') : (movObj.destination || '')}">
-          </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label>Référence</label>
+            <label>Référence / N° Pièce</label>
             <input type="text" name="reference" class="form-control" value="${movObj.reference || ''}">
           </div>
         </div>
@@ -549,10 +389,10 @@ async function showEditManualMovementForm(movId) {
       </form>
     `;
 
-    UI.modal('<i data-lucide="edit-3" class="modal-icon-inline"></i> Modifier le Mouvement Manuel', formHTML, {
+    UI.modal('<i data-lucide="edit-3" class="modal-icon-inline"></i> Modifier le Mouvement de Caisse', formHTML, {
       footer: `
         <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-        <button class="btn btn-warning" onclick="submitEditManualMovement(${movId})"><i data-lucide="save"></i> Enregistrer les modifications</button>
+        <button class="btn btn-warning" onclick="submitEditCashMovement(${movId})"><i data-lucide="save"></i> Enregistrer les modifications</button>
       `
     });
     if (window.lucide) lucide.createIcons();
@@ -562,62 +402,47 @@ async function showEditManualMovementForm(movId) {
   }
 }
 
-async function submitEditManualMovement(movId) {
-  const form = document.getElementById('man-mov-edit-form');
+async function submitEditCashMovement(movId) {
+  const form = document.getElementById('cash-mov-edit-form');
   const auditReason = document.getElementById('edit-audit-reason')?.value?.trim();
   if (!form || !form.checkValidity()) { form?.reportValidity(); return; }
   if (!auditReason) { UI.toast('Veuillez saisir un motif de modification', 'warning'); return; }
 
   const formData = Object.fromEntries(new FormData(form));
-  const newQty = parseInt(formData.quantity);
-  if (newQty <= 0) { UI.toast('La quantité doit être supérieure à 0', 'warning'); return; }
+  const newAmount = parseFloat(formData.amount);
+  if (isNaN(newAmount) || newAmount <= 0) { UI.toast('Veuillez saisir un montant valide', 'warning'); return; }
 
   try {
-    const movObj = await DB.dbGet('movements', movId);
+    const movObj = await DB.dbGet('cashRegister', movId);
     if (!movObj) return;
 
-    const oldQty = Math.abs(movObj.quantity);
-    const quantityDiff = newQty - oldQty;
-
-    if (quantityDiff !== 0) {
-      // Ajuster le stock global
-      const stocks = await DB.dbGetAll('stock');
-      const existingStock = stocks.find(s => s.productId === movObj.productId);
-      if (existingStock) {
-        const multiplier = movObj.type === 'ENTRY' ? 1 : -1;
-        const updatedGlobalQty = existingStock.quantity + (quantityDiff * multiplier);
-        await DB.dbPut('stock', { ...existingStock, quantity: updatedGlobalQty, lastUpdated: Date.now() });
-      }
-    }
+    const oldAmount = movObj.amount;
 
     const updatedMovObj = {
       ...movObj,
-      quantity: movObj.type === 'ENTRY' ? newQty : -newQty,
-      note: formData.reason,
-      supplier: movObj.type === 'ENTRY' ? (formData.supplier || '') : null,
-      destination: movObj.type === 'EXIT' ? (formData.destination || '') : null,
+      amount: newAmount,
+      reason: formData.reason,
+      paymentMethod: formData.paymentMethod,
       reference: formData.reference || '',
       observations: formData.observations || '',
       updatedAt: Date.now(),
       updatedBy: DB.AppState.currentUser?.id
     };
 
-    await DB.dbPut('movements', updatedMovObj);
+    await DB.dbPut('cashRegister', updatedMovObj);
 
-    // Enregistrer l'opération d'édition dans l'audit log
-    await DB.writeAudit('MANUAL_MOVEMENT_EDIT', 'movements', movId, {
-      oldQty,
-      newQty,
-      oldReason: movObj.note,
+    // Enregistrer dans l'audit log
+    await DB.writeAudit('CASH_MANUAL_EDIT', 'cashRegister', movId, {
+      oldAmount,
+      newAmount,
+      oldReason: movObj.reason,
       newReason: formData.reason,
-      oldObservations: movObj.observations || '',
-      newObservations: formData.observations || '',
       auditReason,
       editedBy: DB.AppState.currentUser?.name || DB.AppState.currentUser?.username
     });
 
     UI.closeModal();
-    UI.toast('Mouvement mis à jour et tracé dans l\'audit log', 'success');
+    UI.toast('Mouvement mis à jour et tracé dans l\'audit', 'success');
 
     if (typeof DB.syncToSupabase === 'function') DB.syncToSupabase();
     renderStockExits(document.getElementById('app-content'));
@@ -627,41 +452,39 @@ async function submitEditManualMovement(movId) {
   }
 }
 
-function exportManualMovementsCSV() {
-  const data = window._manMovFilteredData || [];
+function exportCashMovementsCSV() {
+  const data = window._cashMovFilteredData || [];
   if (data.length === 0) { UI.toast('Aucune donnée à exporter', 'warning'); return; }
 
-  let csv = 'Date,Heure,Utilisateur,Medicament,Categorie,Type,Quantite,Motif,Reference,Fournisseur/Destination,Observations\n';
-  data.forEach(m => {
-    const d = new Date(m.date);
+  let csv = '\uFEFFDate,Heure,Libelle/Objet,Type,Montant,Mode,Utilisateur,Reference/Piece,Observations\n';
+  data.forEach(c => {
+    const d = c.timestamp ? new Date(c.timestamp) : (c.date ? new Date(c.date) : new Date());
     const dateStr = d.toLocaleDateString('fr-FR');
     const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const user = window._manMovUserMap[m.userId] || 'Système';
-    const prod = window._manMovProductMap[m.productId];
-    const prodName = prod ? prod.name : 'Inconnu';
-    const cat = prod ? prod.category || 'Non classé' : 'Non classé';
-    const typeLabel = m.type === 'ENTRY' ? 'Entree' : 'Sortie';
-    const qty = Math.abs(m.quantity);
-    const reason = m.note || m.reason || '';
-    const ref = m.reference || '';
-    const flow = m.type === 'ENTRY' ? (m.supplier || '') : (m.destination || '');
-    const obs = m.observations || '';
+    const typeLabel = c.type === 'manual_in' ? 'Depot (Entree)' : 'Depense (Sortie)';
+    const amount = c.amount || 0;
+    const labels = { cash: 'Especes', orange_money: 'Orange Money', mtn_momo: 'MTN MoMo', transfer: 'Virement' };
+    const method = labels[c.paymentMethod] || c.paymentMethod;
+    const user = window._cashMovUserMap[c.userId] || 'Systeme';
+    const ref = c.reference || '';
+    const obs = c.observations || '';
 
-    csv += `"${dateStr}","${timeStr}","${user.replace(/"/g, '""')}","${prodName.replace(/"/g, '""')}","${cat.replace(/"/g, '""')}","${typeLabel}","${qty}","${reason.replace(/"/g, '""')}","${ref.replace(/"/g, '""')}","${flow.replace(/"/g, '""')}","${obs.replace(/"/g, '""')}"\n`;
+    csv += `"${dateStr}","${timeStr}","${(c.reason || '').replace(/"/g, '""')}","${typeLabel}","${amount}","${method}","${user.replace(/"/g, '""')}","${ref.replace(/"/g, '""')}","${obs.replace(/"/g, '""')}"\n`;
   });
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `Mouvements_Manuels_Stock_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `Mouvements_Tresorerie_Caisse_${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  UI.toast("Fichier CSV exporté avec succès", "success");
 }
 
-function exportManualMovementsPDF() {
-  const dataList = window._manMovFilteredData || [];
+function exportCashMovementsPDF() {
+  const dataList = window._cashMovFilteredData || [];
   if (dataList.length === 0) {
     return UI.toast("Aucune donnée à exporter", "warning");
   }
@@ -672,48 +495,45 @@ function exportManualMovementsPDF() {
   let totalEntries = 0;
   let totalExits = 0;
 
-  const data = dataList.map(m => {
-    const isEntry = m.type === 'ENTRY';
-    const qty = Math.abs(m.quantity || 0);
-    if (isEntry) totalEntries += qty;
-    else totalExits += qty;
+  const data = dataList.map(c => {
+    const isEntry = c.type === 'manual_in';
+    const amount = c.amount || 0;
+    if (isEntry) totalEntries += amount;
+    else totalExits += amount;
 
-    const d = new Date(m.date);
+    const d = c.timestamp ? new Date(c.timestamp) : (c.date ? new Date(c.date) : new Date());
     const dateStr = d.toLocaleDateString('fr-FR');
     const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const user = window._manMovUserMap[m.userId] || 'Système';
-    const prod = window._manMovProductMap[m.productId];
-    const prodName = prod ? prod.name : 'Inconnu';
-    const flow = isEntry ? (m.supplier || '—') : (m.destination || '—');
+    const user = window._cashMovUserMap[c.userId] || 'Système';
+    const labels = { cash: 'Espèces', orange_money: 'Orange Money', mtn_momo: 'MTN MoMo', transfer: 'Virement' };
 
     return [
       dateStr + ' ' + timeStr,
+      c.reason || '—',
+      isEntry ? 'Entrée (Dépôt)' : 'Sortie (Dépense)',
+      (isEntry ? '+' : '-') + UI.formatCurrency(amount),
+      labels[c.paymentMethod] || c.paymentMethod,
       user,
-      prodName,
-      isEntry ? 'Entrée' : 'Sortie',
-      (isEntry ? '+' : '-') + qty,
-      m.note || m.reason || '—',
-      flow,
-      m.reference || '—'
+      c.reference || '—'
     ];
   });
 
-  const headers = ["Date & Heure", "Utilisateur", "Médicament", "Type", "Quantité", "Motif", "Fourn./Dest.", "Réf"];
+  const headers = ["Date & Heure", "Libellé / Objet", "Type", "Montant", "Mode", "Utilisateur", "Référence"];
   
-  const fromDate = document.getElementById('mov-date-from')?.value;
-  const toDate = document.getElementById('mov-date-to')?.value;
+  const fromDate = document.getElementById('cash-date-from')?.value;
+  const toDate = document.getElementById('cash-date-to')?.value;
   const dateRangeStr = (fromDate && toDate) 
     ? `Période du ${new Date(fromDate).toLocaleDateString('fr-FR')} au ${new Date(toDate).toLocaleDateString('fr-FR')}`
     : '';
 
   window.PDFExport.generate(
-    `Registre des Entrées et Sorties Manuelles de Stock`,
+    `Registre des Entrées et Sorties de Caisse (Dépenses / Recettes)`,
     headers,
     data,
     {
       subtitle: dateRangeStr || `Généré le ${new Date().toLocaleDateString('fr-FR')}`,
-      filename: `Registre_Mouvements_Manuels_${new Date().toISOString().split('T')[0]}.pdf`,
-      footerText: `Total Entrées : ${totalEntries} | Total Sorties : ${totalExits}`
+      filename: `Registre_Tresorerie_Caisse_${new Date().toISOString().split('T')[0]}.pdf`,
+      footerText: `Total Entrées : ${UI.formatCurrency(totalEntries)} | Total Sorties : ${UI.formatCurrency(totalExits)} | Solde Net : ${UI.formatCurrency(totalEntries - totalExits)}`
     }
   );
 }
@@ -722,10 +542,10 @@ function exportManualMovementsPDF() {
 Router.register('stock-exits', renderStockExits);
 
 // Exposer globalement les fonctions déclenchées par l'UI
-window.filterManualMovements = filterManualMovements;
-window.showNewManualMovementForm = showNewManualMovementForm;
-window.submitNewManualMovement = submitNewManualMovement;
-window.showEditManualMovementForm = showEditManualMovementForm;
-window.submitEditManualMovement = submitEditManualMovement;
-window.exportManualMovementsCSV = exportManualMovementsCSV;
-window.exportManualMovementsPDF = exportManualMovementsPDF;
+window.filterCashMovements = filterCashMovements;
+window.showNewCashMovementForm = showNewCashMovementForm;
+window.submitNewCashMovement = submitNewCashMovement;
+window.showEditCashMovementForm = showEditCashMovementForm;
+window.submitEditCashMovement = submitEditCashMovement;
+window.exportCashMovementsCSV = exportCashMovementsCSV;
+window.exportCashMovementsPDF = exportCashMovementsPDF;

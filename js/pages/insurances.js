@@ -222,27 +222,35 @@ async function selectInsurance(id) {
       <div style="display:flex; flex-direction:column; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; font-size:14px; line-height:1.6;">
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:20px; border-bottom:1px solid var(--border); padding-bottom:14px;">
           <div>
-            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">👤 Contact & Coordonnées</h4>
-            <strong>👤 Référent :</strong> ${ins.contact || 'Non renseigné'}<br>
-            <strong>📞 Téléphone :</strong> ${ins.phone || '—'}<br>
-            <strong>✉️ E-mail :</strong> ${ins.email || '—'}<br>
-            <strong>📍 Adresse :</strong> ${ins.address || '—'}
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="user-cog" style="width:16px;height:16px;"></i> Contact & Coordonnées
+            </h4>
+            <strong>Référent :</strong> ${ins.contact || 'Non renseigné'}<br>
+            <strong>Téléphone :</strong> ${ins.phone || '—'}<br>
+            <strong>E-mail :</strong> ${ins.email || '—'}<br>
+            <strong>Adresse :</strong> ${ins.address || '—'}
           </div>
           <div>
-            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">🛡️ Paramètres Tiers Payant</h4>
-            <strong>🔑 Réf. Interne :</strong> ${ins.refPerson || '—'}<br>
-            <strong>🛡️ Couverture standard :</strong> <span class="badge badge-info" style="font-size:12px; font-weight:700;">${ins.coveragePercent || ins.coverage || 70}%</span><br>
-            <strong>💳 Mode règlement :</strong> <span>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</span><br>
-            <strong>🟢 Statut :</strong> <span class="badge badge-${ins.status === 'active' ? 'success' : 'danger'}">${ins.status === 'active' ? 'Active' : 'Inactive'}</span>
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="settings" style="width:16px;height:16px;"></i> Paramètres Tiers Payant
+            </h4>
+            <strong>Réf. Interne :</strong> ${ins.refPerson || '—'}<br>
+            <strong>Couverture standard :</strong> <span class="badge badge-info" style="font-size:12px; font-weight:700;">${ins.coveragePercent || ins.coverage || 70}%</span><br>
+            <strong>Mode règlement :</strong> <span>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</span><br>
+            <strong>Statut :</strong> <span class="badge badge-${ins.status === 'active' ? 'success' : 'danger'}">${ins.status === 'active' ? 'Active' : 'Inactive'}</span>
           </div>
         </div>
         <div>
-          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">📜 Conditions de Prise en Charge</h4>
+          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="file-text" style="width:16px;height:16px;"></i> Conditions de Prise en Charge
+          </h4>
           <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); font-style:italic; white-space:pre-wrap; color:var(--text);">${ins.conditions || 'Aucune condition spécifique définie.'}</div>
         </div>
         ${ins.observations ? `
         <div>
-          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">📝 Observations & Notes</h4>
+          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="notepad-text" style="width:16px;height:16px;"></i> Observations & Notes
+          </h4>
           <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); white-space:pre-wrap; color:var(--text-muted);">${ins.observations}</div>
         </div>
         ` : ''}
@@ -251,16 +259,16 @@ async function selectInsurance(id) {
       <!-- NAVIGATION PAR ONGLETS -->
       <div style="display:flex; border-bottom:2px solid var(--border); margin-bottom:16px; gap:16px;">
         <button class="tab-header active" id="tab-btn-factures" onclick="switchInsuranceTab('factures')" 
-          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--primary-color); border-bottom:2px solid var(--primary-color);">
-          📋 Historique Factures (${sales.length})
+          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--primary-color); border-bottom:2px solid var(--primary-color); display:inline-flex; align-items:center; gap:6px;">
+          <i data-lucide="receipt" style="width:16px;height:16px;"></i> Historique Factures (${sales.length})
         </button>
         <button class="tab-header" id="tab-btn-payments" onclick="switchInsuranceTab('payments')" 
-          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent;">
-          💰 Règlements Reçus (${payments.length})
+          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px;">
+          <i data-lucide="wallet" style="width:16px;height:16px;"></i> Règlements Reçus (${payments.length})
         </button>
         <button class="tab-header" id="tab-btn-group" onclick="switchInsuranceTab('group')" 
-          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent;">
-          🏢 Facturation Groupée & Relevés
+          style="padding:10px 4px; font-weight:700; background:none; border:none; cursor:pointer; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; display:inline-flex; align-items:center; gap:6px;">
+          <i data-lucide="building" style="width:16px;height:16px;"></i> Facturation Groupée & Relevés
         </button>
       </div>
 

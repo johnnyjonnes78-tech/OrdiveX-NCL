@@ -1,5 +1,5 @@
 {
-  "version": "9.7.85",
+  "version": "9.7.86",
   "date": "2026-07-17",
-  "changelog": "v9.7.85 : Correction du bug de permission IndexedDB au démarrage (migration des assurances avec bypass DB Guard), retrait de la TVA additionnelle de la facture client imprimée (prix déjà TTC au POS), et agrandissement de l'affichage des détails complémentaires de l'assurance dans l'ERP."
+  "changelog": "v9.7.86 : Correction du module Entrées/Sorties de Caisse (ne concerne pas les médicaments, réassigné à la trésorerie manuelle cashRegister), suppression des émojis du module Assurances pour les remplacer par des icônes SVG/Lucide professionnelles."
 }
