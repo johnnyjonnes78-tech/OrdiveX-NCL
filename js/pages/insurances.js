@@ -130,13 +130,13 @@ function filterInsurancesList() {
     let billed = 0;
     let paid = 0;
     window._insurancesSales.forEach(s => {
-      if (s.paymentMethod === 'assurance' && s.insuranceId === ins.id) {
+      if (s.paymentMethod === 'assurance' && String(s.insuranceId) === String(ins.id)) {
         billed += s.assuranceAmount || s.total || 0;
         paid += s.insurancePaidAmount || 0;
       }
     });
     const due = Math.max(0, billed - paid);
-    const activeClass = window._activeInsuranceId === ins.id ? 'active-insurance-card' : '';
+    const activeClass = String(window._activeInsuranceId) === String(ins.id) ? 'active-insurance-card' : '';
     const statusBadge = ins.status === 'active' 
       ? `<span class="badge badge-success" style="font-size:9px; padding:2px 6px;">Active</span>` 
       : `<span class="badge badge-danger" style="font-size:9px; padding:2px 6px;">Inactive</span>`;
@@ -163,7 +163,7 @@ async function selectInsurance(id) {
   // Mettre à jour la classe active sur les cartes
   filterInsurancesList();
 
-  const ins = window._insurancesData.find(x => x.id === id);
+  const ins = window._insurancesData.find(x => String(x.id) === String(id));
   if (!ins) return;
 
   const container = document.getElementById('insurance-details-container');
@@ -173,8 +173,8 @@ async function selectInsurance(id) {
   const allPayments = await DB.dbGetAll('insurancePayments') || [];
   // Stocker en cache global pour l'export CSV
   window._insurancesPaymentsCache = allPayments;
-  const payments = allPayments.filter(p => p.insuranceId === id).sort((a,b) => b.timestamp - a.timestamp);
-  const sales = window._insurancesSales.filter(s => s.paymentMethod === 'assurance' && s.insuranceId === id)
+  const payments = allPayments.filter(p => String(p.insuranceId) === String(id)).sort((a,b) => b.timestamp - a.timestamp);
+  const sales = window._insurancesSales.filter(s => s.paymentMethod === 'assurance' && String(s.insuranceId) === String(id))
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   // Calculs financiers
@@ -459,7 +459,7 @@ function renderGroupedInvoices() {
   const fromDate = document.getElementById('group-date-from')?.value;
   const toDate = document.getElementById('group-date-to')?.value;
 
-  let filteredSales = window._insurancesSales.filter(s => s.paymentMethod === 'assurance' && s.insuranceId === window._activeInsuranceId);
+  let filteredSales = window._insurancesSales.filter(s => s.paymentMethod === 'assurance' && String(s.insuranceId) === String(window._activeInsuranceId));
 
   if (fromDate) {
     filteredSales = filteredSales.filter(s => new Date(s.date) >= new Date(fromDate));
@@ -793,7 +793,7 @@ window.submitInsurancePayment = async function(event, insuranceId) {
     // On ne considère que les ventes avec un solde dû > 0 (non entièrement réglées)
     const activeSales = window._insurancesSales
       .filter(s => {
-        if (s.paymentMethod !== 'assurance' || s.insuranceId !== insuranceId) return false;
+        if (s.paymentMethod !== 'assurance' || String(s.insuranceId) !== String(insuranceId)) return false;
         // Calculer la part assurance de cette vente
         const saleAmt = s.assuranceAmount != null ? s.assuranceAmount : s.total;
         const salePaid = s.insurancePaidAmount || 0;
@@ -835,7 +835,7 @@ window.submitInsurancePayment = async function(event, insuranceId) {
     }
 
     // 3. Enregistrer un versement global en caisse
-    const ins = window._insurancesData.find(x => x.id === insuranceId);
+    const ins = window._insurancesData.find(x => String(x.id) === String(insuranceId));
     await DB.dbAdd('cashRegister', {
       type: 'debt_in',
       amount: amount,
@@ -970,17 +970,18 @@ window.exportGroupedPDF = async function() {
     doc.setFillColor(245, 247, 250);
     doc.rect(14, 66, pageWidth - 28, 20, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.text("TOTAL FACTURÉ TIERS PAYANT", 20, 72);
-    doc.text("TOTAL REMBOURSÉ SUR PÉRIODE", pageWidth / 2 - 20, 72);
-    doc.text("RESTE À PERCEVOIR", pageWidth - 70, 72);
+    doc.setFontSize(7.5);
+    doc.text("TOTAL FACTURÉ TIERS PAYANT", 18, 72);
+    doc.text("TOTAL REMBOURSÉ SUR PÉRIODE", pageWidth / 2, 72, { align: 'center' });
+    doc.text("RESTE À PERCEVOIR", pageWidth - 18, 72, { align: 'right' });
 
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setTextColor(27, 79, 114);
-    doc.text(UI.formatCurrency(periodTotalBilled), 20, 80);
+    doc.text(UI.formatCurrency(periodTotalBilled), 18, 80);
     doc.setTextColor(22, 163, 74);
-    doc.text(UI.formatCurrency(periodTotalPaid), pageWidth / 2 - 20, 80);
+    doc.text(UI.formatCurrency(periodTotalPaid), pageWidth / 2, 80, { align: 'center' });
     doc.setTextColor(220, 38, 38);
-    doc.text(UI.formatCurrency(periodDue), pageWidth - 70, 80);
+    doc.text(UI.formatCurrency(periodDue), pageWidth - 18, 80, { align: 'right' });
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(9);
@@ -1031,7 +1032,7 @@ window.exportGroupedPDF = async function() {
 };
 
 window.exportGroupedCSV = function() {
-  const ins = window._insurancesData.find(x => x.id === window._activeInsuranceId);
+  const ins = window._insurancesData.find(x => String(x.id) === String(window._activeInsuranceId));
   if (!ins) return;
 
   const sales = window._groupedFilteredSales || [];
@@ -1039,7 +1040,7 @@ window.exportGroupedCSV = function() {
 
   // ─── Récupérer les paiements associés ───
   const allPayments = window._insurancesPaymentsCache || [];
-  const insPayments = allPayments.filter(p => p.insuranceId === ins.id)
+  const insPayments = allPayments.filter(p => String(p.insuranceId) === String(ins.id))
     .sort((a,b) => a.timestamp - b.timestamp);
 
   let csvContent = "\ufeff"; // BOM UTF-8

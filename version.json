@@ -1,5 +1,5 @@
 {
-  "version": "9.7.88",
+  "version": "9.7.89",
   "date": "2026-07-17",
-  "changelog": "v9.7.88 : Layout assurances corrigé (300px + minmax(0,1fr)), bouton Percevoir Tout fonctionnel, suppression complète de la TVA dans les factures fournisseurs (formulaire, vue, impression PDF)."
+  "changelog": "v9.7.89 : Correction du chevauchement de texte dans le relevé PDF d'assurance, sécurisation du typage des ID d'assurance pour éviter la disparition des calculs d'encours, suppression définitive de l'export PDF dans le centre d'alertes."
 }
