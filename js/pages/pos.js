@@ -96,6 +96,12 @@ async function posCloseSession(index) {
 function _posRenderTabs() {
   var container = document.getElementById('pos-session-tabs');
   if (!container) return;
+  // Masquer les onglets si l'utilisateur n'a pas la permission pos_session_tabs
+  if (window.Auth && !Auth.can('pos_session_tabs') && DB.AppState.currentUser?.role !== 'admin') {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = '';
   var html = '';
   _posSessions.forEach(function(s, i) {
     var isActive = i === _posActiveSession;
@@ -349,6 +355,22 @@ async function renderPOS(container) {
  * Remplace le squelette par l'interface interactive une fois les données prêtes
  */
 function renderFullPOSUI(container) {
+  // Permissions de paiement calculées une seule fois pour le rendu
+  const _canCash     = Auth.can('pos_pay_cash');
+  const _canMobile   = Auth.can('pos_pay_mobile');
+  const _canAssur    = Auth.can('pos_pay_assurance');
+  const _canCredit   = Auth.can('pos_pay_credit');
+  const _canCombined = _canCash && _canMobile;
+  const _canModQty   = Auth.can('pos_modify_qty') || DB.AppState.currentUser?.role === 'admin';
+  const _canClearCart = Auth.can('pos_clear_cart') || DB.AppState.currentUser?.role === 'admin';
+  // Premier mode autorisé = mode actif par défaut
+  let _defaultPayMode = 'cash';
+  if (!_canCash) {
+    if (_canMobile) _defaultPayMode = 'orange_money';
+    else if (_canAssur) _defaultPayMode = 'assurance';
+    else if (_canCredit) _defaultPayMode = 'credit';
+  }
+  window._posDefaultPayMode = _defaultPayMode;
   // On conserve le même wrap
   container.innerHTML = `
     <div class="pos-wrap">
@@ -467,25 +489,12 @@ function renderFullPOSUI(container) {
         <!-- PAIEMENT -->
         <div class="pos-pay-block">
           <div class="pay-methods">
-            <button class="pay-btn active" data-m="cash" onclick="selectPay(this)">
-              <i data-lucide="banknote"></i><span>Espèces</span>
-            </button>
-            <button class="pay-btn" data-m="orange_money" onclick="selectPay(this)">
-              <i data-lucide="smartphone"></i><span>O. Money</span>
-            </button>
-            <button class="pay-btn" data-m="mtn_momo" onclick="selectPay(this)">
-              <i data-lucide="smartphone"></i><span>MTN MoMo</span>
-            </button>
-            <button class="pay-btn" data-m="combined" onclick="selectPay(this)">
-              <i data-lucide="split"></i><span>Mixte</span>
-            </button>
-            <button class="pay-btn" data-m="assurance" onclick="selectPay(this)">
-              <i data-lucide="shield-plus"></i><span>Assurance</span>
-            </button>
-            ${Auth.can('pos_pay_credit') ? `
-            <button class="pay-btn" data-m="credit" onclick="selectPay(this)">
-              <i data-lucide="file-clock"></i><span>Crédit</span>
-            </button>` : ''}
+            ${_canCash ? `<button class="pay-btn ${_defaultPayMode==='cash'?'active':''}" data-m="cash" onclick="selectPay(this)"><i data-lucide="banknote"></i><span>Espèces</span></button>` : ''}
+            ${_canMobile ? `<button class="pay-btn ${_defaultPayMode==='orange_money'?'active':''}" data-m="orange_money" onclick="selectPay(this)"><i data-lucide="smartphone"></i><span>O. Money</span></button>` : ''}
+            ${_canMobile ? `<button class="pay-btn" data-m="mtn_momo" onclick="selectPay(this)"><i data-lucide="smartphone"></i><span>MTN MoMo</span></button>` : ''}
+            ${_canCombined ? `<button class="pay-btn" data-m="combined" onclick="selectPay(this)"><i data-lucide="split"></i><span>Mixte</span></button>` : ''}
+            ${_canAssur ? `<button class="pay-btn ${_defaultPayMode==='assurance'?'active':''}" data-m="assurance" onclick="selectPay(this)"><i data-lucide="shield-plus"></i><span>Assurance</span></button>` : ''}
+            ${_canCredit ? `<button class="pay-btn ${_defaultPayMode==='credit'?'active':''}" data-m="credit" onclick="selectPay(this)"><i data-lucide="file-clock"></i><span>Crédit</span></button>` : ''}
           </div>
 
           <div id="pay-cash" class="pay-detail">
@@ -577,9 +586,7 @@ function renderFullPOSUI(container) {
         <!-- ACTIONS -->
         <div class="pos-actions-bar">
           <div class="pos-actions-row-1">
-            <button class="btn btn-ghost pos-btn-icon" onclick="viderPanier()" title="Vider le panier (Echap)">
-              <i data-lucide="trash-2"></i>
-            </button>
+            ${_canClearCart ? `<button class="btn btn-ghost pos-btn-icon" onclick="viderPanier()" title="Vider le panier (Echap)"><i data-lucide="trash-2"></i></button>` : ''}
             <button class="btn btn-secondary pos-btn-hold" onclick="mettreEnAttente()" title="Mettre en attente">
               <i data-lucide="pause"></i><span class="pos-btn-label">Attente</span>
             </button>
@@ -1127,6 +1134,10 @@ function checkStockCart(productId) {
 }
 
 function changeQty(productId, mode, delta) {
+  if (window.Auth && !Auth.can('pos_modify_qty') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de modifier les quantités.', 'error', 3000);
+    refreshCartUI(); return;
+  }
   const item = posCart.find(c => c.productId === productId && c.saleMode === mode);
   if (!item) return;
   const nq = item.qty + delta;
@@ -1144,6 +1155,10 @@ function changeQty(productId, mode, delta) {
 }
 
 function setQtyDirect(productId, mode, val) {
+  if (window.Auth && !Auth.can('pos_modify_qty') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de modifier les quantités.', 'error', 3000);
+    refreshCartUI(); return;
+  }
   const nq = parseInt(val);
   if (isNaN(nq) || nq < 1) return;
   const item = posCart.find(c => c.productId === productId && c.saleMode === mode);
@@ -1159,6 +1174,10 @@ function setQtyDirect(productId, mode, val) {
 }
 
 function removeItem(productId, mode) {
+  if (window.Auth && !Auth.can('pos_modify_qty') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de retirer un article du panier.', 'error', 3000);
+    return;
+  }
   posCart = posCart.filter(c => !(c.productId === productId && c.saleMode === mode));
   refreshCartUI(); updateCardUI(productId);
 }
@@ -1195,6 +1214,10 @@ function updateCardUI(productId) {
 }
 
 function viderPanier() {
+  if (window.Auth && !Auth.can('pos_clear_cart') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de vider le panier.', 'error', 4000);
+    return;
+  }
   const pids = [...new Set(posCart.map(c => c.productId))]; // IDs uniques
   posCart = [];
   clearClientUI();
@@ -1227,6 +1250,8 @@ function refreshCartUI() {
     return;
   }
 
+  const _canModQty = Auth.can('pos_modify_qty') || DB.AppState.currentUser?.role === 'admin';
+
   body.innerHTML = posCart.map(item => `
     <div class="cart-line">
       <div class="cart-line-info">
@@ -1235,16 +1260,16 @@ function refreshCartUI() {
         <div class="cart-line-pu">${UI.formatCurrency(item.unitPrice)} / ${item.saleMode === 'unit' ? 'unité' : (item.saleMode === 'subunit' ? 'plaquette' : 'boîte')}</div>
       </div>
       <div class="cart-line-qty">
-        <button class="qty-ctrl" onclick="changeQty(${item.productId}, '${item.saleMode}', -1)">−</button>
+        <button class="qty-ctrl" onclick="changeQty(${item.productId}, '${item.saleMode}', -1)" ${!_canModQty ? 'disabled title="Autorisation requise"' : ''}>−</button>
         <input type="number" class="qty-direct" value="${item.qty}" min="1"
           onchange="setQtyDirect(${item.productId}, '${item.saleMode}', this.value)"
-          onfocus="this.select()">
-        <button class="qty-ctrl" onclick="changeQty(${item.productId}, '${item.saleMode}', +1)">+</button>
+          onfocus="this.select()" ${!_canModQty ? 'disabled title="Autorisation requise"' : ''}>
+        <button class="qty-ctrl" onclick="changeQty(${item.productId}, '${item.saleMode}', +1)" ${!_canModQty ? 'disabled title="Autorisation requise"' : ''}>+</button>
       </div>
       <div class="cart-line-right">
         <div class="cart-line-total">${UI.formatCurrency(item.total)}</div>
         <button class="cart-notice-btn" onclick="showProductNotice(${item.productId})" title="Notice médicale" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer;color:var(--info);font-size:12px;transition:all 0.2s"><i data-lucide="info" style="width:14px;height:14px"></i></button>
-        <button class="cart-line-del" onclick="removeItem(${item.productId}, '${item.saleMode}')" title="Retirer"><i data-lucide="trash-2"></i></button>
+        ${_canModQty ? `<button class="cart-line-del" onclick="removeItem(${item.productId}, '${item.saleMode}')" title="Retirer"><i data-lucide="trash-2"></i></button>` : ''}
       </div>
     </div>`).join('');
 
@@ -2167,7 +2192,22 @@ async function _validerVenteLogic() {
     if (!ok) return;
   }
 
-  // Contrôles paiement
+  // Contrôles paiement — vérification des permissions par méthode
+  if (method === 'cash' && window.Auth && !Auth.can('pos_pay_cash') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'encaisser en espèces.', 'error', 5000); return;
+  }
+  if (['orange_money', 'mtn_momo'].includes(method) && window.Auth && !Auth.can('pos_pay_mobile') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'encaisser via Mobile Money.', 'error', 5000); return;
+  }
+  if (method === 'assurance' && window.Auth && !Auth.can('pos_pay_assurance') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'utiliser la prise en charge assurance.', 'error', 5000); return;
+  }
+  if (method === 'combined' && window.Auth && DB.AppState.currentUser?.role !== 'admin') {
+    if (!Auth.can('pos_pay_cash') || !Auth.can('pos_pay_mobile')) {
+      UI.toast('⛔ Le paiement mixte requiert les permissions espèces ET Mobile Money.', 'error', 5000); return;
+    }
+  }
+  // Validation montants
   if (method === 'cash') {
     const recv = parseFloat(document.getElementById('cash-in')?.value || 0);
     if (recv < total) { UI.toast('Montant reçu insuffisant par rapport au total', 'error'); return; }
@@ -2497,11 +2537,12 @@ async function _validerVenteLogic() {
     if (rxtog) { rxtog.checked = false; onRxToggle(false); }
     resetMobilePayUI();
     
-    // Reset assurance and switch back to cash
+    // Reset assurance and switch back to default authorized payment method
     const assurFields = document.querySelectorAll('.assur-amount-field');
     assurFields.forEach(f => f.value = '');
-    const cashBtn = document.querySelector('.pay-btn[data-m="cash"]');
-    if (cashBtn) selectPay(cashBtn);
+    const defaultMode = window._posDefaultPayMode || 'cash';
+    const defaultBtn = document.querySelector(`.pay-btn[data-m="${defaultMode}"]`) || document.querySelector('.pay-btn');
+    if (defaultBtn) selectPay(defaultBtn);
     
     refreshCartUI();
     // Mettre à jour uniquement les cartes des produits vendus

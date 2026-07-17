@@ -1421,7 +1421,7 @@ async function updateProduct(id) {
   const newSalePrice = parseFloat(data.salePrice);
   const newPurchasePrice = parseFloat(data.purchasePrice || 0);
   if ((newSalePrice !== original.salePrice || newPurchasePrice !== original.purchasePrice)
-      && !Auth.can('stock_product_edit') && DB.AppState.currentUser?.role !== 'admin') {
+      && !Auth.can('products_edit') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission de modifier les prix.', 'error', 5000);
     return;
   }

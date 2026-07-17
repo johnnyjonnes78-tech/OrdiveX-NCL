@@ -103,7 +103,7 @@ const Auth = {
     responsable: [
       'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts', 'module_settings',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
-      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_price', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart',
+      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_price', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart', 'sales_cancel',
       'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
       'products_view', 'products_view_kpis', 'products_view_purchase_price', 'products_view_profit', 'products_view_margin', 'products_create', 'products_edit', 'products_delete', 'products_bulk_edit', 'products_import', 'products_export', 'products_filter',
       'stock_view', 'stock_view_kpis', 'stock_view_purchase_price', 'stock_view_value', 'stock_adjust', 'stock_exit', 'stock_import', 'stock_export', 'stock_print', 'stock_view_expiry', 'stock_view_exits_history',
@@ -124,7 +124,7 @@ const Auth = {
     pharmacien: [
       'module_dashboard', 'module_sales', 'module_caisse', 'module_products', 'module_stock', 'module_inventory', 'module_reorder', 'module_prescriptions', 'module_patients', 'module_claims', 'module_suppliers', 'module_purchase_orders', 'module_invoices', 'module_traceability', 'module_management_control', 'module_accounting', 'module_rh', 'module_shifts',
       'dash_view_today_sales', 'dash_view_month_sales', 'dash_view_margin', 'dash_view_active_products', 'dash_view_active_alerts', 'dash_view_sales_chart', 'dash_view_payments_chart', 'dash_view_top_products', 'dash_view_recent_alerts', 'dash_view_low_stock', 'alerts_view', 'alerts_resolve',
-      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart',
+      'pos_view', 'pos_sales_create', 'pos_discount', 'pos_modify_qty', 'pos_pay_cash', 'pos_pay_mobile', 'pos_pay_credit', 'pos_pay_assurance', 'pos_create_prescription', 'pos_session_tabs', 'pos_clear_cart', 'sales_cancel',
       'caisse_view', 'caisse_view_details', 'caisse_view_stats', 'caisse_depot_retrait', 'caisse_cloture', 'caisse_export_csv', 'caisse_view_manual_movements',
       'products_view', 'products_view_kpis', 'products_view_purchase_price', 'products_view_profit', 'products_view_margin', 'products_create', 'products_edit', 'products_bulk_edit', 'products_export', 'products_filter',
       'stock_view', 'stock_view_kpis', 'stock_view_purchase_price', 'stock_view_value', 'stock_adjust', 'stock_exit', 'stock_export', 'stock_print', 'stock_view_expiry', 'stock_view_exits_history',
@@ -211,6 +211,7 @@ const Auth = {
     { key: 'pos_create_prescription',  label: 'Associer des ordonnances aux ventes',          cat: 'pos' },
     { key: 'pos_session_tabs',         label: 'Gérer plusieurs onglets de vente simultanés',  cat: 'pos' },
     { key: 'pos_clear_cart',           label: 'Vider le panier en cours',                     cat: 'pos' },
+    { key: 'sales_cancel',             label: 'Annuler une vente validée (remboursement)',     cat: 'pos' },
 
     // === CAISSE JOURNALIÈRE ===
     { key: 'caisse_view',              label: 'Voir le résumé de caisse',                     cat: 'caisse' },

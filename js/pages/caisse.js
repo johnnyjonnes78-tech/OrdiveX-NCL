@@ -187,10 +187,10 @@ async function renderCaisse(container) {
     <div class="tabs-bar" style="margin-bottom: 20px; display:flex; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;">
       <style>.tabs-bar::-webkit-scrollbar { display: none; }</style>
       <button class="tab-btn active" style="flex-shrink:0" onclick="switchCaisseTab(this,'main')"><i data-lucide="banknote"></i> Ventes du jour</button>
-      ${Auth.can('caisse_voir_historique') ? `
-      <button class="tab-btn" style="flex-shrink:0" onclick="switchCaisseTab(this,'detail')"><i data-lucide="calculator"></i> Détail du calcul</button>
-      <button class="tab-btn" style="flex-shrink:0" onclick="switchCaisseTab(this,'stats')"><i data-lucide="bar-chart-3"></i> Statistiques & Clôtures</button>
-      ` : ''}
+      ${Auth.can('caisse_view_details') ? `
+      <button class="tab-btn" style="flex-shrink:0" onclick="switchCaisseTab(this,'detail')"><i data-lucide="calculator"></i> Détail du calcul</button>` : ''}
+      ${Auth.can('caisse_view_stats') ? `
+      <button class="tab-btn" style="flex-shrink:0" onclick="switchCaisseTab(this,'stats')"><i data-lucide="bar-chart-3"></i> Statistiques & Clôtures</button>` : ''}
     </div>
 
     <div id="tab-caisse-main" class="tab-content active">
