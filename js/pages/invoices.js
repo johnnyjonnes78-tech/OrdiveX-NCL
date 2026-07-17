@@ -186,37 +186,11 @@ async function showNewInvoiceForm(invoiceId = null) {
       <div id="invoice-items-list">
         <div class="rx-empty-items">Ajoutez les produits présents sur la facture</div>
       </div>
-      <!-- Case à cocher TVA (externe et claire) -->
-      <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-secondary, var(--surface-2)); border: 1px solid var(--border); border-radius: 6px">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text-primary);font-weight:700;margin:0;font-size:13px">
-          <input type="checkbox" id="invoice-tva-check" style="width:16px;height:16px;cursor:pointer;accent-color:var(--primary)"
-            ${(invoice && invoice.tvaAmount > 0) ? 'checked' : ''}
-            onchange="window._tvaManuallyModified=false;document.getElementById('invoice-tva-row').style.display=this.checked?'flex':'none';updateInvoiceTotal()">
-          Appliquer la TVA sur cette facture ${tvaSetting && tvaSetting !== '0' ? '(' + tvaSetting + '%)' : ''}
-        </label>
-        
-        <div id="invoice-tva-row" style="display:${(invoice && invoice.tvaAmount > 0) ? 'flex' : 'none'};align-items:center;gap:8px">
-          <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Montant TVA :</span>
-          <input type="number" id="invoice-tva-input" min="0" placeholder="0"
-            style="width:120px;height:32px;padding:3px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:right;background:var(--surface);color:var(--text-primary);font-weight:700"
-            oninput="window._tvaManuallyModified=true;updateInvoiceTotal()"
-            value="${invoice && invoice.tvaAmount ? invoice.tvaAmount : 0}">
-          <span style="color:var(--text-primary);font-size:12px;font-weight:700">GNF</span>
-        </div>
-      </div>
 
       <!-- Barre de totaux (arrière-plan bleu, écritures blanches claires) -->
       <div class="order-total-bar" id="invoice-total-bar" style="display:none;flex-direction:column;gap:6px;padding:12px 16px;background:var(--primary);color:#ffffff;border-radius:var(--radius-sm);margin-top:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:rgba(255,255,255,0.85);font-weight:600">
-          <span>Sous-total HT :</span>
-          <span id="invoice-subtotal-display" style="color:#ffffff">0 GNF</span>
-        </div>
-        <div id="invoice-tva-display-row" style="display:none;justify-content:space-between;align-items:center;font-size:13px;color:rgba(255,255,255,0.85);font-weight:600">
-          <span>Montant TVA :</span>
-          <span id="invoice-tva-display-val" style="color:#ffffff">0 GNF</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid rgba(255,255,255,0.2)">
-          <strong style="font-size:14px;color:#ffffff">Total TTC :</strong>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:14px;color:#ffffff">Total Net à Payer :</strong>
           <strong id="invoice-total-display" style="font-size:16px;color:#ffffff;font-weight:800">0 GNF</strong>
         </div>
       </div>
@@ -257,7 +231,7 @@ function addInvoiceItem(itemData = null) {
   // Récupérer le taux par défaut de la TVA globale
   const defaultTva = parseFloat(((window._appSettings || {})['pharmacy_tva'] || '0').trim()) || 0;
   
-  // Ligne 1: Produit, Qté, Prix, TVA
+  // Ligne 1: Produit, Qté, Prix Achat, Prix Vente
   // Ligne 2: N° Lot, Date d'expiration
   div.innerHTML = `
     <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
@@ -267,21 +241,17 @@ function addInvoiceItem(itemData = null) {
         <input type="hidden" id="inv-prod-${idx}">
         <div id="inv-dropdown-${idx}" class="order-product-dropdown" style="display:none"></div>
       </div>
-      <div class="form-group" style="width:70px; margin-bottom:0;">
+      <div class="form-group" style="width:80px; margin-bottom:0;">
         <label style="font-size:11px; margin-bottom:2px;">Qté *</label>
         <input type="number" class="form-control" id="inv-qty-${idx}" placeholder="Qté" min="1" value="1" oninput="updateInvoiceTotal()">
       </div>
-      <div class="form-group" style="width:110px; margin-bottom:0;">
+      <div class="form-group" style="width:120px; margin-bottom:0;">
         <label style="font-size:11px; margin-bottom:2px;">P. Achat *</label>
         <input type="number" class="form-control" id="inv-price-${idx}" placeholder="Achat" min="0" oninput="updateInvoiceTotal(); autoCalcInvoiceSalePrice(${idx})">
       </div>
-      <div class="form-group" style="width:110px; margin-bottom:0;">
+      <div class="form-group" style="width:120px; margin-bottom:0;">
         <label style="font-size:11px; margin-bottom:2px;">P. Vente</label>
         <input type="number" class="form-control" id="inv-sale-price-${idx}" placeholder="Vente" min="0" oninput="document.getElementById('inv-sale-price-${idx}').dataset.manual = 'true'">
-      </div>
-      <div class="form-group" style="width:80px; margin-bottom:0;">
-        <label style="font-size:11px; margin-bottom:2px;">TVA %</label>
-        <input type="number" class="form-control" id="inv-tva-pct-${idx}" placeholder="0" min="0" max="100" value="${defaultTva}" oninput="updateInvoiceTotal()">
       </div>
       <div style="display: flex; align-items: flex-end; padding-bottom: 4px;">
         <button type="button" class="btn btn-xs btn-danger" onclick="removeInvoiceItem(${idx})"><i data-lucide="trash-2"></i></button>
@@ -442,52 +412,19 @@ function removeInvoiceItem(idx) {
 
 function updateInvoiceTotal() {
   let subtotal = 0;
-  let totalTva = 0;
-  
-  // Vérifier si la checkbox TVA est cochée
-  const tvaCheck = document.getElementById('invoice-tva-check');
-  const tvaEnabled = tvaCheck ? tvaCheck.checked : false;
 
   document.querySelectorAll('.rx-item-row[id^="inv-item-"]').forEach(row => {
     const idx = row.id.replace('inv-item-', '');
     const qty = parseFloat(document.getElementById(`inv-qty-${idx}`)?.value || 0);
     const price = parseFloat(document.getElementById(`inv-price-${idx}`)?.value || 0);
-    const tvaPctInput = document.getElementById(`inv-tva-pct-${idx}`);
-    
-    // Si la TVA globale est désactivée, le montant de TVA de la ligne est forcé à 0
-    const tvaPct = tvaEnabled ? (parseFloat(tvaPctInput?.value || 0)) : 0;
     
     const rowHT = qty * price;
     subtotal += rowHT;
-    
-    const rowTva = Math.round(rowHT * (tvaPct / 100));
-    totalTva += rowTva;
   });
 
-  // Afficher le sous-total
-  const subtotalEl = document.getElementById('invoice-subtotal-display');
-  if (subtotalEl) subtotalEl.textContent = UI.formatCurrency(subtotal);
-
-  const tvaInput = document.getElementById('invoice-tva-input');
-  if (tvaInput) {
-    tvaInput.value = totalTva;
-  }
-
-  const total = subtotal + totalTva;
+  const total = subtotal;
   const el = document.getElementById('invoice-total-display');
   if (el) el.textContent = UI.formatCurrency(total);
-
-  // Mettre à jour l'affichage de la ligne de TVA dans la barre de totaux
-  const tvaDisplayRow = document.getElementById('invoice-tva-display-row');
-  const tvaDisplayVal = document.getElementById('invoice-tva-display-val');
-  if (tvaDisplayRow && tvaDisplayVal) {
-    if (tvaEnabled && tvaAmount > 0) {
-      tvaDisplayRow.style.display = 'flex';
-      tvaDisplayVal.textContent = UI.formatCurrency(tvaAmount);
-    } else {
-      tvaDisplayRow.style.display = 'none';
-    }
-  }
 
   // Afficher la barre si des items existent
   const bar = document.getElementById('invoice-total-bar');
@@ -511,9 +448,6 @@ async function submitInvoice(status) {
   const items = [];
   let validationError = null;
   const gs = (key) => (window._appSettings || {})[key];
-  
-  const tvaCheck = document.getElementById('invoice-tva-check');
-  const tvaEnabled = tvaCheck ? tvaCheck.checked : false;
 
   document.querySelectorAll('.rx-item-row[id^="inv-item-"]').forEach(row => {
     const idx = row.id.replace('inv-item-', '');
@@ -521,13 +455,10 @@ async function submitInvoice(status) {
     const qty = parseInt(document.getElementById(`inv-qty-${idx}`)?.value || 0);
     const price = parseFloat(document.getElementById(`inv-price-${idx}`)?.value || 0);
     const salePrice = parseFloat(document.getElementById(`inv-sale-price-${idx}`)?.value || 0);
-    const tvaPctInput = document.getElementById(`inv-tva-pct-${idx}`);
     const lotNumber = document.getElementById(`inv-lot-${idx}`)?.value?.trim();
     const expiryDate = document.getElementById(`inv-exp-${idx}`)?.value;
 
-    const tvaPct = tvaPctInput ? parseFloat(tvaPctInput.value) || 0 : 0;
     const rowHT = qty * price;
-    const rowTva = tvaEnabled ? Math.round(rowHT * (tvaPct / 100)) : 0;
 
     if (hidden?.value) {
       // ── Validations conditionnelles selon les Paramètres ──
@@ -549,8 +480,8 @@ async function submitInvoice(status) {
           quantity: qty, 
           unitPrice: price, 
           salePrice: salePrice,
-          tvaPct,
-          tvaAmount: rowTva,
+          tvaPct: 0,
+          tvaAmount: 0,
           lotNumber, 
           expiryDate,
           total: rowHT
@@ -568,8 +499,8 @@ async function submitInvoice(status) {
 
   const formData = Object.fromEntries(new FormData(form));
   const subtotal = items.reduce((a, i) => a + i.total, 0);
-  const tvaAmount = items.reduce((a, i) => a + i.tvaAmount, 0);
-  const totalAmount = subtotal + tvaAmount;
+  const tvaAmount = 0;
+  const totalAmount = subtotal;
   
   const invoiceData = {
     invoiceNumber: formData.invoiceNumber,
@@ -863,18 +794,13 @@ async function viewInvoice(invoiceId) {
           <th>Lot</th>
           <th>Date Exp.</th>
           <th>Qté</th>
-          <th>Prix U. HT</th>
-          <th>TVA (%)</th>
-          <th>TVA (Montant)</th>
-          <th>Total TTC</th>
+          <th>Prix Unitaire</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody>
         ${(invoice.items || []).map(item => {
-          const tvaPct = item.tvaPct || 0;
-          const tvaAmount = item.tvaAmount || 0;
           const itemTotal = item.total || (item.quantity * item.unitPrice) || 0;
-          const totalTtc = itemTotal + tvaAmount;
           return `
             <tr>
               <td><strong>${item.productName}</strong></td>
@@ -882,9 +808,7 @@ async function viewInvoice(invoiceId) {
               <td>${item.expiryDate ? UI.formatDate(item.expiryDate) : '—'}</td>
               <td>${item.quantity}</td>
               <td>${UI.formatCurrency(item.unitPrice || 0)}</td>
-              <td>${tvaPct}%</td>
-              <td>${UI.formatCurrency(tvaAmount)}</td>
-              <td><strong>${UI.formatCurrency(totalTtc)}</strong></td>
+              <td><strong>${UI.formatCurrency(itemTotal)}</strong></td>
             </tr>
           `;
         }).join('')}
@@ -1265,18 +1189,13 @@ function printInvoicePDF(invoiceId) {
                 <th>Lot</th>
                 <th>Péremption</th>
                 <th style="text-align: right;">Qté</th>
-                <th style="text-align: right;">Prix HT</th>
-                <th style="text-align: right;">TVA (%)</th>
-                <th style="text-align: right;">TVA</th>
-                <th style="text-align: right;">Total TTC</th>
+                <th style="text-align: right;">Prix Unitaire</th>
+                <th style="text-align: right;">Total</th>
               </tr>
             </thead>
             <tbody>
               ${(invoice.items || []).map(item => {
-                const tvaPct = item.tvaPct || 0;
-                const tvaAmount = item.tvaAmount || 0;
                 const itemTotal = item.total || (item.quantity * item.unitPrice) || 0;
-                const totalTtc = itemTotal + tvaAmount;
                 return `
                   <tr>
                     <td class="product-name">${item.productName}</td>
@@ -1284,9 +1203,7 @@ function printInvoicePDF(invoiceId) {
                     <td>${item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '—'}</td>
                     <td style="text-align: right; font-weight: 600;">${item.quantity}</td>
                     <td style="text-align: right;" class="money">${item.unitPrice ? item.unitPrice.toLocaleString('fr-FR') : '0'}</td>
-                    <td style="text-align: right;">${tvaPct}%</td>
-                    <td style="text-align: right;" class="money">${tvaAmount.toLocaleString('fr-FR')}</td>
-                    <td style="text-align: right; font-weight: 700;" class="money">${totalTtc.toLocaleString('fr-FR')} GNF</td>
+                    <td style="text-align: right; font-weight: 700;" class="money">${itemTotal.toLocaleString('fr-FR')} GNF</td>
                   </tr>
                 `;
               }).join('')}
@@ -1306,18 +1223,9 @@ function printInvoicePDF(invoiceId) {
                 <span>Nombre d'articles</span>
                 <span>${invoice.items?.length || 0}</span>
               </div>
-              <div class="total-row">
-                <span>Sous-total HT</span>
-                <span>${subtotal.toLocaleString('fr-FR')} GNF</span>
-              </div>
-              ${tva > 0 ? `
-              <div class="total-row">
-                <span>Total TVA</span>
-                <span>${tva.toLocaleString('fr-FR')} GNF</span>
-              </div>` : ''}
               <div class="total-row grand-total">
-                <span>Total TTC</span>
-                <span style="color: #3b82f6;">${finalTotal.toLocaleString('fr-FR')} GNF</span>
+                <span>Total Facture</span>
+                <span style="color: #3b82f6;">${subtotal.toLocaleString('fr-FR')} GNF</span>
               </div>
             </div>
           </div>

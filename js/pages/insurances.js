@@ -1,7 +1,12 @@
-/**
- * OrdiveX — Module Assurances & Tiers Payant
- * Gestion financière ERP des assurances, règlements échelonnés et facturation groupée
- */
+// Fonction d'aide pour le bouton Percevoir Tout
+window.setPayAmount = function(amount) {
+  const el = document.getElementById('pay-amount');
+  if (el) {
+    el.value = amount;
+    // Déclencher manuellement l'événement input pour mise à jour éventuelle des écouteurs
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+};
 
 async function renderInsurances(container) {
   UI.loading(container, 'Chargement du module assurances...');
@@ -74,7 +79,7 @@ async function renderInsurances(container) {
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 340px 1fr; gap:20px; align-items:start;">
+    <div style="display:grid; grid-template-columns: 300px minmax(0, 1fr); gap:20px; align-items:start;">
       <!-- COLONNE GAUCHE : LISTE DES ASSURANCES -->
       <div class="card" style="padding:16px; position:sticky; top:80px;">
         <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
@@ -717,7 +722,7 @@ window.showAddPaymentModal = function(insuranceId, maxDue) {
         <div class="input-group" style="display:flex; gap:8px;">
           <input type="number" id="pay-amount" name="amount" class="form-control" style="font-size:18px; font-weight:800; color:#16A34A;" 
             required min="1" max="${maxDue}" value="${maxDue}" step="1">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('pay-amount').value = ${maxDue}">Percevoir Tout</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="window.setPayAmount(${maxDue})">Percevoir Tout</button>
         </div>
       </div>
 
