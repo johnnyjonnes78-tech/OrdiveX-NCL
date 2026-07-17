@@ -1,5 +1,5 @@
 {
-  "version": "9.7.92",
+  "version": "9.7.93",
   "date": "2026-07-17",
-  "changelog": "v9.7.92 : Audit complet des permissions — alignement total Auth.can / ALL_PERMISSIONS : boutons paiement POS conditionnels, protection qtés/panier/onglets, permissions caisse corrigées, sales_cancel ajouté."
+  "changelog": "v9.7.93 : Sécurisation granulaire globale de tous les modules de l'ERP (Patients, Assurances/Tiers payant, Traçabilité, Comptabilité générale, Ressources Humaines, Retours médicaments, Mouvements manuels de caisse). Remplacement des contrôles basés sur les rôles par des vérifications Auth.can précises."
 }

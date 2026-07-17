@@ -27,6 +27,26 @@
   //  RENDER PRINCIPAL
   // ═══════════════════════════════════════════════════════════════════════
   async function renderAccounting(container) {
+    if (window.Auth && !Auth.can('accounting_view_journal') && !Auth.can('accounting_view_reports') && DB.AppState.currentUser?.role !== 'admin') {
+      container.innerHTML = `
+        <div style="padding:40px; text-align:center; color:var(--text-muted)">
+          <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+          <h3>Accès refusé</h3>
+          <p>Vous n'avez pas la permission de consulter la comptabilité.</p>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons({ root: container });
+      return;
+    }
+
+    const canJournal = Auth.can('accounting_view_journal') || DB.AppState.currentUser?.role === 'admin';
+    const canReports = Auth.can('accounting_view_reports') || DB.AppState.currentUser?.role === 'admin';
+    const canExport = Auth.can('accounting_export') || DB.AppState.currentUser?.role === 'admin';
+
+    let defaultTab = '';
+    if (canJournal) defaultTab = 'journal';
+    else if (canReports) defaultTab = 'balance';
+
     container.innerHTML = `
       <div class="page-header" style="margin-bottom:20px">
         <div>
@@ -36,11 +56,12 @@
           </p>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" onclick="acctExportPDF()"><i data-lucide="download"></i> Exporter PDF</button>
+          ${canExport ? `<button class="btn btn-secondary" onclick="acctExportPDF()"><i data-lucide="download"></i> Exporter PDF</button>` : ''}
         </div>
       </div>
 
       <div class="hr-tabs" id="acct-tabs">
+        ${canJournal ? `
         <button class="hr-tab-btn active" onclick="acctSwitchTab('journal',this)" id="acct-btn-journal">
           <i data-lucide="book-open"></i> Journal Comptable
         </button>
@@ -50,18 +71,33 @@
         <button class="hr-tab-btn" onclick="acctSwitchTab('recettes',this)" id="acct-btn-recettes">
           <i data-lucide="arrow-up-circle"></i> Recettes
         </button>
-        <button class="hr-tab-btn" onclick="acctSwitchTab('balance',this)" id="acct-btn-balance">
+        ` : ''}
+        ${canReports ? `
+        <button class="hr-tab-btn ${!canJournal ? 'active' : ''}" onclick="acctSwitchTab('balance',this)" id="acct-btn-balance">
           <i data-lucide="scale"></i> Balance & Rapports
         </button>
+        ` : ''}
       </div>
 
       <div id="acct-tab-content"></div>
     `;
     if (window.lucide) lucide.createIcons({ node: container });
-    await acctRenderTab('journal');
+    if (defaultTab) {
+      await acctRenderTab(defaultTab);
+    }
   }
 
   window.acctSwitchTab = async function (tab, btn) {
+    if (window.Auth && DB.AppState.currentUser?.role !== 'admin') {
+      if (['journal', 'depenses', 'recettes'].includes(tab) && !Auth.can('accounting_view_journal')) {
+        UI.toast('⛔ Vous n\'avez pas la permission d\'accéder à cet onglet.', 'error', 4000);
+        return;
+      }
+      if (tab === 'balance' && !Auth.can('accounting_view_reports')) {
+        UI.toast('⛔ Vous n\'avez pas la permission d\'accéder à cet onglet.', 'error', 4000);
+        return;
+      }
+    }
     document.querySelectorAll('#acct-tabs .hr-tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     window._acctCurrentTab = tab;
@@ -574,6 +610,10 @@
   //  EXPORT PDF
   // ═══════════════════════════════════════════════════════════════════════
   window.acctExportPDF = async function() {
+    if (window.Auth && !Auth.can('accounting_export') && DB.AppState.currentUser?.role !== 'admin') {
+      UI.toast('⛔ Vous n\'avez pas la permission d\'exporter les rapports de comptabilité.', 'error', 4000);
+      return;
+    }
     if (!window.PDFExport) { UI.toast("Module PDF non chargé", "error"); return; }
 
     const dateFrom = window._acctDateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);

@@ -301,7 +301,7 @@ async function viewSaleDetail(saleId) {
             <td colspan="3"><strong>Total</strong></td>
             <td><strong class="text-success">${UI.formatCurrency(sale.total)}</strong></td>
           </tr>
-          ${DB.AppState.currentUser?.role !== 'caissier' ? `
+          ${(Auth.can('dash_view_margin') || DB.AppState.currentUser?.role === 'admin') ? `
           <tr class="table-footer-row">
             <td colspan="3">Marge brute</td>
             <td><strong>${UI.formatCurrency(profit)}</strong></td>
@@ -309,7 +309,7 @@ async function viewSaleDetail(saleId) {
         </tfoot>
       </table>
     </div>
-    ${['credit', 'assurance'].includes(sale.paymentMethod) && sale.status !== 'paid' && sale.status !== 'completed' ? `
+    ${['credit', 'assurance'].includes(sale.paymentMethod) && sale.status !== 'paid' && sale.status !== 'completed' && (Auth.can('patients_debt_settle') || DB.AppState.currentUser?.role === 'admin') ? `
       <div class="modal-actions" style="margin-top:20px; border-top: 1px solid var(--border); padding-top:15px; display:flex; justify-content:flex-end;">
         <button class="btn btn-success" onclick="UI.closeModal(); settleDebt(${saleId})">
           <i data-lucide="check-circle"></i> ${sale.paymentMethod === 'assurance' ? 'Encaisser la part Assurance' : 'Encaisser la dette'}
@@ -377,6 +377,18 @@ function exportSales() {
 }
 
 async function renderReports(container) {
+  if (window.Auth && !Auth.can('mc_view') && !Auth.can('dash_view_margin') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:40px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter les rapports et analyses financières de la pharmacie.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   UI.loading(container, 'Génération des rapports...');
 
   // Attendre que le pull finisse
@@ -596,6 +608,10 @@ async function renderReports(container) {
 }
 
 async function settleDebt(saleId) {
+  if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'encaisser des dettes.', 'error', 4000);
+    return;
+  }
   const sale = await DB.dbGet('sales', saleId);
   if (!sale) { UI.toast('Vente introuvable', 'error'); return; }
 
@@ -690,6 +706,10 @@ function selectDebtPayMethod(btn) {
 }
 
 async function confirmSettleDebt(saleId) {
+  if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const methodBtn = document.querySelector('#debt-pay-methods .pay-method-btn.active');
   const paymentMethod = methodBtn ? methodBtn.dataset.method : 'cash';
   const reference = document.getElementById('debt-pay-ref')?.value || '';
@@ -750,6 +770,10 @@ async function confirmSettleDebt(saleId) {
 }
 
 async function annulerVente(saleId) {
+  if (window.Auth && !Auth.can('sales_cancel') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'annuler une vente.', 'error', 4000);
+    return;
+  }
   const confirm = await UI.confirm("Êtes-vous sûr de vouloir annuler cette vente ?\n\nLes articles vendus seront rajoutés au stock et la vente sera marquée comme annulée.");
   if (!confirm) return;
 

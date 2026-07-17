@@ -4,6 +4,18 @@
  */
 
 async function renderTraceability(container) {
+  if (window.Auth && !Auth.can('traceability_view') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:40px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter le registre de traçabilité et pharmacovigilance.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   UI.loading(container, 'Chargement du module traçabilité...');
 
   // Chargement léger : seulement lots + produits. Mouvements/prescriptions/patients en lazy-load.
@@ -438,6 +450,10 @@ function traceLot(lotNumber) {
 }
 
 function showLotRecallForm() {
+  if (window.Auth && !Auth.can('traceability_recalls') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de déclarer un rappel de lot.', 'error', 4000);
+    return;
+  }
   const lots = window._traceLots || [];
   const productMap = window._traceProductMap || {};
   const activeLots = lots.filter(l => l.status === 'active');
@@ -560,6 +576,10 @@ function updateRecallInfo() {
 }
 
 async function submitLotRecall() {
+  if (window.Auth && !Auth.can('traceability_recalls') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const form = document.getElementById('recall-form');
   const lotIdInput = document.getElementById('recall-lot-id');
   if (!lotIdInput?.value) { UI.toast('Veuillez sélectionner un lot à rappeler', 'warning'); return; }
@@ -744,6 +764,10 @@ async function submitPVReport() {
 }
 
 async function initDestroyLot(lotId) {
+  if (window.Auth && !Auth.can('traceability_destroy_lot') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de détruire un lot.', 'error', 4000);
+    return;
+  }
   const lot = await DB.dbGet('lots', lotId);
   const prod = lot ? window._traceProductMap?.[lot.productId] : null;
   if (!lot) return;
@@ -811,6 +835,10 @@ async function showDestroyForm() {
 }
 
 async function confirmDestroyLot(lotId) {
+  if (window.Auth && !Auth.can('traceability_destroy_lot') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const form = document.getElementById('destroy-form');
   if (!form?.checkValidity()) { form?.reportValidity(); return; }
   const data = Object.fromEntries(new FormData(form));
@@ -1284,6 +1312,10 @@ window.renderExpiryTable = function() {
 };
 
 window.initDestroyGroup = async function(groupId) {
+  if (window.Auth && !Auth.can('traceability_destroy_lot') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de détruire des lots.', 'error', 4000);
+    return;
+  }
   const g = (window._allExpiryGroups || []).find(x => x.id === groupId);
   if (!g || g.lotIds.length === 0) return;
   const ok = await UI.confirm(`Confirmer la destruction du stock de ${g.productName} ?\n\nQuantité : ${g.totalQuantity}\nPerte enregistrée : ${UI.formatCurrency(g.loss)}`);

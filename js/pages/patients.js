@@ -4,6 +4,18 @@
  */
 
 async function renderPatients(container) {
+  if (window.Auth && !Auth.can('patients_view') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:40px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter la liste des patients.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   UI.loading(container, 'Chargement des dossiers patients...');
   const [patients, prescriptions, sales, insurances] = await Promise.all([
     DB.dbGetAll('patients'),
@@ -14,6 +26,8 @@ async function renderPatients(container) {
   window._allInsurances = insurances || [];
 
   const sorted = patients.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const canCreate = Auth.can('patients_create') || DB.AppState.currentUser?.role === 'admin';
+  const canExport = Auth.can('patients_export') || DB.AppState.currentUser?.role === 'admin';
 
   container.innerHTML = `
     <div class="page-header">
@@ -22,10 +36,14 @@ async function renderPatients(container) {
         <p class="page-subtitle">${patients.length} patients enregistrés — Données confidentielles</p>
       </div>
       <div class="header-actions">
-        <button class="btn btn-secondary" onclick="showImportPatientsModal()"><i data-lucide="upload"></i> Importer</button>
-        <button class="btn btn-secondary" onclick="exportPatientsPDF()"><i data-lucide="printer"></i> PDF</button>
-        <button class="btn btn-secondary" onclick="exportPatients()"><i data-lucide="download"></i> Exporter CSV</button>
-        <button class="btn btn-primary" onclick="showAddPatient()"><i data-lucide="plus"></i> Nouveau Patient</button>
+        ${canExport ? `
+          <button class="btn btn-secondary" onclick="showImportPatientsModal()"><i data-lucide="upload"></i> Importer</button>
+          <button class="btn btn-secondary" onclick="exportPatientsPDF()"><i data-lucide="printer"></i> PDF</button>
+          <button class="btn btn-secondary" onclick="exportPatients()"><i data-lucide="download"></i> Exporter CSV</button>
+        ` : ''}
+        ${canCreate ? `
+          <button class="btn btn-primary" onclick="showAddPatient()"><i data-lucide="plus"></i> Nouveau Patient</button>
+        ` : ''}
       </div>
     </div>
 
@@ -88,11 +106,15 @@ function filterPatients() {
     { label: 'Ordonnances', render: r => `<span class="badge badge-info">${rxMap[r.id] || 0}</span>` },
     { label: 'Adresse', render: r => r.address || '—' },
     {
-      label: 'Actions', render: r => `
-      <div class="actions-cell">
-        <button class="btn btn-xs btn-primary" onclick="viewPatient(${r.id})"><i data-lucide="folder"></i> Dossier</button>
-        <button class="btn btn-xs btn-secondary" onclick="editPatient(${r.id})"><i data-lucide="edit-3"></i></button>
-      </div>` },
+      label: 'Actions', render: r => {
+        const canEdit = Auth.can('patients_edit') || DB.AppState.currentUser?.role === 'admin';
+        return `
+        <div class="actions-cell">
+          <button class="btn btn-xs btn-primary" onclick="viewPatient(${r.id})"><i data-lucide="folder"></i> Dossier</button>
+          ${canEdit ? `<button class="btn btn-xs btn-secondary" onclick="editPatient(${r.id})"><i data-lucide="edit-3"></i></button>` : ''}
+        </div>`;
+      }
+    },
   ], pageData, { emptyMessage: 'Aucun patient trouvé', emptyIcon: 'user' });
 
   // Pagination controls
@@ -301,6 +323,10 @@ async function viewPatient(patientId) {
 }
 
 async function showAddPatient() {
+  if (window.Auth && !Auth.can('patients_create') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de créer un patient.', 'error', 4000);
+    return;
+  }
   const insurances = await DB.dbGetAll('insurances');
   window._allInsurances = insurances || [];
   UI.modal('<i data-lucide="user-plus" class="modal-icon-inline"></i> Nouveau Patient', `
@@ -454,6 +480,10 @@ function extractAssurances(data) {
 }
 
 async function submitPatient() {
+  if (window.Auth && !Auth.can('patients_create') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const form = document.getElementById('patient-form');
   if (!form?.checkValidity()) { form?.reportValidity(); return; }
   const data = Object.fromEntries(new FormData(form));
@@ -470,6 +500,10 @@ async function submitPatient() {
 }
 
 async function editPatient(patientId) {
+  if (window.Auth && !Auth.can('patients_edit') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de modifier un patient.', 'error', 4000);
+    return;
+  }
   const [patient, insurances] = await Promise.all([
     DB.dbGet('patients', patientId),
     DB.dbGetAll('insurances')
@@ -530,6 +564,10 @@ async function editPatient(patientId) {
 }
 
 async function updatePatient(patientId) {
+  if (window.Auth && !Auth.can('patients_edit') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const form = document.getElementById('edit-patient-form');
   if (!form?.checkValidity()) { form?.reportValidity(); return; }
   const data = Object.fromEntries(new FormData(form));
@@ -544,6 +582,10 @@ async function updatePatient(patientId) {
   Router.navigate('patients');
 }
 function exportPatients() {
+  if (window.Auth && !Auth.can('patients_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter.', 'error', 4000);
+    return;
+  }
   // Export anonymized (no names - just stats)
   const data = window._patientsData || [];
   const csv = ['ID,Age,Genre,Allergies,Ville'].join('\n') + '\n' +
@@ -630,6 +672,10 @@ async function sendPatientSms(patientId) {
 }
 
 window.exportPatientsPDF = function() {
+  if (window.Auth && !Auth.can('patients_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter.', 'error', 4000);
+    return;
+  }
   if (!window.PDFExport) return UI.toast("Module PDF non chargé", "error");
   const data = (window._patientsData || []).map(p => [
     p.name || '',
@@ -647,6 +693,10 @@ window.exportPatientsPDF = function() {
  * ══════════════════════════════════════════════════════ */
 
 function showImportPatientsModal() {
+  if (window.Auth && !Auth.can('patients_create') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'importer des patients.', 'error', 4000);
+    return;
+  }
   UI.modal('<i data-lucide="upload" class="modal-icon-inline"></i> Importation de Patients (CSV)', `
     <div class="import-container">
       <p class="mb-1 text-sm">Importez vos dossiers patients depuis un fichier CSV. Colonnes attendues : <strong>Nom, Téléphone, Adresse, Sexe, Allergies</strong>.</p>

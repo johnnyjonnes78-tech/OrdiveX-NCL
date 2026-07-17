@@ -9,6 +9,18 @@ window.setPayAmount = function(amount) {
 };
 
 async function renderInsurances(container) {
+  if (window.Auth && !Auth.can('claims_view') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:40px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter le registre des assurances et tiers payant.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   UI.loading(container, 'Chargement du module assurances...');
 
   const [insurances, sales, users] = await Promise.all([
@@ -43,7 +55,9 @@ async function renderInsurances(container) {
         <p class="page-subtitle">Gestion des organismes de couverture, suivi financier et recouvrement des créances</p>
       </div>
       <div class="header-actions">
+        ${Auth.can('claims_view') || DB.AppState.currentUser?.role === 'admin' ? `
         <button class="btn btn-primary" onclick="showAddInsuranceModal()"><i data-lucide="plus"></i> Nouvelle Assurance</button>
+        ` : ''}
       </div>
     </div>
 
@@ -497,6 +511,10 @@ function renderGroupedInvoices() {
 
 // FORMULAIRE D'AJOUT / MODIFICATION D'ASSURANCE
 window.showAddInsuranceModal = function() {
+  if (window.Auth && !Auth.can('claims_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'ajouter une assurance.', 'error', 4000);
+    return;
+  }
   UI.modal('<i data-lucide="shield" class="modal-icon-inline"></i> Ajouter un nouvel organisme d\'assurance', `
     <form id="insurance-form" onsubmit="submitInsurance(event)" style="display:flex; flex-direction:column; gap:12px;">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
@@ -579,6 +597,10 @@ window.showAddInsuranceModal = function() {
 };
 
 window.showEditInsuranceModal = function(id) {
+  if (window.Auth && !Auth.can('claims_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'éditer une assurance.', 'error', 4000);
+    return;
+  }
   const ins = window._insurancesData.find(x => x.id === id);
   if (!ins) return;
 
@@ -664,6 +686,10 @@ window.showEditInsuranceModal = function(id) {
 };
 
 window.submitInsurance = async function(event, id = null) {
+  if (window.Auth && !Auth.can('claims_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -709,6 +735,10 @@ window.submitInsurance = async function(event, id = null) {
 
 // ENREGISTREMENT D'UN RÈGLEMENT D'ASSURANCE
 window.showAddPaymentModal = function(insuranceId, maxDue) {
+  if (window.Auth && !Auth.can('claims_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'encaisser un règlement d\'assurance.', 'error', 4000);
+    return;
+  }
   UI.modal('<i data-lucide="banknote" class="modal-icon-inline"></i> Enregistrer un paiement d\'assurance', `
     <form id="insurance-pay-form" onsubmit="submitInsurancePayment(event, ${insuranceId})" style="display:flex; flex-direction:column; gap:16px;">
       
@@ -758,6 +788,10 @@ window.showAddPaymentModal = function(insuranceId, maxDue) {
 };
 
 window.submitInsurancePayment = async function(event, insuranceId) {
+  if (window.Auth && !Auth.can('claims_view') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   event.preventDefault();
   const form = event.target;
   const formData = new FormData(form);
@@ -883,6 +917,10 @@ window.submitInsurancePayment = async function(event, insuranceId) {
 
 // IMPORTS/EXPORTS DE FACTURATION GROUPÉE
 window.exportGroupedPDF = async function() {
+  if (window.Auth && !Auth.can('claims_export') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter.', 'error', 4000);
+    return;
+  }
   const ins = window._insurancesData.find(x => x.id === window._activeInsuranceId);
   if (!ins) return;
 
@@ -1032,6 +1070,10 @@ window.exportGroupedPDF = async function() {
 };
 
 window.exportGroupedCSV = function() {
+  if (window.Auth && !Auth.can('claims_export') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter.', 'error', 4000);
+    return;
+  }
   const ins = window._insurancesData.find(x => String(x.id) === String(window._activeInsuranceId));
   if (!ins) return;
 

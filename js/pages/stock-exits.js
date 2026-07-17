@@ -6,6 +6,18 @@
 const CASH_MOV_PAGE_SIZE = 50;
 
 async function renderStockExits(container) {
+  if (window.Auth && !Auth.can('caisse_view_manual_movements') && DB.AppState.currentUser?.role !== 'admin') {
+    container.innerHTML = `
+      <div style="padding:40px; text-align:center; color:var(--text-muted)">
+        <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+        <h3>Accès refusé</h3>
+        <p>Vous n'avez pas la permission de consulter le registre des mouvements manuels de trésorerie.</p>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons({ root: container });
+    return;
+  }
+
   UI.loading(container, 'Chargement du registre de trésorerie...');
 
   try {
@@ -42,10 +54,14 @@ async function renderStockExits(container) {
           <p class="page-subtitle">Registre de traçabilité des dépenses et recettes manuelles hors-vente</p>
         </div>
         <div class="header-actions">
+          ${Auth.can('caisse_export_csv') || DB.AppState.currentUser?.role === 'admin' ? `
           <button class="btn btn-secondary" onclick="exportCashMovementsPDF()"><i data-lucide="printer"></i> PDF</button>
           <button class="btn btn-secondary" onclick="exportCashMovementsCSV()"><i data-lucide="file-spreadsheet"></i> Exporter CSV</button>
+          ` : ''}
+          ${Auth.can('caisse_depot_retrait') || DB.AppState.currentUser?.role === 'admin' ? `
           <button class="btn btn-success" onclick="showNewCashMovementForm('manual_in')"><i data-lucide="plus-circle"></i> Nouveau Dépôt (Entrée)</button>
           <button class="btn btn-danger" onclick="showNewCashMovementForm('manual_out')"><i data-lucide="minus-circle"></i> Nouvelle Dépense (Sortie)</button>
+          ` : ''}
         </div>
       </div>
 
@@ -233,9 +249,10 @@ function filterCashMovements() {
     },
     {
       label: 'Actions',
-      render: r => `
-        <button class="btn btn-xs btn-warning" onclick="showEditCashMovementForm(${r.id})" title="Modifier l'opération (audit log généré)"><i data-lucide="edit-3"></i></button>
-      `
+      render: r => {
+        const canEdit = Auth.can('caisse_depot_retrait') || DB.AppState.currentUser?.role === 'admin';
+        return canEdit ? `<button class="btn btn-xs btn-warning" onclick="showEditCashMovementForm(${r.id})" title="Modifier l'opération (audit log généré)"><i data-lucide="edit-3"></i></button>` : '<span class="text-muted">—</span>';
+      }
     }
   ], filtered, {
     emptyMessage: "Aucun mouvement manuel de trésorerie trouvé.",
@@ -247,6 +264,10 @@ function filterCashMovements() {
 }
 
 function showNewCashMovementForm(type) {
+  if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de créer un mouvement de caisse.', 'error', 4000);
+    return;
+  }
   const isEntry = type === 'manual_in';
   const title = isEntry ? "Nouveau Dépôt en Caisse (Entrée)" : "Nouvelle Dépense (Sortie de Caisse)";
   
@@ -296,6 +317,10 @@ function showNewCashMovementForm(type) {
 }
 
 async function submitNewCashMovement(type) {
+  if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const form = document.getElementById('cash-mov-form');
   if (!form || !form.checkValidity()) { form?.reportValidity(); return; }
 
@@ -340,6 +365,10 @@ async function submitNewCashMovement(type) {
 }
 
 async function showEditCashMovementForm(movId) {
+  if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de modifier un mouvement de caisse.', 'error', 4000);
+    return;
+  }
   try {
     const movObj = await DB.dbGet('cashRegister', movId);
     if (!movObj) return;
@@ -403,6 +432,10 @@ async function showEditCashMovementForm(movId) {
 }
 
 async function submitEditCashMovement(movId) {
+  if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const form = document.getElementById('cash-mov-edit-form');
   const auditReason = document.getElementById('edit-audit-reason')?.value?.trim();
   if (!form || !form.checkValidity()) { form?.reportValidity(); return; }
@@ -453,6 +486,10 @@ async function submitEditCashMovement(movId) {
 }
 
 function exportCashMovementsCSV() {
+  if (window.Auth && !Auth.can('caisse_export_csv') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter en CSV.', 'error', 4000);
+    return;
+  }
   const data = window._cashMovFilteredData || [];
   if (data.length === 0) { UI.toast('Aucune donnée à exporter', 'warning'); return; }
 
@@ -484,6 +521,10 @@ function exportCashMovementsCSV() {
 }
 
 function exportCashMovementsPDF() {
+  if (window.Auth && !Auth.can('caisse_export_csv') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter en PDF.', 'error', 4000);
+    return;
+  }
   const dataList = window._cashMovFilteredData || [];
   if (dataList.length === 0) {
     return UI.toast("Aucune donnée à exporter", "warning");

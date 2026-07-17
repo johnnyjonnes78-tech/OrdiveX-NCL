@@ -27,7 +27,8 @@ async function renderReturns(container) {
     // Retours en attente
     const pendingReturns = allReturns.filter(r => r.status === 'pending');
 
-    const isAdmin = DB.AppState.currentUser?.role !== 'caissier';
+    const showRefundKpi = Auth.can('dash_view_margin') || DB.AppState.currentUser?.role === 'admin';
+    const canInitiateReturn = Auth.can('sales_cancel') || DB.AppState.currentUser?.role === 'admin';
 
     container.innerHTML = `
     <div class="page-header">
@@ -36,10 +37,14 @@ async function renderReturns(container) {
         <p class="page-subtitle">Gestion des retours — délai max ${RETURN_DELAY_HOURS}h après la vente</p>
       </div>
       <div class="header-actions">
+        ${Auth.can('caisse_export_csv') || DB.AppState.currentUser?.role === 'admin' ? `
         <button class="btn btn-secondary" onclick="exportReturnsPDF()"><i data-lucide="printer"></i> PDF</button>
+        ` : ''}
+        ${canInitiateReturn ? `
         <button class="btn btn-primary" onclick="openNewReturn()">
           <i data-lucide="plus-circle"></i> Initier un Retour
         </button>
+        ` : ''}
       </div>
     </div>
 
@@ -52,7 +57,7 @@ async function renderReturns(container) {
           <div class="kpi-sub">${pendingReturns.length} en attente</div>
         </div>
       </div>
-      ${isAdmin ? `
+      ${showRefundKpi ? `
       <div class="kpi-card kpi-red">
         <div class="kpi-icon"><i data-lucide="banknote"></i></div>
         <div class="kpi-content">
@@ -177,6 +182,10 @@ function renderReturnsTable(data) {
 // INITIER UN NOUVEAU RETOUR
 // ═══════════════════════════════════════════════════════════════════
 async function openNewReturn(prefillSaleId = null) {
+    if (window.Auth && !Auth.can('sales_cancel') && DB.AppState.currentUser?.role !== 'admin') {
+        UI.toast('⛔ Vous n\'avez pas la permission d\'initier un retour.', 'error', 4000);
+        return;
+    }
     const cutoff = Date.now() - RETURN_DELAY_HOURS * 60 * 60 * 1000;
     const allSales = await DB.dbGetAll('sales');
 
@@ -401,6 +410,10 @@ window.handleReasonSelect = function (val) {
 // TRAITEMENT DU RETOUR
 // ═══════════════════════════════════════════════════════════════════
 window.validateReturn = async function (saleId) {
+    if (window.Auth && !Auth.can('sales_cancel') && DB.AppState.currentUser?.role !== 'admin') {
+        UI.toast('⛔ Action non autorisée.', 'error', 4000);
+        return;
+    }
     const reasonSelect = document.getElementById('return-reason-select')?.value;
     const reasonDetail = document.getElementById('return-reason-detail')?.value?.trim();
     const reason = reasonSelect === 'Autre' ? (reasonDetail || 'Autre') : reasonSelect;
@@ -442,6 +455,9 @@ window.validateReturn = async function (saleId) {
 };
 
 async function processReturn(saleId, selectedItems, reason) {
+    if (window.Auth && !Auth.can('sales_cancel') && DB.AppState.currentUser?.role !== 'admin') {
+        throw new Error('Vous n\'avez pas la permission de traiter un retour.');
+    }
     const sale = await DB.dbGet('sales', saleId);
     if (!sale) throw new Error('Vente introuvable');
 
@@ -722,6 +738,10 @@ window.printReturnReceipt = async function (returnId) {
 // EXPORT CSV
 // ═══════════════════════════════════════════════════════════════════
 window.exportReturns = function () {
+    if (window.Auth && !Auth.can('caisse_export_csv') && DB.AppState.currentUser?.role !== 'admin') {
+        UI.toast('⛔ Vous n\'avez pas la permission d\'exporter les retours.', 'error', 4000);
+        return;
+    }
     const data = window._returnsData || [];
     const csv = '\uFEFFN° Retour,Date,Vente liée,Patient,Motif,Remboursement,Statut\n' +
         data.map(r => [

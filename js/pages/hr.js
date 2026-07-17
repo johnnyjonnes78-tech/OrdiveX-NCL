@@ -49,6 +49,42 @@
   //  RENDER PRINCIPAL
   // ═══════════════════════════════════════════════════════════════════════
   async function renderHR(container) {
+    if (window.Auth && DB.AppState.currentUser?.role !== 'admin') {
+      const hasAnyHrPerm = Auth.can('hr_manage_employees') || 
+                            Auth.can('hr_manage_attendance') || 
+                            Auth.can('hr_manage_payroll') || 
+                            Auth.can('hr_manage_leaves') || 
+                            Auth.can('hr_view_compta') ||
+                            Auth.can('hr_view_salary');
+      if (!hasAnyHrPerm) {
+        container.innerHTML = `
+          <div style="padding:40px; text-align:center; color:var(--text-muted)">
+            <i data-lucide="lock" style="width:48px; height:48px; margin:0 auto 16px; opacity:0.3; display:block"></i>
+            <h3>Accès refusé</h3>
+            <p>Vous n'avez pas la permission de consulter les ressources humaines.</p>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons({ root: container });
+        return;
+      }
+    }
+
+    const _canEmp = Auth.can('hr_manage_employees') || DB.AppState.currentUser?.role === 'admin';
+    const _canPaie = Auth.can('hr_manage_payroll') || DB.AppState.currentUser?.role === 'admin';
+    const _canLeaves = Auth.can('hr_manage_leaves') || DB.AppState.currentUser?.role === 'admin';
+    const _canAtt = Auth.can('hr_manage_attendance') || DB.AppState.currentUser?.role === 'admin';
+    const _canCompta = Auth.can('hr_view_compta') || DB.AppState.currentUser?.role === 'admin';
+
+    let defaultTab = 'dashboard';
+    if (!_canEmp && !_canPaie && !_canLeaves && !_canAtt && !_canCompta && !Auth.can('hr_view_salary')) {
+      // Pas de dashboard si aucun droit, on bascule sur le premier disponible
+      if (_canEmp) defaultTab = 'employes';
+      else if (_canPaie) defaultTab = 'paie';
+      else if (_canLeaves) defaultTab = 'conges';
+      else if (_canAtt) defaultTab = 'presence';
+      else if (_canCompta) defaultTab = 'comptabilite';
+    }
+
     container.innerHTML = `
       <div class="page-header" style="margin-bottom:20px">
         <div>
@@ -60,36 +96,48 @@
       </div>
 
       <div class="hr-tabs" id="hr-tabs">
-        <button class="hr-tab-btn active" onclick="hrSwitchTab('dashboard',this)" id="hr-btn-dashboard">
+        <button class="hr-tab-btn ${defaultTab === 'dashboard' ? 'active' : ''}" onclick="hrSwitchTab('dashboard',this)" id="hr-btn-dashboard">
           <i data-lucide="layout-dashboard"></i> Tableau de Bord
         </button>
-        <button class="hr-tab-btn" onclick="hrSwitchTab('employes',this)" id="hr-btn-employes">
+        ${_canEmp ? `
+        <button class="hr-tab-btn ${defaultTab === 'employes' ? 'active' : ''}" onclick="hrSwitchTab('employes',this)" id="hr-btn-employes">
           <i data-lucide="users"></i> Employés
-        </button>
-        <button class="hr-tab-btn" onclick="hrSwitchTab('paie',this)" id="hr-btn-paie">
+        </button>` : ''}
+        ${_canPaie ? `
+        <button class="hr-tab-btn ${defaultTab === 'paie' ? 'active' : ''}" onclick="hrSwitchTab('paie',this)" id="hr-btn-paie">
           <i data-lucide="banknote"></i> Paie
         </button>
-        <button class="hr-tab-btn" onclick="hrSwitchTab('avances',this)" id="hr-btn-avances">
+        <button class="hr-tab-btn ${defaultTab === 'avances' ? 'active' : ''}" onclick="hrSwitchTab('avances',this)" id="hr-btn-avances">
           <i data-lucide="wallet"></i> Avances
-        </button>
-        <button class="hr-tab-btn" onclick="hrSwitchTab('conges',this)" id="hr-btn-conges">
+        </button>` : ''}
+        ${_canLeaves ? `
+        <button class="hr-tab-btn ${defaultTab === 'conges' ? 'active' : ''}" onclick="hrSwitchTab('conges',this)" id="hr-btn-conges">
           <i data-lucide="calendar-days"></i> Congés
-        </button>
-        <button class="hr-tab-btn" onclick="hrSwitchTab('presence',this)" id="hr-btn-presence">
+        </button>` : ''}
+        ${_canAtt ? `
+        <button class="hr-tab-btn ${defaultTab === 'presence' ? 'active' : ''}" onclick="hrSwitchTab('presence',this)" id="hr-btn-presence">
           <i data-lucide="clock"></i> Présence
-        </button>
-        <button class="hr-tab-btn" onclick="hrSwitchTab('comptabilite',this)" id="hr-btn-comptabilite">
+        </button>` : ''}
+        ${_canCompta ? `
+        <button class="hr-tab-btn ${defaultTab === 'comptabilite' ? 'active' : ''}" onclick="hrSwitchTab('comptabilite',this)" id="hr-btn-comptabilite">
           <i data-lucide="line-chart"></i> Comptabilité RH
-        </button>
+        </button>` : ''}
       </div>
 
       <div id="hr-tab-content"></div>
     `;
     if (window.lucide) lucide.createIcons({ node: container });
-    await hrRenderTab('dashboard');
+    await hrRenderTab(defaultTab);
   }
 
   window.hrSwitchTab = async function (tab, btn) {
+    if (window.Auth && DB.AppState.currentUser?.role !== 'admin') {
+      if (tab === 'employes' && !Auth.can('hr_manage_employees')) return;
+      if (['paie', 'avances'].includes(tab) && !Auth.can('hr_manage_payroll')) return;
+      if (tab === 'conges' && !Auth.can('hr_manage_leaves')) return;
+      if (tab === 'presence' && !Auth.can('hr_manage_attendance')) return;
+      if (tab === 'comptabilite' && !Auth.can('hr_view_compta')) return;
+    }
     document.querySelectorAll('.hr-tab-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     await hrRenderTab(tab);

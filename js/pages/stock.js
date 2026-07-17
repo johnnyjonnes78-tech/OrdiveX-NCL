@@ -274,6 +274,10 @@ function renderStockTable(data) {
 }
 
 async function viewProductLots(productId) {
+  if (window.Auth && !Auth.can('stock_view') && !Auth.can('stock_view_expiry') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de consulter les lots de ce produit.', 'error', 4000);
+    return;
+  }
   const [product, lots, stock] = await Promise.all([
     DB.dbGet('products', productId),
     DB.dbGetAll('lots', 'productId', productId),
@@ -313,7 +317,7 @@ async function viewProductLots(productId) {
             <td><strong>${l.quantity}</strong> / ${l.initialQuantity}</td>
             <td>${UI.expiryBadge(l.expiryDate)}</td>
             <td>
-              ${(!isRayon && l.quantity > 0 && l.status === 'active') ? `<button class="btn btn-xs btn-primary" onclick="initTransferLot(${l.id})"><i data-lucide="arrow-right-left"></i> Transférer</button>` : '—'}
+              ${(!isRayon && l.quantity > 0 && l.status === 'active' && (Auth.can('stock_adjust') || DB.AppState.currentUser?.role === 'admin')) ? `<button class="btn btn-xs btn-primary" onclick="initTransferLot(${l.id})"><i data-lucide="arrow-right-left"></i> Transférer</button>` : '—'}
             </td>
           </tr>`;
         }).join('')}
@@ -325,6 +329,10 @@ async function viewProductLots(productId) {
 }
 
 window.initTransferLot = async function(lotId) {
+  if (window.Auth && !Auth.can('stock_adjust') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de transférer du stock.', 'error', 4000);
+    return;
+  }
   const lot = await DB.dbGet('lots', lotId);
   if (!lot) return;
   
@@ -349,6 +357,10 @@ window.initTransferLot = async function(lotId) {
 };
 
 window.submitTransferLot = async function(lotId, btn) {
+  if (window.Auth && !Auth.can('stock_adjust') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
   const qtyInput = document.getElementById('transfer-qty');
   if (!qtyInput || !qtyInput.checkValidity()) { qtyInput?.reportValidity(); return; }
   
@@ -407,6 +419,10 @@ window.submitTransferLot = async function(lotId, btn) {
 };
 
 async function showStockMovements(productId) {
+  if (window.Auth && !Auth.can('stock_view_exits_history') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de consulter l\'historique des mouvements.', 'error', 4000);
+    return;
+  }
   const [product, movements] = await Promise.all([
     DB.dbGet('products', productId),
     DB.dbGetAll('movements', 'productId', productId),
@@ -699,8 +715,8 @@ async function editProduct(productId) {
  */
 async function showAdjustStock(productId) {
   try {
-    if (!DB.AppState.currentUser || DB.AppState.currentUser.role !== 'admin') {
-      UI.toast('Seul un administrateur peut ajuster le stock', 'error');
+    if (!DB.AppState.currentUser || (!Auth.can('stock_adjust') && !Auth.can('inventory_adjust') && DB.AppState.currentUser.role !== 'admin')) {
+      UI.toast('Vous n\'avez pas la permission d\'ajuster le stock', 'error');
       return;
     }
     var product = await DB.dbGet('products', productId);
@@ -831,6 +847,10 @@ window.editProduct = editProduct;
 window.showAdjustStock = showAdjustStock;
 window.submitAdjustStock = submitAdjustStock;
 window.importStockCsv = async function(event) {
+  if (window.Auth && !Auth.can('stock_import') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'importer des stocks.', 'error', 4000);
+    return;
+  }
   const file = event.target.files[0];
   if (!file) return;
   UI.closeModal();
@@ -1210,6 +1230,10 @@ window.exportStockPDF = function() {
 };
 
 window.exportInventoryPDF = function() {
+  if (window.Auth && !Auth.can('inventory_export') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'exporter le procès-verbal d\'inventaire.', 'error', 4000);
+    return;
+  }
   if (!window.PDFExport) return UI.toast("Module PDF non chargé", "error");
   const data = (window._inventoryItems || []).map(item => [
     item.code,
