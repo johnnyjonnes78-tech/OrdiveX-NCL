@@ -1,5 +1,5 @@
 {
-  "version": "9.7.90",
+  "version": "9.7.91",
   "date": "2026-07-17",
-  "changelog": "v9.7.90 : Résolution de la syntaxe de alerts.js suite au nettoyage de l'export PDF."
+  "changelog": "v9.7.91 : Correction critique des permissions DB Guard — alignement des clés avec auth.js, support des permissions alternatives (OR logic) pour le POS/stock/patients."
 }

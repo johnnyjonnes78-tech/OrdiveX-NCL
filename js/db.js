@@ -1123,17 +1123,19 @@ let _isSystemOp = false; // Drapeau pour les opérations système (sync, seed, d
 
 const _DB_WRITE_GUARDS = {
   // store → { add: perm, put: perm, delete: perm }
-  products:        { add: 'stock_product_create', put: 'stock_product_edit', delete: 'stock_product_delete' },
-  lots:            { add: 'stock_lot_edit',       put: 'stock_lot_edit',     delete: 'stock_lot_edit' },
-  stock:           { add: 'stock_adjust',         put: 'stock_adjust',       delete: 'stock_adjust' },
-  sales:           { add: 'sales_create',         put: 'sales_edit',         delete: 'sales_delete' },
-  saleItems:       { add: 'sales_create',         put: 'sales_edit',         delete: 'sales_delete' },
-  purchaseOrders:  { add: 'achats_create',        put: 'achats_edit',        delete: 'achats_delete' },
-  suppliers:       { add: 'achats_supplier_edit',  put: 'achats_supplier_edit', delete: 'achats_supplier_delete' },
-  patients:        { add: 'patients_create',      put: 'patients_edit',      delete: 'patients_delete' },
-  insurances:      { add: 'patients_assurance_edit', put: 'patients_assurance_edit', delete: 'patients_assurance_edit' },
-  users:           { add: 'settings_users',       put: 'settings_users',     delete: 'settings_users' },
-  inventories:     { add: 'inventory_create',     put: 'inventory_edit',     delete: 'inventory_delete' },
+  // IMPORTANT: les clés DOIVENT correspondre exactement aux clés de Auth.ALL_PERMISSIONS (auth.js)
+  // Si la valeur est un tableau, l'utilisateur doit avoir AU MOINS UNE des permissions listées
+  products:        { add: 'products_create',      put: 'products_edit',         delete: 'products_delete' },
+  lots:            { add: 'stock_adjust',          put: ['stock_adjust', 'pos_sales_create'], delete: 'stock_adjust' },
+  stock:           { add: 'stock_adjust',          put: ['stock_adjust', 'pos_sales_create'], delete: 'stock_adjust' },
+  sales:           { add: 'pos_sales_create',      put: 'pos_sales_create',      delete: 'pos_sales_create' },
+  saleItems:       { add: 'pos_sales_create',      put: 'pos_sales_create',      delete: 'pos_sales_create' },
+  purchaseOrders:  { add: 'po_create',             put: 'po_create',             delete: 'po_delete' },
+  suppliers:       { add: 'suppliers_create',      put: 'suppliers_edit',        delete: 'suppliers_delete' },
+  patients:        { add: 'patients_create',       put: ['patients_edit', 'pos_sales_create'], delete: 'patients_delete' },
+  insurances:      { add: 'claims_view',           put: 'claims_view',           delete: 'claims_view' },
+  users:           { add: 'settings_users',        put: 'settings_users',        delete: 'settings_users' },
+  inventories:     { add: 'inventory_create',      put: 'inventory_edit',        delete: 'inventory_delete' },
 };
 
 function _checkWritePermission(storeName, op) {
@@ -1144,9 +1146,12 @@ function _checkWritePermission(storeName, op) {
   if (!requiredPerm) return;
   // Vérifier si Auth est disponible et si l'utilisateur a la permission
   if (typeof Auth !== 'undefined' && typeof Auth.can === 'function') {
-    if (!Auth.can(requiredPerm)) {
+    // Support des permissions alternatives (tableau = OR logic)
+    const perms = Array.isArray(requiredPerm) ? requiredPerm : [requiredPerm];
+    const hasAny = perms.some(p => Auth.can(p));
+    if (!hasAny) {
       const msg = `Cette action nécessite une autorisation que votre profil ne possède pas actuellement.`;
-      console.warn(`[DB Guard] Écriture bloquée sur ${storeName} (${op}) — permission requise : ${requiredPerm}`);
+      console.warn(`[DB Guard] Écriture bloquée sur ${storeName} (${op}) — permission requise : ${perms.join(' ou ')}`);
       if (typeof UI !== 'undefined' && UI.toast) {
         UI.toast(msg, 'warning', 3000);
       }
