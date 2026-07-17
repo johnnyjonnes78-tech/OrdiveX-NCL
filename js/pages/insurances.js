@@ -219,19 +219,33 @@ async function selectInsurance(id) {
       </div>
 
       <!-- INFORMATIONS COMPLÉMENTAIRES -->
-      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:20px; font-size:12px;">
-        <div>
-          <strong>👤 Contact :</strong> ${ins.contact || 'Non renseigné'}<br>
-          <strong>📞 Téléphone :</strong> ${ins.phone || '—'}<br>
-          <strong>✉️ E-mail :</strong> ${ins.email || '—'}<br>
-          <strong>📍 Adresse :</strong> ${ins.address || '—'}
+      <div style="display:flex; flex-direction:column; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; font-size:14px; line-height:1.6;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:20px; border-bottom:1px solid var(--border); padding-bottom:14px;">
+          <div>
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">👤 Contact & Coordonnées</h4>
+            <strong>👤 Référent :</strong> ${ins.contact || 'Non renseigné'}<br>
+            <strong>📞 Téléphone :</strong> ${ins.phone || '—'}<br>
+            <strong>✉️ E-mail :</strong> ${ins.email || '—'}<br>
+            <strong>📍 Adresse :</strong> ${ins.address || '—'}
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">🛡️ Paramètres Tiers Payant</h4>
+            <strong>🔑 Réf. Interne :</strong> ${ins.refPerson || '—'}<br>
+            <strong>🛡️ Couverture standard :</strong> <span class="badge badge-info" style="font-size:12px; font-weight:700;">${ins.coveragePercent || ins.coverage || 70}%</span><br>
+            <strong>💳 Mode règlement :</strong> <span>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</span><br>
+            <strong>🟢 Statut :</strong> <span class="badge badge-${ins.status === 'active' ? 'success' : 'danger'}">${ins.status === 'active' ? 'Active' : 'Inactive'}</span>
+          </div>
         </div>
         <div>
-          <strong>🔑 Réf. Interne :</strong> ${ins.refPerson || '—'}<br>
-          <strong>🛡️ Couverture standard :</strong> ${ins.coverage}%<br>
-          <strong>📜 Conditions :</strong> ${ins.conditions || '—'}<br>
-          <strong>📝 Obs. :</strong> <span class="text-muted">${ins.observations || '—'}</span>
+          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">📜 Conditions de Prise en Charge</h4>
+          <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); font-style:italic; white-space:pre-wrap; color:var(--text);">${ins.conditions || 'Aucune condition spécifique définie.'}</div>
         </div>
+        ${ins.observations ? `
+        <div>
+          <h4 style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:var(--primary-color); text-transform:uppercase; letter-spacing:0.5px;">📝 Observations & Notes</h4>
+          <div style="background:rgba(0,0,0,0.02); padding:12px 16px; border-radius:8px; border:1px dashed var(--border); white-space:pre-wrap; color:var(--text-muted);">${ins.observations}</div>
+        </div>
+        ` : ''}
       </div>
 
       <!-- NAVIGATION PAR ONGLETS -->

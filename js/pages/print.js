@@ -168,24 +168,8 @@ const PrintEngine = {
     const subtotal = items.reduce((a, i) => a + (i.total || 0), 0);
     const discount = sale.discount || 0;
 
-    const tvaSetting = (get('pharmacy_tva') || '0').trim();
     let tva = 0;
-    if (tvaSetting && tvaSetting !== '0') {
-      if (!isNaN(tvaSetting)) {
-        tva = Math.round((subtotal - discount) * (parseFloat(tvaSetting) / 100));
-      } else {
-        try {
-          const formula = tvaSetting
-            .replace(/subtotal/g, String(subtotal))
-            .replace(/discount/g, String(discount));
-          tva = Math.round(Function(`"use strict"; return (${formula})`)());
-        } catch (e) {
-          console.error('[TVA] Erreur formule:', e);
-          tva = 0;
-        }
-      }
-    }
-    const finalTotal = (subtotal - discount) + tva;
+    const finalTotal = (subtotal - discount);
 
     const saleDate = sale.date ? new Date(sale.date) : new Date();
     const invoiceRef = 'FAC-' + String(saleId).padStart(8, '0');

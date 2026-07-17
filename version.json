@@ -1,5 +1,5 @@
 {
-  "version": "9.7.84",
+  "version": "9.7.85",
   "date": "2026-07-17",
-  "changelog": "v9.7.84 : Refonte complète module Assurances & Tiers Payant : nouveau module ERP indépendant (insurances.js), stores IndexedDB insurances + insurancePayments, migration automatique des données historiques, sélection assurance dans fiche patient et POS, imputation FIFO des règlements, catégorie \"Règlement Assurance\" dans comptabilité générale."
+  "changelog": "v9.7.85 : Correction du bug de permission IndexedDB au démarrage (migration des assurances avec bypass DB Guard), retrait de la TVA additionnelle de la facture client imprimée (prix déjà TTC au POS), et agrandissement de l'affichage des détails complémentaires de l'assurance dans l'ERP."
 }

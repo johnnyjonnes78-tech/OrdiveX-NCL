@@ -837,115 +837,117 @@ async function migrateInsurances() {
     return; // Déjà initialisé
   }
 
-  console.log('[DB-Migration] Initialisation de la table des assurances...');
-  
-  // Extraire les noms uniques des assurances
-  const patients = await dbGetAll('patients') || [];
-  const sales = await dbGetAll('sales') || [];
+  const prevSystemOp = _isSystemOp;
+  _isSystemOp = true;
 
-  const namesSet = new Set();
-  patients.forEach(p => {
-    if (p.assurances && Array.isArray(p.assurances)) {
-      p.assurances.forEach(a => {
-        if (a.name && a.name.trim()) namesSet.add(a.name.trim());
-      });
+  try {
+    console.log('[DB-Migration] Initialisation de la table des assurances...');
+    
+    // Extraire les noms uniques des assurances
+    const patients = await dbGetAll('patients') || [];
+    const sales = await dbGetAll('sales') || [];
+
+    const namesSet = new Set();
+    patients.forEach(p => {
+      if (p.assurances && Array.isArray(p.assurances)) {
+        p.assurances.forEach(a => {
+          if (a.name && a.name.trim()) namesSet.add(a.name.trim());
+        });
+      }
+    });
+
+    sales.forEach(s => {
+      if (s.assuranceName && s.assuranceName.trim()) {
+        namesSet.add(s.assuranceName.trim());
+      }
+      if (s.insuranceDetails && Array.isArray(s.insuranceDetails)) {
+        s.insuranceDetails.forEach(d => {
+          if (d.name && d.name.trim()) namesSet.add(d.name.trim());
+        });
+      }
+    });
+
+    const uniqueNames = Array.from(namesSet);
+    if (uniqueNames.length === 0) {
+      console.log('[DB-Migration] Aucune assurance historique à migrer.');
+      return;
     }
-  });
 
-  sales.forEach(s => {
-    if (s.assuranceName && s.assuranceName.trim()) {
-      namesSet.add(s.assuranceName.trim());
+    console.log(`[DB-Migration] ${uniqueNames.length} assurances uniques identifiées pour migration.`);
+
+    // Créer les entités d'assurance
+    const createdInsurances = [];
+    for (const name of uniqueNames) {
+      const insuranceId = Date.now() + Math.floor(Math.random() * 100000);
+      const newInsurance = {
+        id: insuranceId,
+        name: name,
+        code: name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 100),
+        status: 'active',
+        coveragePercent: 70, // Par défaut
+        paymentMode: 'invoice',
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      await dbAdd('insurances', newInsurance);
+      createdInsurances.push(newInsurance);
+      await new Promise(resolve => setTimeout(resolve, 2)); // Éviter les collisions d'ID
     }
-    if (s.insuranceDetails && Array.isArray(s.insuranceDetails)) {
-      s.insuranceDetails.forEach(d => {
-        if (d.name && d.name.trim()) namesSet.add(d.name.trim());
-      });
+
+    // Mettre à jour les patients pour lier leurs assurances
+    for (const p of patients) {
+      if (p.assurances && Array.isArray(p.assurances)) {
+        let changed = false;
+        p.assurances.forEach(a => {
+          const matched = createdInsurances.find(ins => ins.name.toLowerCase() === a.name.trim().toLowerCase());
+          if (matched) {
+            a.insuranceId = matched.id;
+            changed = true;
+          }
+        });
+        if (changed) {
+          await dbPut('patients', p);
+        }
+      }
     }
-  });
 
-  if (namesSet.size === 0) {
-    // Ajouter quelques assurances par défaut si aucune donnée n'existe
-    namesSet.add('ASCOMA');
-    namesSet.add('CNSS');
-    namesSet.add('SOGUIPRESS');
-  }
-
-  const createdInsurances = [];
-  let codeIdx = 10;
-  for (const name of namesSet) {
-    const code = 'INS-' + name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5) + codeIdx++;
-    const newIns = {
-      name: name,
-      code: code,
-      contact: '',
-      phone: '',
-      email: '',
-      address: '',
-      refPerson: '',
-      conditions: 'Prise en charge tiers payant standard',
-      coverage: 80,
-      status: 'active',
-      paymentMode: 'echelonne',
-      observations: 'Créée automatiquement lors de la migration des données.'
-    };
-    try {
-      const id = await dbAdd('insurances', newIns);
-      newIns.id = id;
-      createdInsurances.push(newIns);
-    } catch (e) {
-      console.error('[DB-Migration] Erreur création assurance:', name, e);
-    }
-  }
-
-  // Mettre à jour les patients pour lier leurs assurances
-  for (const p of patients) {
-    if (p.assurances && Array.isArray(p.assurances)) {
+    // Mettre à jour les ventes pour lier les assurances
+    for (const s of sales) {
       let changed = false;
-      p.assurances.forEach(a => {
-        const matched = createdInsurances.find(ins => ins.name.toLowerCase() === a.name.trim().toLowerCase());
+      if (s.assuranceName) {
+        const matched = createdInsurances.find(ins => ins.name.toLowerCase() === s.assuranceName.trim().toLowerCase());
         if (matched) {
-          a.insuranceId = matched.id;
+          s.insuranceId = matched.id;
           changed = true;
         }
-      });
+      }
+      if (s.insuranceDetails && Array.isArray(s.insuranceDetails)) {
+        s.insuranceDetails.forEach(d => {
+          const matched = createdInsurances.find(ins => ins.name.toLowerCase() === d.name.trim().toLowerCase());
+          if (matched) {
+            d.insuranceId = matched.id;
+            changed = true;
+          }
+        });
+      }
+      // Initialiser insurancePaidAmount
+      if (s.paymentMethod === 'assurance') {
+        if (s.insurancePaidAmount === undefined) {
+          s.insurancePaidAmount = (s.status === 'paid' || s.status === 'completed') ? (s.assuranceAmount || s.total) : 0;
+          changed = true;
+        }
+      }
       if (changed) {
-        await dbPut('patients', p);
+        await dbPut('sales', s);
       }
     }
-  }
 
-  // Mettre à jour les ventes pour lier les assurances
-  for (const s of sales) {
-    let changed = false;
-    if (s.assuranceName) {
-      const matched = createdInsurances.find(ins => ins.name.toLowerCase() === s.assuranceName.trim().toLowerCase());
-      if (matched) {
-        s.insuranceId = matched.id;
-        changed = true;
-      }
-    }
-    if (s.insuranceDetails && Array.isArray(s.insuranceDetails)) {
-      s.insuranceDetails.forEach(d => {
-        const matched = createdInsurances.find(ins => ins.name.toLowerCase() === d.name.trim().toLowerCase());
-        if (matched) {
-          d.insuranceId = matched.id;
-          changed = true;
-        }
-      });
-    }
-    // Initialiser insurancePaidAmount
-    if (s.paymentMethod === 'assurance') {
-      if (s.insurancePaidAmount === undefined) {
-        s.insurancePaidAmount = (s.status === 'paid' || s.status === 'completed') ? (s.assuranceAmount || s.total) : 0;
-        changed = true;
-      }
-    }
-    if (changed) {
-      await dbPut('sales', s);
-    }
+    console.log('[DB-Migration] Migration des assurances terminée avec succès. Nombre d\'assurances créées :', createdInsurances.length);
+  } catch (err) {
+    console.error('[DB-Migration] Erreur fatale durant la migration des assurances:', err);
+  } finally {
+    _isSystemOp = prevSystemOp;
   }
-
-  console.log('[DB-Migration] Migration des assurances terminée avec succès. Nombre d\'assurances créées :', createdInsurances.length);
 }
 
 
