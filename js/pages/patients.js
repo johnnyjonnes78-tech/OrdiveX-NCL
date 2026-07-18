@@ -171,10 +171,28 @@ async function viewPatient(patientId) {
   });
   const topDrugs = Object.entries(drugHistory).sort((a, b) => b[1].count - a[1].count).slice(0, 5);
 
+  // Charger les saleItems pour tous les crédits afin d'afficher les médicaments
+  const allSaleItems = await DB.dbGetAll('saleItems');
+  const saleItemsMap = {};
+  allSaleItems.forEach(si => {
+    if (!saleItemsMap[si.saleId]) saleItemsMap[si.saleId] = [];
+    saleItemsMap[si.saleId].push(si);
+  });
+
+  // Attacher les items à chaque vente
+  const creditSalesWithItems = creditSales.map(s => ({
+    ...s,
+    items: saleItemsMap[s.id] || []
+  }));
+  const patientSalesWithItems = patientSales.map(s => ({
+    ...s,
+    items: saleItemsMap[s.id] || []
+  }));
+
   // Stocker dans des variables globales pour la pagination client
   window._curPatientId = patientId;
-  window._curPatientSales = patientSales.sort((a,b) => new Date(b.date) - new Date(a.date));
-  window._curPatientCredits = creditSales.sort((a,b) => new Date(b.date) - new Date(a.date));
+  window._curPatientSales = patientSalesWithItems.sort((a,b) => new Date(b.date) - new Date(a.date));
+  window._curPatientCredits = creditSalesWithItems.sort((a,b) => new Date(b.date) - new Date(a.date));
   window._curPatientRx = sortedRx;
 
   UI.modal(`<i data-lucide="folder" class="modal-icon-inline"></i> Dossier — ${patient.name}`, `
@@ -473,7 +491,7 @@ window._renderPatientCredits = function(page) {
           ${pageData.map(s => {
             const drugsList = (s.items || []).map(i => `
               <div style="font-size:11px;background:var(--surface-2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;margin-bottom:2px;display:inline-block;">
-                <strong>${i.quantity}x</strong> ${i.productName || i.name} <span class="text-muted">(${UI.formatCurrency(i.price || 0)})</span>
+                <strong>${i.quantity}x</strong> ${i.productName || i.name || '?'} <span class="text-muted">(${UI.formatCurrency(i.unitPrice || i.price || 0)})</span>
               </div>
             `).join(' ');
 

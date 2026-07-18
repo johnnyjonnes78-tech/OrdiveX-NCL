@@ -726,6 +726,7 @@ async function confirmSettleDebt(saleId) {
 
     // 1. Update the sale status
     sale.status = 'paid';
+    sale.creditStatus = 'paid'; // aligné avec le filtre patients.js
     sale.paidAt = Date.now();
     sale.paidDate = today;
     sale.paidMethod = paymentMethod;
