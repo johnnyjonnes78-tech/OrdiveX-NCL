@@ -1,5 +1,5 @@
 {
-  "version": "9.7.100",
+  "version": "9.7.101",
   "date": "2026-07-18",
-  "changelog": "v9.7.100 : Résolution des erreurs IDB 'connection is closing' lors des mises à jour SW. Synchronisation cloud des assurances opérationnelle (fin des 400 Bad Request). Réinitialisation propre de la base locale lors des mises à jour automatiques."
+  "changelog": "v9.7.101 : Correction de la page point de vente (chargement fluide non bloquant lors des synchronisations de fond) et écran d'onboarding/restauration par Magic Link enrichi avec une barre de progression en temps réel."
 }

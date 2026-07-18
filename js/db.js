@@ -289,6 +289,7 @@ setInterval(() => {
 
 const _pageStoreMap = {
   dashboard: ['sales', 'saleItems', 'stock', 'products', 'alerts', 'movements', 'returns'],
+  pos: ['products', 'stock', 'lots'],  // Soft refresh POS (sans toucher le panier)
   products: ['products'],
   stock: ['stock', 'products', 'lots'],
   sales: ['sales', 'saleItems'],
@@ -313,8 +314,16 @@ function _notifyUIChange(storeName) {
     try {
       if (window._invalidateDashCache) window._invalidateDashCache();
       const page = window.Router?.currentPage;
-      // Ne jamais rafraîchir les pages sensibles
-      if (!page || page === 'login' || page === 'onboarding' || page === 'pos') return;
+      // Ne jamais rafraîchir les pages sensibles (login, onboarding)
+      if (!page || page === 'login' || page === 'onboarding') return;
+      // Soft refresh spécial pour le POS : ne pas toucher au panier/session
+      if (page === 'pos') {
+        const posStores = _pageStoreMap['pos'] || [];
+        if (posStores.some(s => stores.has(s))) {
+          _softRefreshPOS();
+        }
+        return;
+      }
       const relevantStores = _pageStoreMap[page] || [];
       const hasRelevantChange = relevantStores.some(s => stores.has(s));
       if (hasRelevantChange) {
@@ -350,6 +359,64 @@ function _silentRefreshPage(page, storeNames) {
       container.style.minHeight = '';
     });
   } catch (e) { /* silencieux */ }
+}
+
+// Rafraîchissement doux du POS : recharge le stock et les produits en fond
+// sans jamais toucher au panier, aux sessions ou à l'état de la vente en cours.
+async function _softRefreshPOS() {
+  try {
+    // Ne rien faire si le POS n'est pas visible ou si un chargement est en cours
+    if (window.Router?.currentPage !== 'pos') return;
+    if (typeof window._posDataReady === 'undefined') return;
+
+    const [stockAll, allLots, allProducts] = await Promise.all([
+      dbGetAll('stock'),
+      dbGetAll('lots'),
+      dbGetAll('products'),
+    ]);
+
+    // Reconstruire la map de stock (FEFO aware)
+    const rayonStockMap = {};
+    const hasAnyLotMap = {};
+    allLots.forEach(l => {
+      hasAnyLotMap[l.productId] = true;
+      if (l.status === 'active' && (!l.location || l.location === 'rayon')) {
+        rayonStockMap[l.productId] = (rayonStockMap[l.productId] || 0) + l.quantity;
+      }
+    });
+
+    // Mettre à jour posStock en place (window global)
+    if (window.posStock !== undefined) {
+      stockAll.forEach(s => {
+        if (hasAnyLotMap[s.productId]) window.posStock[s.productId] = rayonStockMap[s.productId] || 0;
+        else window.posStock[s.productId] = s.quantity;
+      });
+    }
+
+    // Mettre à jour posProducts en place
+    if (window.posProducts !== undefined) {
+      const updatedProducts = allProducts.filter(p => p.status !== 'inactive');
+      updatedProducts.forEach(p => {
+        p._hasLots = hasAnyLotMap[p.id] || false;
+        if (window.posProductsCache) window.posProductsCache.set(p.id, p);
+      });
+      window.posProducts = updatedProducts;
+    }
+
+    // Invalider le cache POS pour que la prochaine navigation recharge tout
+    if (window._posDataTime !== undefined) window._posDataTime = 0;
+
+    // Rafraîchir uniquement la grille des produits (sans toucher au panier)
+    if (typeof window.renderProductGrid === 'function') {
+      window.renderProductGrid();
+    }
+    if (typeof window.refreshCartUI === 'function') {
+      window.refreshCartUI();
+    }
+    if (typeof window.refreshTotals === 'function') {
+      window.refreshTotals();
+    }
+  } catch (e) { /* silencieux — ne pas crasher le POS */ }
 }
 
 let _lastSessionCheck = 0;
@@ -1978,15 +2045,20 @@ async function _internalSyncToSupabase() {
  */
 let _isPulling = false;
 let _pullBatch = null;
-async function pullFromSupabase(isManual = false) {
+async function pullFromSupabase(isManual = false, onProgress = null) {
   if (window.NM && typeof window.NM.requestPull === 'function') {
+    if (onProgress) {
+      // Si on a besoin de suivre la progression en temps réel (ex: onboarding),
+      // on court-circuite le délai et le coalescing du NetworkManager.
+      return _internalPullFromSupabase(isManual, onProgress);
+    }
     window.NM.requestPull(isManual);
     return;
   }
-  return _internalPullFromSupabase(isManual);
+  return _internalPullFromSupabase(isManual, onProgress);
 }
 
-async function _internalPullFromSupabase(isManual = false) {
+async function _internalPullFromSupabase(isManual = false, onProgress = null) {
   if (_isPulling) return;
   _isPulling = true;
   _isSystemOp = true;
@@ -2144,13 +2216,26 @@ async function _internalPullFromSupabase(isManual = false) {
 
     // ── Tracking des stores échoués pour forcer un re-pull complet si nécessaire ──
     const _failedPullStores = new Set();
-    // Cache local pour les stores qui ne supportent pas updatedAt camelCase
-    const _insTablesNoCamel = ['insurances', 'insurancepayments'];
+    // Tables Supabase dont la colonne updatedAt est en minuscules (créée sans guillemets)
+    // Ajouter ici toute table dont le CREATE TABLE utilise updatedAt sans guillemets
+    const _insTablesNoCamel = ['insurances', 'insurancepayments', 'stock'];
 
+    let currentIndex = 0;
     for (const storeName of storesToPull) {
+      currentIndex++;
       if ((window.NM && !window.NM.isOnline()) || !navigator.onLine) {
         throw new Error('network_offline');
       }
+      if (onProgress) {
+        onProgress({
+          storeName,
+          index: currentIndex,
+          total: storesToPull.length,
+          status: 'fetching',
+          itemCount: 0
+        });
+      }
+      let storeItemCount = 0;
       try {
         const tableName = storeName === 'users' ? 'app_users' : storeName;
 
@@ -2272,6 +2357,15 @@ async function _internalPullFromSupabase(isManual = false) {
             }
           }
         }
+        if (onProgress) {
+          onProgress({
+            storeName,
+            index: currentIndex,
+            total: storesToPull.length,
+            status: _failedPullStores.has(storeName) ? 'failed' : 'completed',
+            itemCount: storeItemCount
+          });
+        }
       } catch (storeErr) {
         // Garde null-safe : storeErr peut être null si une promesse rejette avec null
         if (storeErr?.message === 'network_offline') {
@@ -2290,12 +2384,31 @@ async function _internalPullFromSupabase(isManual = false) {
         if (errMsg.includes('connection is closing') || errMsg.includes('InvalidStateError')) {
           db = null; // Forcer la réouverture au prochain accès
           console.log('[Flash] 🔄 IDB fermé par SW — pull annulé, réouverture au prochain cycle');
+          if (onProgress) {
+            onProgress({
+              storeName,
+              index: currentIndex,
+              total: storesToPull.length,
+              status: 'aborted',
+              itemCount: 0
+            });
+          }
           return; // Stopper le pull sans marquer les stores comme échoués
         }
         // Marquer le store comme échoué pour forcer un prochain pull complet
         _failedPullStores.add(storeName);
         if (errMsg && !errMsg.includes('null')) {
           console.warn(`[Flash] Store error ${storeName}:`, errMsg);
+        }
+        if (onProgress) {
+          onProgress({
+            storeName,
+            index: currentIndex,
+            total: storesToPull.length,
+            status: 'failed',
+            itemCount: 0,
+            error: errMsg
+          });
         }
       }
     }

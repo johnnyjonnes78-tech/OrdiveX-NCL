@@ -287,7 +287,6 @@ async function renderPOS(container) {
     renderFullPOSUI(container);
   } else {
     const loadPOS = async () => {
-      if (DB._isPulling) { let w = 0; while (DB._isPulling && w < 60000) { await new Promise(r => setTimeout(r, 500)); w += 500; } }
       const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
       
       const [stockAll, allLots, allProducts] = await Promise.all([

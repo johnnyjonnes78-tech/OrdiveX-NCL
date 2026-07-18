@@ -335,19 +335,44 @@ const Onboarding = {
     // Afficher un écran de progression détaillé
     this.container.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:center;min-height:80vh">
-        <div style="text-align:center;max-width:400px;padding:40px">
+        <div style="text-align:center;width:100%;max-width:400px;padding:40px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg)">
           <div style="width:64px;height:64px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px"></div>
-          <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Synchronisation en cours</h2>
-          <p id="restore-status" style="color:var(--text-muted);font-size:14px;margin-bottom:16px">
+          <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Synchronisation Cloud</h2>
+          <p id="restore-status" style="color:var(--text-muted);font-size:14px;margin-bottom:12px;min-height:40px">
             Connexion au serveur cloud...
           </p>
-          <p style="color:var(--text-muted);font-size:12px">
-            Ne fermez pas l'application.<br>Cette opération peut prendre quelques minutes.
+          <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:15px 0 20px">
+            <div id="restore-progress-bar" style="width:0%;height:100%;background:var(--primary);transition:width 0.3s ease"></div>
+          </div>
+          <p style="color:var(--text-muted);font-size:12px;line-height:1.5">
+            ⚠️ <strong>Ne fermez pas l'application.</strong><br>Cette première récupération contient plus de 30 000 médicaments et peut durer quelques minutes.
           </p>
         </div>
       </div>
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     `;
+
+    const storeFriendlyNames = {
+      users: 'Utilisateurs',
+      settings: 'Paramètres généraux',
+      products: 'Catalogue des médicaments',
+      lots: 'Lots et péremptions',
+      stock: 'Niveaux de stock',
+      movements: 'Historique des mouvements',
+      suppliers: 'Fournisseurs',
+      purchaseOrders: 'Bons de commande',
+      sales: 'Historique des ventes',
+      saleItems: 'Détails des ventes',
+      patients: 'Fiches patients',
+      prescriptions: 'Ordonnances',
+      alerts: 'Alertes de sécurité',
+      cashRegister: 'Sessions de caisse',
+      returns: 'Retours produits',
+      invoices: 'Factures tiers-payant',
+      shifts: 'Planning & Présences',
+      insurances: 'Organismes d\'assurance',
+      insurancePayments: 'Règlements mutuelles'
+    };
 
     const updateStatus = (msg) => {
       const el = document.getElementById('restore-status');
@@ -371,8 +396,25 @@ const Onboarding = {
 
         updateStatus('Téléchargement de toutes les données...');
 
-        // Pull COMPLET (isManual=true) pour récupérer TOUT : produits, ventes, stock, etc.
-        await DB.pullFromSupabase(true);
+        // Callback pour mettre à jour la barre de progression en temps réel
+        const onProgress = (p) => {
+          const friendly = storeFriendlyNames[p.storeName] || p.storeName;
+          const pct = Math.round((p.index / p.total) * 100);
+          
+          const bar = document.getElementById('restore-progress-bar');
+          if (bar) bar.style.width = pct + '%';
+
+          if (p.status === 'fetching') {
+            updateStatus(`Téléchargement de ${friendly} (${p.index}/${p.total})...`);
+          } else if (p.status === 'completed') {
+            updateStatus(`Enregistrement : ${friendly} (${p.itemCount.toLocaleString()} lignes OK)`);
+          } else if (p.status === 'failed') {
+            updateStatus(`⚠️ Échec sur : ${friendly} (ignoré)`);
+          }
+        };
+
+        // Pull COMPLET (isManual=true) avec callback de progression
+        await DB.pullFromSupabase(true, onProgress);
 
         updateStatus('Vérification des données récupérées...');
 
