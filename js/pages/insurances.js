@@ -25,7 +25,7 @@ async function renderInsurances(container) {
 
   const [insurances, sales, users] = await Promise.all([
     DB.dbGetAll('insurances'),
-    DB.dbGetAll('sales'),
+    DB.dbGetAll('sales', 'paymentMethod', 'assurance'), // Index paymentMethod — charge uniquement les ventes assurance
     DB.dbGetAll('users')
   ]);
 

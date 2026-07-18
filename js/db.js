@@ -832,15 +832,20 @@ async function initDB() {
 }
 
 async function migrateInsurances() {
-  const insurances = await dbGetAll('insurances');
-  if (insurances && insurances.length > 0) {
-    return; // Déjà initialisé
+  if (localStorage.getItem('pharma_insurance_migrated') === 'true') {
+    return; // Déjà fait
   }
 
   const prevSystemOp = _isSystemOp;
   _isSystemOp = true;
 
   try {
+    const insurances = await dbGetAll('insurances');
+    if (insurances && insurances.length > 0) {
+      localStorage.setItem('pharma_insurance_migrated', 'true');
+      return; // Déjà initialisé
+    }
+
     console.log('[DB-Migration] Initialisation de la table des assurances...');
     
     // Extraire les noms uniques des assurances
@@ -870,6 +875,7 @@ async function migrateInsurances() {
     const uniqueNames = Array.from(namesSet);
     if (uniqueNames.length === 0) {
       console.log('[DB-Migration] Aucune assurance historique à migrer.');
+      localStorage.setItem('pharma_insurance_migrated', 'true');
       return;
     }
 
@@ -943,6 +949,7 @@ async function migrateInsurances() {
     }
 
     console.log('[DB-Migration] Migration des assurances terminée avec succès. Nombre d\'assurances créées :', createdInsurances.length);
+    localStorage.setItem('pharma_insurance_migrated', 'true');
   } catch (err) {
     console.error('[DB-Migration] Erreur fatale durant la migration des assurances:', err);
   } finally {
@@ -1844,11 +1851,12 @@ async function _internalSyncToSupabase() {
           }
         }
       } catch (storeError) {
-        if (storeError.message === 'network_offline') {
+        // Garde null-safe : storeError peut être null si une promesse rejette avec null
+        if (storeError?.message === 'network_offline') {
           throw storeError; // Propager pour arrêter le sync global
         }
         // Silencieux si hors-ligne
-        if (navigator.onLine) console.error(`[Flash] Exception ${storeName}:`, storeError);
+        if (navigator.onLine) console.error(`[Flash] Exception ${storeName}:`, storeError?.message || storeError);
       }
     }
 
@@ -2008,7 +2016,7 @@ async function _internalPullFromSupabase(isManual = false) {
 
     const writeBatchToIDB = async (storeName, items) => {
       const prepared = items.map(item => {
-        let localItem = { ...item, _synced: true, _updatedAt: item.updatedAt || Date.now() };
+        let localItem = { ...item, _synced: true, _updatedAt: item.updatedAt || item.updatedat || item._updatedAt || Date.now() };
         for (const key of Object.keys(localItem)) {
           if (mustBeString.includes(key) || (storeName === 'settings' && key === 'value')) {
             if (localItem[key] !== undefined && localItem[key] !== null) {
@@ -2119,6 +2127,11 @@ async function _internalPullFromSupabase(isManual = false) {
       return prepared.length;
     };
 
+    // ── Tracking des stores échoués pour forcer un re-pull complet si nécessaire ──
+    const _failedPullStores = new Set();
+    // Cache local pour les stores qui ne supportent pas updatedAt camelCase
+    const _insTablesNoCamel = ['insurances', 'insurancepayments'];
+
     for (const storeName of storesToPull) {
       if ((window.NM && !window.NM.isOnline()) || !navigator.onLine) {
         throw new Error('network_offline');
@@ -2139,9 +2152,7 @@ async function _internalPullFromSupabase(isManual = false) {
             const results = await Promise.all(batch.map(async ({ storeName: sn, tableName: tn }) => {
               try {
                 // PostgreSQL convertit les noms non-quotés en minuscules.
-                // Pour insurances et insurancePayments, la colonne s'appelle "updatedat"
-                // (sans guillemets dans le CREATE TABLE), pas "updatedAt".
-                const _insTablesNoCamel = ['insurances', 'insurancepayments'];
+                // Pour insurances et insurancePayments, la colonne s'appelle "updatedat".
                 const updatedAtCol = _insTablesNoCamel.includes(tn.toLowerCase()) ? 'updatedat' : 'updatedAt';
                 const { data, error } = await _withTimeout(
                   sb.from(tn)
@@ -2157,10 +2168,20 @@ async function _internalPullFromSupabase(isManual = false) {
 
             for (const r of results) {
               if (r.error) {
+                // ── CORRECTIF CRITIQUE : Ne pas bloquer les autres stores du batch ──
+                // Un seul store en erreur ne doit pas faire perdre les données des 3 autres.
                 if (window.NM && !window.NM.isOnline()) {
                   throw new Error('network_offline');
                 }
-                throw r.error;
+                const rErrMsg = r.error?.message || String(r.error || '');
+                const rIsNet = rErrMsg.includes('Failed to fetch') || rErrMsg.includes('NetworkError') || rErrMsg.includes('ERR_') || rErrMsg.includes('timeout');
+                if (rIsNet) throw new Error('network_offline');
+                // Marquer ce store comme échoué pour forcer un re-pull complet
+                _failedPullStores.add(r.sn);
+                if (rErrMsg && !rErrMsg.includes('null') && !rErrMsg.includes('offline')) {
+                  console.warn(`[Flash] Pull ${r.sn} temporairement échoué:`, rErrMsg);
+                }
+                continue; // Continuer avec les autres stores du batch !
               }
               if (r.data && r.data.length > 0) {
                 const count = await writeBatchToIDB(r.sn, r.data);
@@ -2182,13 +2203,20 @@ async function _internalPullFromSupabase(isManual = false) {
             if (window.NM && !window.NM.isOnline()) {
               throw new Error('network_offline');
             }
-            throw countRes.error;
+            // ── CORRECTIF CRITIQUE : Ne pas interrompre le pull complet pour un seul store ──
+            const ceMsg = countRes.error?.message || '';
+            const ceIsNet = ceMsg.includes('Failed to fetch') || ceMsg.includes('NetworkError') || ceMsg.includes('ERR_') || ceMsg.includes('timeout');
+            if (ceIsNet) throw new Error('network_offline');
+            _failedPullStores.add(storeName);
+            if (ceMsg && !ceMsg.includes('null')) console.warn(`[Flash] Count échoué ${storeName}:`, ceMsg);
+            continue; // Passer au store suivant
           }
           const totalCount = countRes.count || 0;
 
           if (totalCount > 0) {
             const fetchLimit = 1000;
             let storeItemCount = 0;
+            let storePullOk = true;
 
             for (let offset = 0; offset < totalCount; offset += fetchLimit * 5) {
               if ((window.NM && !window.NM.isOnline()) || !navigator.onLine) {
@@ -2205,12 +2233,20 @@ async function _internalPullFromSupabase(isManual = false) {
                   if (window.NM && !window.NM.isOnline()) {
                     throw new Error('network_offline');
                   }
-                  throw res.error;
+                  // ── CORRECTIF CRITIQUE : Marquer le store comme échoué, ne pas planter ──
+                  const reMsg = res.error?.message || '';
+                  const reIsNet = reMsg.includes('Failed to fetch') || reMsg.includes('NetworkError') || reMsg.includes('ERR_') || reMsg.includes('timeout');
+                  if (reIsNet) throw new Error('network_offline');
+                  _failedPullStores.add(storeName);
+                  storePullOk = false;
+                  if (reMsg && !reMsg.includes('null')) console.warn(`[Flash] Page pull échouée ${storeName}:`, reMsg);
+                  break; // Sortir de la boucle de pagination pour ce store
                 }
                 if (res.data && res.data.length > 0) {
                   storeItemCount += await writeBatchToIDB(storeName, res.data);
                 }
               }
+              if (!storePullOk) break; // Passer au store suivant
               await new Promise(r => setTimeout(r, 0));
             }
 
@@ -2222,25 +2258,34 @@ async function _internalPullFromSupabase(isManual = false) {
           }
         }
       } catch (storeErr) {
-        if (storeErr.message === 'network_offline') {
+        // Garde null-safe : storeErr peut être null si une promesse rejette avec null
+        if (storeErr?.message === 'network_offline') {
           throw storeErr; // Propager pour arrêter le pull global
         }
         const errMsg = storeErr?.message || String(storeErr || '');
         const isNetworkError = errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('ERR_INTERNET_DISCONNECTED') || errMsg.includes('ERR_QUIC_PROTOCOL_ERROR') || errMsg.includes('ERR_NAME_NOT_RESOLVED') || errMsg.includes('CORS') || errMsg.includes('Access-Control') || errMsg.includes('ERR_CONNECTION_RESET') || errMsg.includes('ERR_CONNECTION_CLOSED') || errMsg.includes('ERR_NETWORK_IO_SUSPENDED') || errMsg.includes('preflight') || errMsg.includes('timeout');
         if (isNetworkError) {
-          AppState.isOnline = false;
-          AppState._confirmedOffline = true;
           console.log('[Flash] ⚠️ Pull interrompu: erreur réseau détectée');
-          throw storeErr; // Re-jeter pour rejeter la promesse globale de pull
+          throw storeErr;
         }
+        // Marquer le store comme échoué pour forcer un prochain pull complet
+        _failedPullStores.add(storeName);
         if (errMsg && !errMsg.includes('null')) {
           console.warn(`[Flash] Store error ${storeName}:`, errMsg);
         }
       }
     }
 
-    // Sauvegarder le timestamp du pull réussi
-    localStorage.setItem(lastPullKey, String(Date.now()));
+    // ── CORRECTIF CRITIQUE : Sauvegarder le timestamp SEULEMENT si tous les stores ont réussi ──
+    // Si certains stores ont échoué, ne pas avancer le curseur : le prochain pull doit
+    // re-tenter depuis le dernier timestamp valide pour récupérer les données manquantes.
+    if (_failedPullStores.size === 0) {
+      localStorage.setItem(lastPullKey, String(Date.now()));
+    } else {
+      console.warn(`[Flash] Pull partiel — ${_failedPullStores.size} store(s) échoués, timestamp non avancé:`, [..._failedPullStores].join(', '));
+      // Forcer un pull complet au prochain démarrage pour récupérer les données manquantes
+      localStorage.removeItem(lastPullKey);
+    }
 
     if (hasChanges) console.log(`[Flash] ⚡ Pull terminé — ${totalItemsPulled} éléments mis à jour`);
 
