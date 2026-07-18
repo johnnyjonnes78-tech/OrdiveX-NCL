@@ -1161,59 +1161,73 @@ function _checkWritePermission(storeName, op) {
 }
 
 async function dbAdd(storeName, data) {
+  if (!db) await initDB();
   _checkWritePermission(storeName, 'add');
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    const req = store.add({ ...data, _createdAt: Date.now(), _updatedAt: Date.now(), _synced: false });
-    req.onsuccess = () => {
-      const resultId = req.result;
-      resolve(resultId);
-      
-      // Auto-sync des dates de peremption
-      if (storeName === 'products' && data.expiryDate) {
-        _syncProductExpiryToLots(resultId || data.id, data.expiryDate);
-      } else if (storeName === 'lots' && data.productId) {
-        // Recalculer le minimum sur tous les lots actifs de ce produit
-        _syncLotExpiryToProduct(data.productId);
-      }
+    try {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.add({ ...data, _createdAt: Date.now(), _updatedAt: Date.now(), _synced: false });
+      req.onsuccess = () => {
+        const resultId = req.result;
+        resolve(resultId);
+        
+        // Auto-sync des dates de peremption
+        if (storeName === 'products' && data.expiryDate) {
+          _syncProductExpiryToLots(resultId || data.id, data.expiryDate);
+        } else if (storeName === 'lots' && data.productId) {
+          // Recalculer le minimum sur tous les lots actifs de ce produit
+          _syncLotExpiryToProduct(data.productId);
+        }
 
-      if (window.NM && typeof window.NM.notifyMutation === 'function') {
-        window.NM.notifyMutation(storeName);
-      } else if (navigator.onLine) {
-        _scheduleSyncToSupabase();
-      }
-    };
-    req.onerror = () => reject(req.error);
+        if (window.NM && typeof window.NM.notifyMutation === 'function') {
+          window.NM.notifyMutation(storeName);
+        } else if (navigator.onLine) {
+          _scheduleSyncToSupabase();
+        }
+      };
+      req.onerror = () => { console.error(`[DB] Erreur add ${storeName}:`, req.error); resolve(null); };
+      tx.onerror = () => { console.error(`[DB] Transaction add erreur ${storeName}`); resolve(null); };
+    } catch (e) {
+      console.error(`[DB] Exception dans dbAdd(${storeName}):`, e);
+      resolve(null);
+    }
   });
 }
 
 async function dbPut(storeName, data) {
+  if (!db) await initDB();
   _checkWritePermission(storeName, 'put');
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    const req = store.put({ ...data, _updatedAt: Date.now(), _synced: false });
-    req.onsuccess = () => {
-      resolve(req.result);
-      
-      // Auto-sync des dates de peremption
-      if (storeName === 'products' && data.expiryDate) {
-        _syncProductExpiryToLots(data.id, data.expiryDate);
-      } else if (storeName === 'lots' && data.productId) {
-        // Declencher le recalcul du minimum meme si seule la quantite a change (vente FEFO)
-        _syncLotExpiryToProduct(data.productId);
-      }
+    try {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.put({ ...data, _updatedAt: Date.now(), _synced: false });
+      req.onsuccess = () => {
+        resolve(req.result);
+        
+        // Auto-sync des dates de peremption
+        if (storeName === 'products' && data.expiryDate) {
+          _syncProductExpiryToLots(data.id, data.expiryDate);
+        } else if (storeName === 'lots' && data.productId) {
+          // Declencher le recalcul du minimum meme si seule la quantite a change (vente FEFO)
+          _syncLotExpiryToProduct(data.productId);
+        }
 
-      if (window.NM && typeof window.NM.notifyMutation === 'function') {
-        window.NM.notifyMutation(storeName);
-      } else if (navigator.onLine) {
-        _scheduleSyncToSupabase();
-      }
-    };
-    req.onerror = () => reject(req.error);
+        if (window.NM && typeof window.NM.notifyMutation === 'function') {
+          window.NM.notifyMutation(storeName);
+        } else if (navigator.onLine) {
+          _scheduleSyncToSupabase();
+        }
+      };
+      req.onerror = () => { console.error(`[DB] Erreur put ${storeName}:`, req.error); resolve(null); };
+      tx.onerror = () => { console.error(`[DB] Transaction put erreur ${storeName}`); resolve(null); };
+    } catch (e) {
+      console.error(`[DB] Exception dans dbPut(${storeName}):`, e);
+      resolve(null);
+    }
   });
 }
 
@@ -1366,24 +1380,38 @@ async function dbCountProducts() {
 }
 
 async function dbDelete(storeName, id) {
+  if (!db) await initDB();
   _checkWritePermission(storeName, 'delete');
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    const req = store.delete(id);
-    req.onsuccess = () => resolve(true);
-    req.onerror = () => reject(req.error);
+    try {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      const req = store.delete(id);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => { console.error(`[DB] Erreur delete ${storeName}/${id}:`, req.error); resolve(false); };
+      tx.onerror = () => { console.error(`[DB] Transaction delete erreur ${storeName}`); resolve(false); };
+    } catch (e) {
+      console.error(`[DB] Exception dans dbDelete(${storeName}, ${id}):`, e);
+      resolve(false);
+    }
   });
 }
 
 async function dbCount(storeName) {
+  if (!db) await initDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readonly');
-    const store = tx.objectStore(storeName);
-    const req = store.count();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    try {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.count();
+      req.onsuccess = () => resolve(req.result || 0);
+      req.onerror = () => { console.error(`[DB] Erreur count ${storeName}:`, req.error); resolve(0); };
+      tx.onerror = () => { console.error(`[DB] Transaction count erreur ${storeName}`); resolve(0); };
+    } catch (e) {
+      console.error(`[DB] Exception dans dbCount(${storeName}):`, e);
+      resolve(0);
+    }
   });
 }
 

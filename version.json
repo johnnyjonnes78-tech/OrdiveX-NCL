@@ -1,5 +1,5 @@
 {
-  "version": "9.7.95",
+  "version": "9.7.96",
   "date": "2026-07-18",
-  "changelog": "v9.7.95 : Optimisations majeures de l'interface utilisateur pour mobile. (1) Permissions : résolution complète du bug de tap/clic sur les cases à cocher sur téléphone en remplaçant les hovers inline par du CSS moderne. (2) Ressources Humaines : transformation de la barre d'onglets débordante en un défilement horizontal fluide et réadaptation réactive de tous les boutons d'en-tête de sous-modules. (3) Assurances & Tiers Payant : refonte de la grille fixe à deux colonnes pour s'adapter dynamiquement sur une seule colonne sur mobile. (4) Alignement réactif généralisé de tous les boutons d'action du header sur mobile."
+  "changelog": "v9.7.96 : Stabilisation globale du système et résilience réseau accrue. (1) Base de données : sécurisation transactionnelle et blindage des méthodes dbAdd, dbPut, dbDelete et dbCount pour prévenir tout crash lié à des exceptions d'écriture IndexedDB ou à des appels avant initialisation. (2) Service Worker : ajout de insurances.js, hr.js et invoices.js dans la liste de mise en cache offline pour éviter des erreurs de chargement en mode hors-ligne. (3) Mise à jour : résolution d'un bug provoquant l'affichage permanent du bandeau d'installation en alignant ORDIVEX_CURRENT_VERSION sur la version dynamique globale."
 }
