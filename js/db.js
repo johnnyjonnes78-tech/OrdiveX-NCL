@@ -606,6 +606,16 @@ async function initDB() {
       } catch (err) {
         console.error('[DB] Migration assurances échouée:', err);
       }
+      // Hook onclose : si le SW force la fermeture (cache update), réinitialiser db
+      db.onclose = () => {
+        console.log('[DB] Connexion IDB fermée (mise à jour SW) — réinitialisation au prochain accès.');
+        db = null;
+      };
+      db.onversionchange = () => {
+        db.close();
+        db = null;
+        console.log('[DB] Nouvelle version IDB détectée — connexion fermée proprement.');
+      };
       resolve(db);
     };
 
@@ -1640,7 +1650,11 @@ async function _internalSyncToSupabase() {
     var _knownBadCols = {
       saleItems: ['lotNumber'],
       sales: ['paymentDetails'],
-      cashRegister: ['category', 'subCategory', 'description', 'employeeId', 'createdAt', 'updatedAt']
+      cashRegister: ['category', 'subCategory', 'description', 'employeeId', 'createdAt', 'updatedAt'],
+      // Colonnes locales des assurances non présentes dans Supabase :
+      // 'coverage' (local) → 'coveragePercent' (Supabase), 'refPerson' (local) → 'referent' (Supabase)
+      insurances: ['coverage', 'refPerson', '_updatedAt', '_localOnly'],
+      insurancePayments: ['_updatedAt', '_localOnly']
     };
     var _colCache = {};
     try { 
@@ -2268,6 +2282,15 @@ async function _internalPullFromSupabase(isManual = false) {
         if (isNetworkError) {
           console.log('[Flash] ⚠️ Pull interrompu: erreur réseau détectée');
           throw storeErr;
+        }
+        // ── Guard IDB closing (Service Worker update) ──
+        // Quand le SW active une nouvelle version, il force la fermeture de la connexion IDB.
+        // On réinitialise db=null pour forcer un initDB() au prochain appel, et on abandonne
+        // le pull en cours proprement (pas de log de warning pour chaque store).
+        if (errMsg.includes('connection is closing') || errMsg.includes('InvalidStateError')) {
+          db = null; // Forcer la réouverture au prochain accès
+          console.log('[Flash] 🔄 IDB fermé par SW — pull annulé, réouverture au prochain cycle');
+          return; // Stopper le pull sans marquer les stores comme échoués
         }
         // Marquer le store comme échoué pour forcer un prochain pull complet
         _failedPullStores.add(storeName);

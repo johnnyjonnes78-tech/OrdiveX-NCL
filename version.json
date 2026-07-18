@@ -1,5 +1,5 @@
 {
-  "version": "9.7.99",
+  "version": "9.7.100",
   "date": "2026-07-18",
-  "changelog": "v9.7.99 : Résolution de la perte de données des assurances (synchronisation cloud active pour les tables insurances/insurancePayments). Rétablissement des infobulles graphiques interactives au survol."
+  "changelog": "v9.7.100 : Résolution des erreurs IDB 'connection is closing' lors des mises à jour SW. Synchronisation cloud des assurances opérationnelle (fin des 400 Bad Request). Réinitialisation propre de la base locale lors des mises à jour automatiques."
 }
