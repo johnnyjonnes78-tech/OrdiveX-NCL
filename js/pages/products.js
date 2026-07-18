@@ -17,6 +17,10 @@ async function deduplicateProducts() {
     
     let hasChanges = false;
     
+    // Charger tous les bons de commande en mémoire une seule fois
+    const purchaseOrders = await DB.dbGetAll('purchaseOrders') || [];
+    const modifiedPOs = new Map();
+
     for (const key in nameGroups) {
       const group = nameGroups[key];
       if (group.length <= 1) continue;
@@ -48,16 +52,20 @@ async function deduplicateProducts() {
         console.log(`[Deduplication] Fusion de ${slave.name} (ID: ${slave.id}) vers Master ${master.name} (ID: ${master.id})`);
         
         // 1. Lots
-        const slaveLots = await DB.dbGetAll('lots', 'productId', slave.id);
+        const slaveLots = await DB.dbGetAll('lots', 'productId', slave.id) || [];
         for (const lot of slaveLots) {
           lot.productId = master.id;
+          lot._synced = false;
+          lot._updatedAt = Date.now();
           await DB.dbPut('lots', lot);
         }
         
         // 2. Mouvements
-        const slaveMovements = await DB.dbGetAll('movements', 'productId', slave.id);
+        const slaveMovements = await DB.dbGetAll('movements', 'productId', slave.id) || [];
         for (const mov of slaveMovements) {
           mov.productId = master.id;
+          mov._synced = false;
+          mov._updatedAt = Date.now();
           await DB.dbPut('movements', mov);
         }
         
@@ -67,21 +75,23 @@ async function deduplicateProducts() {
           const masterStock = await DB.dbGet('stock', master.id) || { productId: master.id, quantity: 0, reservedQuantity: 0 };
           masterStock.quantity = (masterStock.quantity || 0) + (slaveStock.quantity || 0);
           masterStock.reservedQuantity = (masterStock.reservedQuantity || 0) + (slaveStock.reservedQuantity || 0);
+          masterStock._synced = false;
+          masterStock._updatedAt = Date.now();
           await DB.dbPut('stock', masterStock);
           await DB.dbDelete('stock', slave.id);
         }
         
-        // 4. SaleItems
-        const saleItems = await DB.dbGetAll('saleItems');
-        const slaveSaleItems = saleItems.filter(si => si.productId === slave.id);
+        // 4. SaleItems (Filtrage à la source via index productId — ultra performant)
+        const slaveSaleItems = await DB.dbGetAll('saleItems', 'productId', slave.id) || [];
         for (const si of slaveSaleItems) {
           si.productId = master.id;
+          si._synced = false;
+          si._updatedAt = Date.now();
           await DB.dbPut('saleItems', si);
         }
         
         // 5. PurchaseOrders
-        const purchaseOrders = await DB.dbGetAll('purchaseOrders');
-        for (const po of purchaseOrders) {
+        purchaseOrders.forEach(po => {
           let poChanged = false;
           if (po.items && Array.isArray(po.items)) {
             po.items.forEach(it => {
@@ -92,17 +102,37 @@ async function deduplicateProducts() {
             });
           }
           if (poChanged) {
-            await DB.dbPut('purchaseOrders', po);
+            po._synced = false;
+            po._updatedAt = Date.now();
+            modifiedPOs.set(po.id, po);
           }
-        }
+        });
         
-        // 6. Supprimer le produit esclave
-        await DB.dbDelete('products', slave.id);
+        // 6. Désactiver définitivement le produit esclave (soft delete pour Supabase)
+        // car si on fait un dbDelete local immédiat, l'appareil n'enverra rien à Supabase
+        // et le doublon réapparaîtra au prochain pull depuis Supabase.
+        slave.status = 'inactive';
+        slave._synced = false;
+        slave._updatedAt = Date.now();
+        await DB.dbPut('products', slave);
         hasChanges = true;
       }
     }
+
+    // Sauvegarder les PO modifiés en bloc
+    if (modifiedPOs.size > 0) {
+      for (const po of modifiedPOs.values()) {
+        await DB.dbPut('purchaseOrders', po);
+      }
+      console.log(`[Deduplication] ${modifiedPOs.size} bons de commande mis à jour.`);
+    }
+
     if (hasChanges) {
       console.log('[Deduplication] Doublons résolus avec succès.');
+      // Lancer un push pour propager les modifications
+      if (window.NM && typeof window.NM.requestSync === 'function') {
+        window.NM.requestSync();
+      }
     }
   } catch (err) {
     console.error('[Deduplication] Erreur lors de la déduplication :', err);

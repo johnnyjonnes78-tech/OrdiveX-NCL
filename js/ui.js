@@ -708,10 +708,8 @@ const Charts = {
       ctx.fillText(options.title, w / 2, 18);
     }
 
-    // ── Tooltip hover (desktop only) ──
-    if (!('ontouchstart' in window)) {
-      Charts._addBarTooltip(canvas, barRects);
-    }
+    // ── Tooltip hover (tous appareils) ──
+    Charts._addBarTooltip(canvas, barRects);
   },
 
   donut(canvasId, labels, data, colors) {
@@ -784,11 +782,9 @@ const Charts = {
       ctx.fillText(`${label.substring(0, 15)} (${pct}%)`, lx + 15, ly);
     });
 
-    // ── Tooltip hover (desktop only) ──
-    if (!('ontouchstart' in window)) {
-      const slices = labels.map((label, i) => ({ label, val: data[i] }));
-      Charts._addDonutTooltip(canvas, slices, total);
-    }
+    // ── Tooltip hover (tous appareils) ──
+    const slices = labels.map((label, i) => ({ label, val: data[i] }));
+    Charts._addDonutTooltip(canvas, slices, total);
   },
 
   line(canvasId, labels, datasets, options = {}) {
@@ -890,10 +886,8 @@ const Charts = {
       ctx.fillText(options.title, w / 2, 18);
     }
 
-    // ── Tooltip hover (desktop only) ──
-    if (!('ontouchstart' in window)) {
-      Charts._addLineTooltip(canvas, allPoints);
-    }
+    // ── Tooltip hover (tous appareils) ──
+    Charts._addLineTooltip(canvas, allPoints);
   }
 };
 
