@@ -1630,6 +1630,7 @@ async function _internalSyncToSupabase() {
       'sales', 'saleItems', 'cashRegister', 'movements', 'returns', 'invoices',
       'patients', 'prescriptions', 'alerts', 'shifts',
       'stock', 'lots', 'purchaseOrders', 'suppliers',
+      'insurances', 'insurancePayments', // <-- Assurances synchronisées au cloud
       'users', 'settings',
       'products' // Très lourd (33k+), toujours en dernier !
     ];

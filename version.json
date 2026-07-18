@@ -1,5 +1,5 @@
 {
-  "version": "9.7.96",
+  "version": "9.7.99",
   "date": "2026-07-18",
-  "changelog": "v9.7.96 : Stabilisation globale du système et résilience réseau accrue. (1) Base de données : sécurisation transactionnelle et blindage des méthodes dbAdd, dbPut, dbDelete et dbCount pour prévenir tout crash lié à des exceptions d'écriture IndexedDB ou à des appels avant initialisation. (2) Service Worker : ajout de insurances.js, hr.js et invoices.js dans la liste de mise en cache offline pour éviter des erreurs de chargement en mode hors-ligne. (3) Mise à jour : résolution d'un bug provoquant l'affichage permanent du bandeau d'installation en alignant ORDIVEX_CURRENT_VERSION sur la version dynamique globale."
+  "changelog": "v9.7.99 : Résolution de la perte de données des assurances (synchronisation cloud active pour les tables insurances/insurancePayments). Rétablissement des infobulles graphiques interactives au survol."
 }
