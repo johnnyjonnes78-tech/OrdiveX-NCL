@@ -1,5 +1,5 @@
 {
-  "version": "9.7.102",
+  "version": "9.7.103",
   "date": "2026-07-18",
-  "changelog": "v9.7.102 : Ajout du règlement individuel et collectif des dettes depuis le dossier patient, avec affichage détaillé des médicaments à crédit, pagination des achats/crédits/ordonnances, et adaptation responsive sur mobile. Désactivation de la fusion automatique des produits doublons."
+  "changelog": "v9.7.103 : Correction de l'erreur SyntaxError causée par des résidus de code orphelins (await hors fonction async) dans patients.js."
 }

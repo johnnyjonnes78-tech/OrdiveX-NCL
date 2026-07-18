@@ -716,11 +716,6 @@ window.confirmSettleAllDebts = async function(patientId) {
     UI.toast('Erreur : ' + err.message, 'error');
   }
 };
-  if (window.lucide) lucide.createIcons();
-  if (window._autoAnimateKPIValues) setTimeout(_autoAnimateKPIValues, 100);
-  // Log access to patient data
-  await DB.writeAudit('VIEW_PATIENT', 'patients', patientId, { patientName: patient.name });
-}
 
 async function showAddPatient() {
   if (window.Auth && !Auth.can('patients_create') && DB.AppState.currentUser?.role !== 'admin') {
