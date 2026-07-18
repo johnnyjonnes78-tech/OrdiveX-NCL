@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
    OrdiveX — mobile.css  v4.0.0
    Couche responsive mobile-first — additive sur main.css
    Ne jamais modifier main.css directement pour le responsive.
@@ -1818,6 +1818,92 @@ img, canvas, video, iframe {
     display: none !important;
   }
 
+  /* ─────────────────────────────────────────────────────────────
+     §1.22  SURCHARGES D'INTERFACE MOBILES — PERMISSIONS, RH & STOCK
+     ───────────────────────────────────────────────────────────── */
+
+  /* Grille des permissions réactive et tactile */
+  .perm-cat-header {
+    background: var(--bg) !important;
+    transition: background .15s;
+  }
+  .perm-cat-header:active {
+    background: var(--border) !important; /* Retour haptique visuel au clic */
+  }
+
+  .perm-row-label {
+    min-height: 48px !important; /* Zone de tap recommandée */
+    padding: 12px 16px 12px 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+  }
+  .perm-row-label:active {
+    background: rgba(99, 102, 241, 0.12) !important; /* Retour visuel tactile */
+  }
+  .perm-row-label input[type="checkbox"] {
+    width: 22px !important;
+    height: 22px !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+  }
+  .perm-row-label span {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Onglets Ressources Humaines — défilement horizontal fluide */
+  .hr-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    padding: 6px !important;
+    gap: 6px !important;
+    background: var(--surface-alt, #f0f4f8) !important;
+    border-radius: 12px !important;
+    margin-bottom: 18px !important;
+    scrollbar-width: none; /* Masquer la scrollbar standard Firefox */
+  }
+  .hr-tabs::-webkit-scrollbar {
+    display: none; /* Masquer la scrollbar standard Chrome/Safari */
+  }
+  .hr-tab-btn {
+    flex: 0 0 auto !important;
+    min-width: auto !important;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Grille Assurance & Tiers Payant — passage à 1 colonne sur mobile */
+  .insurances-layout-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .insurances-layout-grid .card {
+    position: static !important; /* Enlever le sticky sur mobile */
+  }
+
+  /* Actions de header multiples — flex wrap intelligent pour éviter le chevauchement */
+  .header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .header-actions .btn {
+    flex: 1 1 calc(50% - 4px) !important; /* 2 boutons par ligne sur mobile */
+    min-width: 120px !important;
+    justify-content: center !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    min-height: 40px !important;
+  }
 
 } /* fin @media (max-width: 767px) */
 

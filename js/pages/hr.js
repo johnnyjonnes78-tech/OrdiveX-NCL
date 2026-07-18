@@ -358,7 +358,7 @@
               <option value="suspendu" ${filterStatus==='suspendu'?'selected':''}>Suspendu</option>
             </select>
           </div>
-          <div style="display:flex;gap:8px">
+          <div class="header-actions">
             <button class="btn btn-secondary" onclick="hrExportEmployesPDF()">
               <i data-lucide="file-text"></i> Exporter PDF
             </button>
@@ -1099,7 +1099,7 @@
             <label style="font-weight:600;font-size:.9rem">Période :</label>
             <input type="month" class="form-control" style="width:180px" value="${selectedPeriod}" onchange="hrPayPeriod(this.value)">
           </div>
-          <div style="display:flex;gap:8px">
+          <div class="header-actions">
             <button class="btn btn-secondary" onclick="hrGenerateFiches('${selectedPeriod}')">
               <i data-lucide="refresh-cw"></i> Générer les fiches
             </button>
@@ -1630,7 +1630,7 @@
       c.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px">
           <h3 style="font-size:.95rem;font-weight:700">Congés & Absences</h3>
-          <div style="display:flex;gap:8px">
+          <div class="header-actions">
             <button class="btn btn-secondary" onclick="hrExportCongesPDF('${viewMonth}')">
               <i data-lucide="file-text"></i> Exporter PDF
             </button>
@@ -1800,7 +1800,7 @@
             <label style="font-weight:600;font-size:.9rem">Date :</label>
             <input type="date" class="form-control" style="width:180px" value="${selectedDate}" onchange="hrPresDate(this.value)">
           </div>
-          <div style="display:flex;gap:8px">
+          <div class="header-actions">
             <button class="btn btn-secondary" onclick="hrExportPresencePDF('${selectedDate}')">
               <i data-lucide="file-text"></i> Exporter PDF
             </button>

@@ -93,7 +93,7 @@ async function renderInsurances(container) {
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 300px minmax(0, 1fr); gap:20px; align-items:start;">
+    <div class="insurances-layout-grid" style="display:grid; grid-template-columns: 300px minmax(0, 1fr); gap:20px; align-items:start;">
       <!-- COLONNE GAUCHE : LISTE DES ASSURANCES -->
       <div class="card" style="padding:16px; position:sticky; top:80px;">
         <h3 style="font-size:14px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">

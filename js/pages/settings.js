@@ -1064,8 +1064,8 @@ window.renderPermissionsGrid = async function() {
     <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.04);transition:box-shadow .2s">
       <!-- En-tete de categorie (cliquable) -->
       <div onclick="window._permCatsOpen=window._permCatsOpen||{};window._permCatsOpen['${cat.key}']=!${isOpen};window.renderPermissionsGrid()"
-        style="display:flex;align-items:center;padding:12px 16px;cursor:pointer;user-select:none;gap:12px;background:var(--bg);transition:background .15s"
-        onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--bg)'">
+        class="perm-cat-header"
+        style="display:flex;align-items:center;padding:12px 16px;cursor:pointer;user-select:none;gap:12px;background:var(--bg);transition:background .15s">
         <i data-lucide="${isOpen ? 'chevron-down' : 'chevron-right'}" style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0;transition:transform .2s"></i>
         <i data-lucide="${icon}" style="width:18px;height:18px;color:${roleColor};flex-shrink:0"></i>
         <span style="font-weight:700;font-size:.9rem;flex:1">${cat.label}</span>
@@ -1107,8 +1107,7 @@ window.renderPermissionsGrid = async function() {
         const highlight = searchQuery && (perm.label.toLowerCase().includes(searchQuery) || perm.key.toLowerCase().includes(searchQuery));
 
         html += `
-          <label style="display:flex;align-items:center;padding:10px 16px 10px 44px;background:${highlight ? 'rgba(99,102,241,.06)' : bg};border-bottom:1px solid var(--border);gap:12px;cursor:pointer;transition:background .12s"
-            onmouseenter="this.style.background='rgba(99,102,241,.08)'" onmouseleave="this.style.background='${highlight ? 'rgba(99,102,241,.06)' : bg}'">
+          <label class="perm-row-label ${highlight ? 'highlighted' : ''}" style="display:flex;align-items:center;padding:10px 16px 10px 44px;background:${highlight ? 'rgba(99,102,241,.06)' : bg};border-bottom:1px solid var(--border);gap:12px;cursor:pointer;transition:background .12s">
             <input type="checkbox" id="user_perm_${perm.key}" ${hasPerm ? 'checked' : ''}
               onchange="window._setUserPermOverride('${perm.key}', this.checked)"
               style="width:17px;height:17px;cursor:pointer;accent-color:var(--primary);flex-shrink:0">
