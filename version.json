@@ -1,5 +1,5 @@
 {
-  "version": "9.7.101",
+  "version": "9.7.102",
   "date": "2026-07-18",
-  "changelog": "v9.7.101 : Correction de la page point de vente (chargement fluide non bloquant lors des synchronisations de fond) et écran d'onboarding/restauration par Magic Link enrichi avec une barre de progression en temps réel."
+  "changelog": "v9.7.102 : Ajout du règlement individuel et collectif des dettes depuis le dossier patient, avec affichage détaillé des médicaments à crédit, pagination des achats/crédits/ordonnances, et adaptation responsive sur mobile. Désactivation de la fusion automatique des produits doublons."
 }

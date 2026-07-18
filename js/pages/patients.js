@@ -171,19 +171,25 @@ async function viewPatient(patientId) {
   });
   const topDrugs = Object.entries(drugHistory).sort((a, b) => b[1].count - a[1].count).slice(0, 5);
 
+  // Stocker dans des variables globales pour la pagination client
+  window._curPatientId = patientId;
+  window._curPatientSales = patientSales.sort((a,b) => new Date(b.date) - new Date(a.date));
+  window._curPatientCredits = creditSales.sort((a,b) => new Date(b.date) - new Date(a.date));
+  window._curPatientRx = sortedRx;
+
   UI.modal(`<i data-lucide="folder" class="modal-icon-inline"></i> Dossier — ${patient.name}`, `
-    <div class="patient-detail">
-      <div class="patient-detail-header">
+    <div class="patient-detail" style="max-width:1050px; width:100%; margin:0 auto;">
+      <div class="patient-detail-header" style="flex-wrap:wrap; gap:16px;">
         <div class="patient-avatar-lg">${patient.name?.charAt(0).toUpperCase() || '?'}</div>
-        <div class="patient-detail-info">
+        <div class="patient-detail-info" style="flex:1; min-width:250px;">
           <h2>${patient.name}</h2>
-          <div class="patient-detail-meta">
+          <div class="patient-detail-meta" style="flex-wrap:wrap; gap:12px;">
             ${patient.dob ? `<span><i data-lucide="calendar"></i> ${UI.formatDate(patient.dob)} (${calcAge(patient.dob)} ans)</span>` : ''}
             ${patient.phone ? `<span style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="phone"></i> ${patient.phone} <button class="btn btn-xs btn-primary" onclick="openSmsModal(${patient.id})" title="Envoyer un SMS"><i data-lucide="message-square" style="width:12px;height:12px"></i></button></span>` : ''}
             ${patient.address ? `<span><i data-lucide="map-pin"></i> ${patient.address}</span>` : ''}
           </div>
           ${patient.allergies ? `<div class="allergy-alert"><i data-lucide="alert-triangle"></i> Allergie : <strong>${patient.allergies}</strong></div>` : ''}
-          <div style="margin-top:12px;display:flex;gap:12px;">
+          <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
             <span class="badge badge-${patient.status === 'ayant_droit' ? 'warning' : 'primary'}"><i data-lucide="users" style="width:12px;height:12px;margin-right:4px;"></i> ${patient.status === 'ayant_droit' ? 'Ayant Droit' : 'Souscripteur Principal'}</span>
             ${patient.creditLimit > 0 ? `<span class="badge badge-success"><i data-lucide="file-clock" style="width:12px;height:12px;margin-right:4px;"></i> Crédit autorisé: ${UI.formatCurrency(patient.creditLimit)}</span>` : `<span class="badge badge-danger"><i data-lucide="lock" style="width:12px;height:12px;margin-right:4px;"></i> Crédit bloqué</span>`}
           </div>
@@ -196,7 +202,7 @@ async function viewPatient(patientId) {
       </div>
 
       <!-- KPIs 360° -->
-      <div class="patient-stats-row" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+      <div class="patient-stats-row" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-top:20px;">
         <div class="patient-stat-card">
           <div class="patient-stat-val kpi-value">${UI.formatCurrency(totalSpent)}</div>
           <div class="patient-stat-label">Total dépensé</div>
@@ -213,10 +219,10 @@ async function viewPatient(patientId) {
           <div class="patient-stat-val">${lastVisitDate ? UI.formatDate(lastVisitDate) : '—'}</div>
           <div class="patient-stat-label">Dernière visite</div>
         </div>
-        ${totalCredit > 0 ? `<div class="patient-stat-card" style="border-color:var(--danger); cursor:pointer;" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active')); const btn = Array.from(document.querySelectorAll('.patient360-tab')).find(b => b.textContent.includes('Crédits')); if(btn) btn.classList.add('active');">
-          <div class="patient-stat-val kpi-value" style="color:var(--danger)">${UI.formatCurrency(totalCredit)}</div>
+        <div class="patient-stat-card" id="kpi-credit-card" style="border-color:${totalCredit > 0 ? 'var(--danger)' : 'var(--border)'}; cursor:pointer;" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active')); const btn = Array.from(document.querySelectorAll('.patient360-tab')).find(b => b.textContent.includes('Crédits')); if(btn) btn.classList.add('active');">
+          <div class="patient-stat-val kpi-value" style="color:${totalCredit > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${UI.formatCurrency(totalCredit)}</div>
           <div class="patient-stat-label">Crédit en cours</div>
-        </div>` : ''}
+        </div>
         <div class="patient-stat-card">
           <div class="patient-stat-val">${patientRx.length}</div>
           <div class="patient-stat-label">Ordonnances</div>
@@ -224,11 +230,11 @@ async function viewPatient(patientId) {
       </div>
 
       <!-- Onglets -->
-      <div style="margin-top:16px;">
-        <div class="patient360-tabs" style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:12px;">
+      <div style="margin-top:20px;">
+        <div class="patient360-tabs" style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:12px;overflow-x:auto;white-space:nowrap;">
           <button class="patient360-tab active" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-summary').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')">Résumé</button>
           <button class="patient360-tab" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-purchases').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')">Achats (${patientSales.length})</button>
-          ${totalCredit > 0 ? `<button class="patient360-tab" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')" style="color:var(--danger)">Crédits (${creditSales.length})</button>` : ''}
+          <button class="patient360-tab" id="tab-credits-header" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')" style="color:${totalCredit > 0 ? 'var(--danger)' : 'inherit'}">Crédits (${creditSales.length})</button>
           <button class="patient360-tab" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-rx').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')">Ordonnances (${patientRx.length})</button>
         </div>
 
@@ -251,71 +257,465 @@ async function viewPatient(patientId) {
 
         <!-- Panel Achats -->
         <div id="p360-purchases" class="p360-panel" style="display:none;">
-          ${patientSales.length === 0 ? '<p class="text-muted">Aucun achat enregistré</p>' : `
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${patientSales.length} achat(s) — Trié par date décroissante</div>
-            <div style="max-height:350px;overflow-y:auto;border-radius:8px;">
-            <table class="data-table">
-              <thead style="position:sticky;top:0;z-index:1;"><tr><th>Date</th><th>Montant</th><th>Paiement</th><th>Articles</th><th>Vendeur</th></tr></thead>
-              <tbody>
-                ${patientSales.sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 50).map(s => `
-                  <tr>
-                    <td>${UI.formatDate(s.date)}</td>
-                    <td><strong>${UI.formatCurrency(s.total || 0)}</strong></td>
-                    <td><span class="badge badge-${s.paymentMethod === 'credit' ? 'danger' : s.paymentMethod === 'cash' ? 'success' : 'info'}">${s.paymentMethod || 'Espèces'}</span></td>
-                    <td>${(s.items || []).slice(0,2).map(i => i.productName || i.name || '').join(', ')}${(s.items||[]).length > 2 ? '...' : ''}</td>
-                    <td class="text-muted text-sm">${s.sellerName || '—'}</td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-            </div>
-            ${patientSales.length > 50 ? `<p class="text-muted text-sm" style="margin-top:8px;text-align:center">Affichage limité aux 50 derniers achats sur ${patientSales.length}</p>` : ''}
-          `}
+          <div id="p360-purchases-table-container"></div>
         </div>
 
         <!-- Panel Crédits -->
-        ${totalCredit > 0 ? `<div id="p360-credits" class="p360-panel" style="display:none;">
-          <div style="padding:12px;background:rgba(214,59,59,0.06);border-radius:8px;margin-bottom:12px;border-left:3px solid var(--danger);">
-            <strong style="color:var(--danger)">Encours total : ${UI.formatCurrency(totalCredit)}</strong>
-            <span class="text-muted text-sm"> — ${creditSales.length} vente(s) à crédit non réglée(s)</span>
-          </div>
-          <table class="data-table">
-            <thead><tr><th>Date</th><th>Montant</th><th>Articles</th><th>Statut</th></tr></thead>
-            <tbody>
-              ${creditSales.sort((a,b) => new Date(b.date) - new Date(a.date)).map(s => `
-                <tr>
-                  <td>${UI.formatDate(s.date)}</td>
-                  <td><strong style="color:var(--danger)">${UI.formatCurrency(s.total || 0)}</strong></td>
-                  <td>${(s.items || []).slice(0,2).map(i => i.productName || i.name || '').join(', ')}</td>
-                  <td><span class="badge badge-warning">${s.creditStatus || 'En attente'}</span></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>` : ''}
+        <div id="p360-credits" class="p360-panel" style="display:none;">
+          <div id="p360-credits-table-container"></div>
+        </div>
 
         <!-- Panel Ordonnances -->
         <div id="p360-rx" class="p360-panel" style="display:none;">
-          ${sortedRx.length === 0 ? '<p class="text-muted">Aucune ordonnance enregistrée</p>' : `
-            <table class="data-table">
-              <thead><tr><th>N° Rx</th><th>Date</th><th>Médecin</th><th>Médicaments</th><th>Statut</th></tr></thead>
-              <tbody>
-                ${sortedRx.slice(0, 15).map(rx => `
-                  <tr>
-                    <td><code class="code-tag">Rx-${String(rx.id).padStart(5, '0')}</code></td>
-                    <td>${UI.formatDate(rx.date)}</td>
-                    <td>${rx.doctorName || '—'}</td>
-                    <td>${(rx.items || []).slice(0, 2).map(i => i.productName).join(', ')}${(rx.items || []).length > 2 ? '...' : ''}</td>
-                    <td><span class="badge badge-${rx.status === 'dispensed' ? 'success' : 'warning'}">${rx.status}</span></td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>`}
+          <div id="p360-rx-table-container"></div>
         </div>
       </div>
 
-      <div class="patient-legal-footer">
+      <div class="patient-legal-footer" style="margin-top:24px;">
         <span class="text-muted text-sm"><i data-lucide="lock"></i> Données confidentielles — Accès tracé — Conservation conforme DNPM</span>
       </div>
     </div>
+
+    <!-- Styles CSS Responsive et Mobile-First spécifiques à la fiche Patient 360 -->
+    <style>
+      /* Adaptation des tableaux sur mobile : cartes fluides */
+      @media (max-width: 768px) {
+        .responsive-table-card table, 
+        .responsive-table-card thead, 
+        .responsive-table-card tbody, 
+        .responsive-table-card th, 
+        .responsive-table-card td, 
+        .responsive-table-card tr { 
+          display: block; 
+        }
+        .responsive-table-card thead tr { 
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+        }
+        .responsive-table-card tr { 
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          background: var(--bg-card);
+          margin-bottom: 12px;
+          padding: 12px;
+          box-shadow: var(--shadow-sm);
+        }
+        .responsive-table-card td { 
+          border: none;
+          border-bottom: 1px solid var(--border-light); 
+          position: relative;
+          padding-left: 50% !important; 
+          text-align: right;
+          font-size: 13px;
+          min-height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+        }
+        .responsive-table-card td:last-child {
+          border-bottom: none;
+        }
+        .responsive-table-card td:before { 
+          position: absolute;
+          left: 12px;
+          width: 45%; 
+          padding-right: 10px; 
+          white-space: nowrap;
+          text-align: left;
+          font-weight: 700;
+          color: var(--text-muted);
+          content: attr(data-label);
+        }
+        .responsive-table-card td .action-btn-group {
+          justify-content: flex-end;
+          width: 100%;
+        }
+      }
+    </style>
   `, { size: 'large' });
+
+  // Initialiser les tables paginées
+  window._renderPatientPurchases(1);
+  window._renderPatientCredits(1);
+  window._renderPatientRx(1);
+
+  if (window.lucide) lucide.createIcons();
+  if (window._autoAnimateKPIValues) setTimeout(_autoAnimateKPIValues, 100);
+  // Log access to patient data
+  await DB.writeAudit('VIEW_PATIENT', 'patients', patientId, { patientName: patient.name });
+}
+
+// ──────────────────────────────────────────────────────────
+// FONCTIONS DE RENDU PAGINÉ ET RESPONSIVE DU DOSSIER PATIENT
+// ──────────────────────────────────────────────────────────
+
+window._renderPatientPurchases = function(page) {
+  const container = document.getElementById('p360-purchases-table-container');
+  if (!container) return;
+
+  const sales = window._curPatientSales || [];
+  if (sales.length === 0) {
+    container.innerHTML = '<p class="text-muted">Aucun achat enregistré</p>';
+    return;
+  }
+
+  const PAGE_SIZE = 5;
+  const totalPages = Math.ceil(sales.length / PAGE_SIZE);
+  const start = (page - 1) * PAGE_SIZE;
+  const pageData = sales.slice(start, start + PAGE_SIZE);
+
+  let html = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>${sales.length} achat(s) — Page ${page}/${totalPages}</span>
+    </div>
+    <div class="responsive-table-card" style="max-height:380px;overflow-y:auto;border-radius:8px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Montant</th>
+            <th>Paiement</th>
+            <th>Médicaments</th>
+            <th>Vendeur</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pageData.map(s => {
+            const drugsText = (s.items || []).map(i => `${i.quantity}x ${i.productName || i.name}`).join(', ');
+            return `
+              <tr>
+                <td data-label="Date">${UI.formatDate(s.date)}</td>
+                <td data-label="Montant"><strong>${UI.formatCurrency(s.total || 0)}</strong></td>
+                <td data-label="Paiement"><span class="badge badge-${s.paymentMethod === 'credit' ? 'danger' : s.paymentMethod === 'cash' ? 'success' : 'info'}">${s.paymentMethod || 'Espèces'}</span></td>
+                <td data-label="Médicaments" style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${drugsText}">${drugsText || '—'}</td>
+                <td data-label="Vendeur" class="text-muted text-sm">${s.sellerName || '—'}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Pagination controls
+  if (totalPages > 1) {
+    html += `
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:12px;">
+        <button class="btn btn-secondary btn-xs" ${page <= 1 ? 'disabled' : ''} onclick="window._renderPatientPurchases(${page - 1})">◀ Précédent</button>
+        <span style="font-size:12px;color:var(--text-muted)">${page} / ${totalPages}</span>
+        <button class="btn btn-secondary btn-xs" ${page >= totalPages ? 'disabled' : ''} onclick="window._renderPatientPurchases(${page + 1})">Suivant ▶</button>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+};
+
+window._renderPatientCredits = function(page) {
+  const container = document.getElementById('p360-credits-table-container');
+  if (!container) return;
+
+  const credits = window._curPatientCredits || [];
+  const totalCredit = credits.reduce((sum, s) => sum + (s.total || 0), 0);
+
+  if (credits.length === 0) {
+    container.innerHTML = '<p class="text-muted">Aucun crédit en cours</p>';
+    // Mettre à jour l'état du KPI et de l'onglet
+    const tabHeader = document.getElementById('tab-credits-header');
+    if (tabHeader) {
+      tabHeader.style.color = 'inherit';
+      tabHeader.textContent = `Crédits (0)`;
+    }
+    const kpiCard = document.getElementById('kpi-credit-card');
+    if (kpiCard) {
+      kpiCard.style.borderColor = 'var(--border)';
+      const kpiVal = kpiCard.querySelector('.patient-stat-val');
+      if (kpiVal) {
+        kpiVal.style.color = 'var(--text-muted)';
+        kpiVal.textContent = '0 GNF';
+      }
+    }
+    return;
+  }
+
+  const PAGE_SIZE = 5;
+  const totalPages = Math.ceil(credits.length / PAGE_SIZE);
+  const start = (page - 1) * PAGE_SIZE;
+  const pageData = credits.slice(start, start + PAGE_SIZE);
+
+  const canSettle = Auth.can('patients_debt_settle') || DB.AppState.currentUser?.role === 'admin';
+
+  let html = `
+    <div style="padding:12px;background:rgba(214,59,59,0.06);border-radius:8px;margin-bottom:12px;border-left:3px solid var(--danger);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <div>
+        <strong style="color:var(--danger)">Encours total : ${UI.formatCurrency(totalCredit)}</strong>
+        <span class="text-muted text-sm"> — ${credits.length} vente(s) à crédit</span>
+      </div>
+      ${canSettle && credits.length > 1 ? `
+        <button class="btn btn-xs btn-danger" onclick="window.settleAllPatientDebts(window._curPatientId)">
+          <i data-lucide="check-square"></i> Solder tout l'encours
+        </button>
+      ` : ''}
+    </div>
+    <div class="responsive-table-card" style="overflow-y:auto;border-radius:8px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Montant</th>
+            <th>Médicaments détaillés</th>
+            <th>Statut</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pageData.map(s => {
+            const drugsList = (s.items || []).map(i => `
+              <div style="font-size:11px;background:var(--surface-2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;margin-bottom:2px;display:inline-block;">
+                <strong>${i.quantity}x</strong> ${i.productName || i.name} <span class="text-muted">(${UI.formatCurrency(i.price || 0)})</span>
+              </div>
+            `).join(' ');
+
+            return `
+              <tr>
+                <td data-label="Date">${UI.formatDate(s.date)}</td>
+                <td data-label="Montant"><strong style="color:var(--danger)">${UI.formatCurrency(s.total || 0)}</strong></td>
+                <td data-label="Médicaments détaillés" style="max-width:400px;text-align:left;">
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;">${drugsList || '—'}</div>
+                </td>
+                <td data-label="Statut"><span class="badge badge-warning">${s.creditStatus || 'En attente'}</span></td>
+                <td data-label="Action">
+                  <div class="action-btn-group" style="display:flex;gap:4px;">
+                    ${canSettle ? `
+                      <button class="btn btn-xs btn-success" onclick="window.settleDebt(${s.id})" style="padding:4px 8px;font-size:11px;">
+                        <i data-lucide="check-circle" style="width:12px;height:12px;margin-right:4px;"></i> Régler
+                      </button>
+                    ` : '—'}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Pagination controls
+  if (totalPages > 1) {
+    html += `
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:12px;">
+        <button class="btn btn-secondary btn-xs" ${page <= 1 ? 'disabled' : ''} onclick="window._renderPatientCredits(${page - 1})">◀ Précédent</button>
+        <span style="font-size:12px;color:var(--text-muted)">${page} / ${totalPages}</span>
+        <button class="btn btn-secondary btn-xs" ${page >= totalPages ? 'disabled' : ''} onclick="window._renderPatientCredits(${page + 1})">Suivant ▶</button>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+  if (window.lucide) lucide.createIcons({ root: container });
+};
+
+window._renderPatientRx = function(page) {
+  const container = document.getElementById('p360-rx-table-container');
+  if (!container) return;
+
+  const rxList = window._curPatientRx || [];
+  if (rxList.length === 0) {
+    container.innerHTML = '<p class="text-muted">Aucune ordonnance enregistrée</p>';
+    return;
+  }
+
+  const PAGE_SIZE = 5;
+  const totalPages = Math.ceil(rxList.length / PAGE_SIZE);
+  const start = (page - 1) * PAGE_SIZE;
+  const pageData = rxList.slice(start, start + PAGE_SIZE);
+
+  let html = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <span>Page ${page}/${totalPages}</span>
+    </div>
+    <div class="responsive-table-card" style="max-height:380px;overflow-y:auto;border-radius:8px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>N° Rx</th>
+            <th>Date</th>
+            <th>Médecin</th>
+            <th>Médicaments</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pageData.map(rx => {
+            const rxDrugs = (rx.items || []).map(i => i.productName).join(', ');
+            return `
+              <tr>
+                <td data-label="N° Rx"><code class="code-tag">Rx-${String(rx.id).padStart(5, '0')}</code></td>
+                <td data-label="Date">${UI.formatDate(rx.date)}</td>
+                <td data-label="Médecin">${rx.doctorName || '—'}</td>
+                <td data-label="Médicaments" style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${rxDrugs}">${rxDrugs}</td>
+                <td data-label="Statut"><span class="badge badge-${rx.status === 'dispensed' ? 'success' : 'warning'}">${rx.status}</span></td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Pagination controls
+  if (totalPages > 1) {
+    html += `
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:12px;">
+        <button class="btn btn-secondary btn-xs" ${page <= 1 ? 'disabled' : ''} onclick="window._renderPatientRx(${page - 1})">◀ Précédent</button>
+        <span style="font-size:12px;color:var(--text-muted)">${page} / ${totalPages}</span>
+        <button class="btn btn-secondary btn-xs" ${page >= totalPages ? 'disabled' : ''} onclick="window._renderPatientRx(${page + 1})">Suivant ▶</button>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+};
+
+// ──────────────────────────────────────────────────────────
+// FONCTIONS DE RÈGLEMENT DE TOUTES LES DETTES D'UN PATIENT
+// ──────────────────────────────────────────────────────────
+
+window.settleAllPatientDebts = async function(patientId) {
+  if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission d\'encaisser des dettes.', 'error', 4000);
+    return;
+  }
+  const allSales = await DB.dbGetAll('sales');
+  const patient = await DB.dbGet('patients', patientId);
+  if (!patient) return;
+  const creditSales = allSales.filter(s => (s.patientId === patientId || s.patientName === patient.name) && s.paymentMethod === 'credit' && s.creditStatus !== 'paid');
+
+  if (creditSales.length === 0) {
+    UI.toast('Aucune dette en cours pour ce patient.', 'info');
+    return;
+  }
+
+  const totalAmount = creditSales.reduce((sum, s) => sum + (s.total || 0), 0);
+
+  UI.modal('<i data-lucide="receipt" class="modal-icon-inline"></i> Tout solder', `
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- ENCOURS TOTAL -->
+      <div style="text-align:center;padding:20px;background:#F8FAFC;border-radius:14px;border:2px solid #E2E8F0">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#64748B;font-weight:700;margin-bottom:6px">
+          💵 Encours total à solder
+        </div>
+        <div style="font-size:38px;font-weight:900;color:#D32F2F;letter-spacing:-1px">${UI.formatCurrency(totalAmount)}</div>
+        <div style="font-size:12px;color:#94A3B8;margin-top:6px">
+          Patient : <strong style="color:#475569">${patient.name}</strong> · <strong>${creditSales.length} facture(s) à crédit</strong>
+        </div>
+      </div>
+
+      <!-- MODE DE PAIEMENT -->
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#64748B;margin-bottom:8px">Mode de règlement</div>
+        <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:8px" id="all-debt-pay-methods">
+          <button type="button" class="pay-method-btn active" data-method="cash" onclick="selectDebtPayMethod(this)"
+            style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid #1E40AF;border-radius:10px;background:#EBF5FB;cursor:pointer;font-family:inherit;text-align:left">
+            <span style="font-size:18px">💵</span>
+            <div><div style="font-size:12px;font-weight:700;color:#1E40AF">Espèces</div><div style="font-size:9px;color:#6B7280">Liquide</div></div>
+          </button>
+          <button type="button" class="pay-method-btn" data-method="orange_money" onclick="selectDebtPayMethod(this)"
+            style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid #E2E8F0;border-radius:10px;background:#FFFFFF;cursor:pointer;font-family:inherit;text-align:left">
+            <span style="font-size:18px">📱</span>
+            <div><div style="font-size:12px;font-weight:700;color:#0F172A">Orange Money</div><div style="font-size:9px;color:#6B7280">Mobile</div></div>
+          </button>
+          <button type="button" class="pay-method-btn" data-method="mtn_momo" onclick="selectDebtPayMethod(this)"
+            style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid #E2E8F0;border-radius:10px;background:#FFFFFF;cursor:pointer;font-family:inherit;text-align:left">
+            <span style="font-size:18px">📲</span>
+            <div><div style="font-size:12px;font-weight:700;color:#0F172A">MTN MoMo</div><div style="font-size:9px;color:#6B7280">Mobile</div></div>
+          </button>
+          <button type="button" class="pay-method-btn" data-method="transfer" onclick="selectDebtPayMethod(this)"
+            style="display:flex;align-items:center;gap:8px;padding:12px;border:2px solid #E2E8F0;border-radius:10px;background:#FFFFFF;cursor:pointer;font-family:inherit;text-align:left">
+            <span style="font-size:18px">🏦</span>
+            <div><div style="font-size:12px;font-weight:700;color:#0F172A">Virement / Chèque</div><div style="font-size:9px;color:#6B7280">Bancaire</div></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- RÉFÉRENCE -->
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#64748B;display:block;margin-bottom:5px">Référence (optionnel)</label>
+        <input type="text" id="all-debt-pay-ref" style="width:100%;padding:10px 14px;border:2px solid #E2E8F0;border-radius:8px;font-size:13px;font-family:inherit;background:#FFFFFF" placeholder="N° transaction, reçu...">
+      </div>
+
+    </div>
+  `, {
+    footer: `
+      <button class="btn btn-secondary" onclick="window.viewPatient(${patientId})">Annuler</button>
+      <button class="btn btn-success" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="window.confirmSettleAllDebts(${patientId})"><i data-lucide="check-circle"></i> Solder tout (${UI.formatCurrency(totalAmount)})</button>
+    `
+  });
+
+  if (window.lucide) lucide.createIcons();
+};
+
+window.confirmSettleAllDebts = async function(patientId) {
+  if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Action non autorisée.', 'error', 4000);
+    return;
+  }
+  const methodBtn = document.querySelector('#all-debt-pay-methods .pay-method-btn.active');
+  const paymentMethod = methodBtn ? methodBtn.dataset.method : 'cash';
+  const reference = document.getElementById('all-debt-pay-ref')?.value || '';
+
+  const ok = await UI.confirm('Confirmer l\'encaissement et le règlement complet de toutes les dettes de ce patient ?');
+  if (!ok) return;
+
+  try {
+    const allSales = await DB.dbGetAll('sales');
+    const patient = await DB.dbGet('patients', patientId);
+    const creditSales = allSales.filter(s => (s.patientId === patientId || s.patientName === patient.name) && s.paymentMethod === 'credit' && s.creditStatus !== 'paid');
+    const today = new Date().toISOString().split('T')[0];
+
+    for (const sale of creditSales) {
+      // 1. Update status
+      sale.status = 'paid';
+      sale.paidAt = Date.now();
+      sale.paidDate = today;
+      sale.paidMethod = paymentMethod;
+      await DB.dbPut('sales', sale);
+
+      // 2. Record in cashRegister
+      await DB.dbAdd('cashRegister', {
+        type: 'debt_in',
+        amount: sale.total,
+        paymentMethod: paymentMethod,
+        reason: `Règlement global dette — Vente #${String(sale.id).padStart(6, '0')} · Patient: ${patient.name}`,
+        reference: reference,
+        saleId: sale.id,
+        date: today,
+        timestamp: Date.now(),
+        userId: DB.AppState.currentUser?.id,
+      });
+
+      // 3. Audit
+      await DB.writeAudit('DEBT_REFUND', 'sales', sale.id, { amount: sale.total, patient: patient.name, paymentMethod });
+    }
+
+    UI.toast('Toutes les dettes ont été réglées avec succès !', 'success');
+    UI.closeModal();
+
+    // Recharger la fiche
+    setTimeout(() => window.viewPatient(patientId), 300);
+
+    // Sync
+    if (typeof DB.syncToSupabase === 'function') {
+      DB.syncToSupabase().catch(console.error);
+    }
+  } catch (err) {
+    console.error(err);
+    UI.toast('Erreur : ' + err.message, 'error');
+  }
+};
   if (window.lucide) lucide.createIcons();
   if (window._autoAnimateKPIValues) setTimeout(_autoAnimateKPIValues, 100);
   // Log access to patient data

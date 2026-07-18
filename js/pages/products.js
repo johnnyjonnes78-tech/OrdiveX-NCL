@@ -142,9 +142,6 @@ async function deduplicateProducts() {
 async function renderProducts(container) {
   UI.loading(container, 'Chargement des produits...');
   
-  // Nettoyer les doublons d'abord
-  await deduplicateProducts();
-
   const [products, stockData, lotsAll] = await Promise.all([
     DB.dbGetAll('products'),
     DB.dbGetAll('stock'),

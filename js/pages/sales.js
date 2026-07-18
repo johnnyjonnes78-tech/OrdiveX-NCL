@@ -756,6 +756,17 @@ async function confirmSettleDebt(saleId) {
       await renderSales(container);
     } else if (Router.currentPage === 'caisse') {
       Router.navigate('caisse');
+    } else if (Router.currentPage === 'patients') {
+      if (sale.patientId) {
+        // Réouvrir la fiche patient mise à jour
+        if (typeof window.viewPatient === 'function') {
+          setTimeout(() => window.viewPatient(sale.patientId), 300);
+        } else {
+          Router.navigate('patients');
+        }
+      } else {
+        Router.navigate('patients');
+      }
     }
 
     // Trigger Sync if online
