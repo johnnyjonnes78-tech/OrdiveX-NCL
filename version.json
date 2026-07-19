@@ -1,5 +1,5 @@
 {
-  "version": "9.8.1",
+  "version": "9.8.2",
   "date": "2026-07-19",
-  "changelog": "v9.8.1 : Diagnostic erreur pull stock — logs détaillés actifs."
+  "changelog": "v9.8.2 : Diagnostic complet — logs DIAG dans tous les chemins d'erreur pull stock."
 }

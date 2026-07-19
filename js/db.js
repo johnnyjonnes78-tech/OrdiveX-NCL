@@ -2362,6 +2362,8 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
                   if (reIsNet) throw new Error('network_offline');
                   _failedPullStores.add(storeName);
                   storePullOk = false;
+                  // LOG DIAGNOSTIC
+                  console.warn(`[DIAG] ===ERREUR PAGE PULL ${storeName}=== code:"${res.error?.code}" msg:"${res.error?.message}" details:"${res.error?.details}" hint:"${res.error?.hint}"`);
                   if (reMsg && !reMsg.includes('null')) console.warn(`[Flash] Page pull échouée ${storeName}:`, reMsg);
                   break; // Sortir de la boucle de pagination pour ce store
                 }
@@ -2420,6 +2422,8 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
         }
         // Marquer le store comme échoué pour forcer un prochain pull complet
         _failedPullStores.add(storeName);
+        // LOG DIAGNOSTIC
+        console.warn(`[DIAG] ===ERREUR CATCH ${storeName}=== msg:"${errMsg}"`);
         if (errMsg && !errMsg.includes('null')) {
           console.warn(`[Flash] Store error ${storeName}:`, errMsg);
         }
