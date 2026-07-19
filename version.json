@@ -1,5 +1,5 @@
 {
-  "version": "9.8.0",
+  "version": "9.8.1",
   "date": "2026-07-19",
-  "changelog": "v9.8.0 — Version finale stable OrdiveX Pro.\nCorrection définitive du bug de synchronisation incrémentale sur la table stock grâce au basculement dynamique de colonne (updatedAt/updatedat)."
+  "changelog": "v9.8.1 : Diagnostic erreur pull stock — logs détaillés actifs."
 }
