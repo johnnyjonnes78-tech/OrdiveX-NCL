@@ -2253,14 +2253,33 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
               try {
                 // PostgreSQL convertit les noms non-quotés en minuscules.
                 // Pour insurances et insurancePayments, la colonne s'appelle "updatedat".
-                const updatedAtCol = _insTablesNoCamel.includes(tn.toLowerCase()) ? 'updatedat' : 'updatedAt';
-                const { data, error } = await _withTimeout(
+                let updatedAtCol = _insTablesNoCamel.includes(tn.toLowerCase()) ? 'updatedat' : 'updatedAt';
+                let queryResult = await _withTimeout(
                   sb.from(tn)
                     .select('*')
                     .gte(updatedAtCol, pullSince)
                     .order(updatedAtCol, { ascending: true })
                     .limit(5000)
                 );
+
+                // Si la colonne n'existe pas, on bascule dynamiquement sur l'autre casse
+                if (queryResult.error && (
+                  queryResult.error.code === '42703' || 
+                  queryResult.error.message?.includes('column') || 
+                  queryResult.error.message?.includes('does not exist')
+                )) {
+                  const fallbackCol = updatedAtCol === 'updatedAt' ? 'updatedat' : 'updatedAt';
+                  console.log(`[Flash] Basculement de colonne pour ${tn} : ${updatedAtCol} ➔ ${fallbackCol}`);
+                  queryResult = await _withTimeout(
+                    sb.from(tn)
+                      .select('*')
+                      .gte(fallbackCol, pullSince)
+                      .order(fallbackCol, { ascending: true })
+                      .limit(5000)
+                  );
+                }
+
+                const { data, error } = queryResult;
                 if (error) return { sn, data: null, error };
                 return { sn, data, error: null };
               } catch (e) { return { sn, data: null, error: e }; }

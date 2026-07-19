@@ -1,5 +1,5 @@
 {
   "version": "9.8.0",
   "date": "2026-07-19",
-  "changelog": "v9.8.0 — Version finale stable OrdiveX Pro.\nInclut : synchronisation multi-appareils, dossier patient complet avec crédits/médicaments/règlement de dettes, module assurances, gestion des stocks et des lots FEFO, caisse journalière, rapports et analyses."
+  "changelog": "v9.8.0 — Version finale stable OrdiveX Pro.\nCorrection définitive du bug de synchronisation incrémentale sur la table stock grâce au basculement dynamique de colonne (updatedAt/updatedat)."
 }
