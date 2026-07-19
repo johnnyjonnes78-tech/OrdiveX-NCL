@@ -2201,11 +2201,18 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
               var ex = (kv !== undefined && kv !== null) ? existingMap[kv] : null;
               // PROTECTION : ne pas écraser les données locales non-poussées
               if (ex && ex._synced === false) continue;
-              store2.put(ex ? Object.assign({}, ex, item) : item);
+              // CORRECTIF : intercepter les erreurs individuelles (violation contrainte unique)
+              // pour ne pas annuler toute la transaction à cause d'un seul enregistrement
+              var putReq = store2.put(ex ? Object.assign({}, ex, item) : item);
+              putReq.onerror = function (ev) {
+                ev.preventDefault(); // Empêche l'annulation de la transaction
+                ev.stopPropagation();
+                console.warn('[Flash] IDB put ignoré [' + storeName + '] clé=' + kv + ':', putReq.error?.message || putReq.error?.name || 'erreur inconnue');
+              };
             }
             tx2.oncomplete = function () { resolve(); };
-            tx2.onerror = function () { reject(tx2.error); };
-            tx2.onabort = function () { reject(tx2.error); };
+            tx2.onerror = function () { reject(new Error('IDB tx error [' + storeName + ']: ' + (tx2.error?.message || tx2.error?.name || 'null'))); };
+            tx2.onabort = function () { reject(new Error('IDB tx abort [' + storeName + ']: ' + (tx2.error?.message || tx2.error?.name || 'null'))); };
           });
           // Yield au navigateur entre chaque chunk
           if (start + CHUNK < prepared.length) await _yieldToUI();

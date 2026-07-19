@@ -1,5 +1,5 @@
 {
-  "version": "9.8.2",
+  "version": "9.8.3",
   "date": "2026-07-19",
-  "changelog": "v9.8.2 : Diagnostic complet — logs DIAG dans tous les chemins d'erreur pull stock."
+  "changelog": "v9.8.3 : Correctif IDB stock — put() individuel avec preventDefault() pour éviter annulation transaction sur contrainte unique."
 }
