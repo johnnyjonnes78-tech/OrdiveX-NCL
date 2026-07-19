@@ -1,5 +1,5 @@
 {
-  "version": "9.7.104",
-  "date": "2026-07-18",
-  "changelog": "v9.7.104 : Fix dossier patient — (1) La dette disparaît après règlement (creditStatus mis à jour), (2) Les médicaments s'affichent correctement depuis le store saleItems."
+  "version": "9.7.105",
+  "date": "2026-07-19",
+  "changelog": "v9.7.105 : Fix \"Solder tout l'encours\" — creditStatus maintenant mis à jour lors du règlement global."
 }

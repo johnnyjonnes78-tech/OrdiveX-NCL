@@ -697,6 +697,7 @@ window.confirmSettleAllDebts = async function(patientId) {
     for (const sale of creditSales) {
       // 1. Update status
       sale.status = 'paid';
+      sale.creditStatus = 'paid'; // aligné avec le filtre patients.js
       sale.paidAt = Date.now();
       sale.paidDate = today;
       sale.paidMethod = paymentMethod;
