@@ -2295,6 +2295,8 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
                 const rErrMsg = r.error?.message || String(r.error || '');
                 const rIsNet = rErrMsg.includes('Failed to fetch') || rErrMsg.includes('NetworkError') || rErrMsg.includes('ERR_') || rErrMsg.includes('timeout');
                 if (rIsNet) throw new Error('network_offline');
+                // LOG DÉTAILLÉ pour diagnostiquer l'erreur exacte
+                console.error(`[Flash] ❌ ERREUR INCRÉMENTALE ${r.sn}:`, JSON.stringify(r.error, null, 2));
                 // Marquer ce store comme échoué pour forcer un re-pull complet
                 _failedPullStores.add(r.sn);
                 if (rErrMsg && !rErrMsg.includes('null') && !rErrMsg.includes('offline')) {
@@ -2327,6 +2329,8 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
             const ceIsNet = ceMsg.includes('Failed to fetch') || ceMsg.includes('NetworkError') || ceMsg.includes('ERR_') || ceMsg.includes('timeout');
             if (ceIsNet) throw new Error('network_offline');
             _failedPullStores.add(storeName);
+            // LOG DÉTAILLÉ pour diagnostiquer l'erreur exacte
+            console.error(`[Flash] ❌ ERREUR PULL ${storeName}:`, JSON.stringify(countRes.error, null, 2));
             if (ceMsg && !ceMsg.includes('null')) console.warn(`[Flash] Count échoué ${storeName}:`, ceMsg);
             continue; // Passer au store suivant
           }
