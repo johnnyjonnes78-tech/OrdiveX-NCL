@@ -1,5 +1,5 @@
 {
-  "version": "9.8.3",
+  "version": "9.8.4",
   "date": "2026-07-19",
-  "changelog": "v9.8.3 : Correctif IDB stock — put() individuel avec preventDefault() pour éviter annulation transaction sur contrainte unique."
+  "changelog": "v9.8.4 : Correctif robustesse IDB — utilisation de closures (IIFE) et ev.target.error pour éliminer l'InvalidStateError sur les erreurs put."
 }

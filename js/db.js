@@ -2156,16 +2156,22 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
           var tx2 = db.transaction(storeName, 'readwrite');
           var store2 = tx2.objectStore(storeName);
           for (var i = 0; i < prepared.length; i++) {
-            var item = prepared[i];
-            var kv = item[keyProp];
-            var ex = (kv !== undefined && kv !== null) ? existingMap[kv] : null;
-            // PROTECTION : ne pas écraser les données locales non-poussées
-            if (ex && ex._synced === false) continue;
-            store2.put(ex ? Object.assign({}, ex, item) : item);
+            (function (item, kv) {
+              var ex = (kv !== undefined && kv !== null) ? existingMap[kv] : null;
+              // PROTECTION : ne pas écraser les données locales non-poussées
+              if (ex && ex._synced === false) return;
+              var putReq = store2.put(ex ? Object.assign({}, ex, item) : item);
+              putReq.onerror = function (ev) {
+                ev.preventDefault(); // Empêche l'annulation de la transaction
+                ev.stopPropagation();
+                var err = ev.target.error;
+                console.warn('[Flash] IDB fast-put ignoré [' + storeName + '] clé=' + kv + ':', err ? (err.message || err.name) : 'erreur inconnue');
+              };
+            })(prepared[i], prepared[i][keyProp]);
           }
           tx2.oncomplete = function () { resolve(); };
-          tx2.onerror = function () { reject(tx2.error); };
-          tx2.onabort = function () { reject(tx2.error); };
+          tx2.onerror = function () { reject(new Error('IDB fast-tx error [' + storeName + ']: ' + (tx2.error?.message || tx2.error?.name || 'null'))); };
+          tx2.onabort = function () { reject(new Error('IDB fast-tx abort [' + storeName + ']: ' + (tx2.error?.message || tx2.error?.name || 'null'))); };
         });
       } else {
         // ── BULK PATH : getAll + écriture par chunks de 200 ──
@@ -2196,19 +2202,20 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
             var tx2 = db.transaction(storeName, 'readwrite');
             var store2 = tx2.objectStore(storeName);
             for (var i = 0; i < chunk.length; i++) {
-              var item = chunk[i];
-              var kv = item[keyProp];
-              var ex = (kv !== undefined && kv !== null) ? existingMap[kv] : null;
-              // PROTECTION : ne pas écraser les données locales non-poussées
-              if (ex && ex._synced === false) continue;
-              // CORRECTIF : intercepter les erreurs individuelles (violation contrainte unique)
-              // pour ne pas annuler toute la transaction à cause d'un seul enregistrement
-              var putReq = store2.put(ex ? Object.assign({}, ex, item) : item);
-              putReq.onerror = function (ev) {
-                ev.preventDefault(); // Empêche l'annulation de la transaction
-                ev.stopPropagation();
-                console.warn('[Flash] IDB put ignoré [' + storeName + '] clé=' + kv + ':', putReq.error?.message || putReq.error?.name || 'erreur inconnue');
-              };
+              (function (item, kv) {
+                var ex = (kv !== undefined && kv !== null) ? existingMap[kv] : null;
+                // PROTECTION : ne pas écraser les données locales non-poussées
+                if (ex && ex._synced === false) return;
+                // CORRECTIF : intercepter les erreurs individuelles (violation contrainte unique)
+                // pour ne pas annuler toute la transaction à cause d'un seul enregistrement
+                var putReq = store2.put(ex ? Object.assign({}, ex, item) : item);
+                putReq.onerror = function (ev) {
+                  ev.preventDefault(); // Empêche l'annulation de la transaction
+                  ev.stopPropagation();
+                  var err = ev.target.error;
+                  console.warn('[Flash] IDB put ignoré [' + storeName + '] clé=' + kv + ':', err ? (err.message || err.name) : 'erreur inconnue');
+                };
+              })(chunk[i], chunk[i][keyProp]);
             }
             tx2.oncomplete = function () { resolve(); };
             tx2.onerror = function () { reject(new Error('IDB tx error [' + storeName + ']: ' + (tx2.error?.message || tx2.error?.name || 'null'))); };
