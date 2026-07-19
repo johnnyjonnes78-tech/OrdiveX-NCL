@@ -1,5 +1,5 @@
 {
-  "version": "9.8.4",
+  "version": "9.8.5",
   "date": "2026-07-19",
-  "changelog": "v9.8.4 : Correctif robustesse IDB — utilisation de closures (IIFE) et ev.target.error pour éliminer l'InvalidStateError sur les erreurs put."
+  "changelog": "v9.8.5 : Version finale propre — Résolution du problème d'écriture et de casse de colonne de synchronisation pour le stock."
 }
