@@ -317,10 +317,19 @@ function _notifyUIChange(storeName) {
       if (window._invalidateDashCache) window._invalidateDashCache();
       const page = window.Router?.currentPage;
       if (!page || page === 'login' || page === 'onboarding') return;
+
+      // Invalider le cache POS dès qu'un store pertinent change,
+      // même si on n'est PAS sur la page POS actuellement.
+      // Cela force un rechargement complet quand l'utilisateur y retourne.
+      const stockRelated = stores.has('stock') || stores.has('products') || stores.has('lots');
+      if (stockRelated && typeof window._posDataTime !== 'undefined') {
+        window._posDataTime = 0;
+      }
+
       // Soft refresh spécial pour le POS : ne pas toucher au panier/session
       if (page === 'pos') {
         const posStores = _pageStoreMap['pos'] || ['stock', 'products', 'lots'];
-        if (posStores.some(s => stores.has(s)) || stores.has('stock') || stores.has('products') || stores.has('lots')) {
+        if (posStores.some(s => stores.has(s)) || stockRelated) {
           _softRefreshPOS();
         }
         return;
@@ -366,52 +375,14 @@ function _silentRefreshPage(page, storeNames) {
 // sans jamais toucher au panier, aux sessions ou à l'état de la vente en cours.
 async function _softRefreshPOS() {
   try {
-    // Ne rien faire si le POS n'est pas visible ou si un chargement est en cours
+    // Ne rien faire si le POS n'est pas visible
     if (window.Router?.currentPage !== 'pos') return;
-    if (typeof window._posDataReady === 'undefined') return;
 
-    const [stockAll, allLots, allProducts] = await Promise.all([
-      dbGetAll('stock'),
-      dbGetAll('lots'),
-      dbGetAll('products'),
-    ]);
-
-    // Reconstruire la map de stock (FEFO aware)
-    const rayonStockMap = {};
-    const hasAnyLotMap = {};
-    allLots.forEach(l => {
-      hasAnyLotMap[l.productId] = true;
-      if (l.status === 'active' && (!l.location || l.location === 'rayon')) {
-        rayonStockMap[l.productId] = (rayonStockMap[l.productId] || 0) + l.quantity;
-      }
-    });
-
-    // Mettre à jour posStock en place (window global)
-    if (window.posStock !== undefined) {
-      stockAll.forEach(s => {
-        if (hasAnyLotMap[s.productId]) window.posStock[s.productId] = rayonStockMap[s.productId] || 0;
-        else window.posStock[s.productId] = s.quantity;
-      });
-    }
-
-    // Mettre à jour posProducts en place
-    if (window.posProducts !== undefined) {
-      const updatedProducts = allProducts.filter(p => p.status !== 'inactive');
-      updatedProducts.forEach(p => {
-        p._hasLots = hasAnyLotMap[p.id] || false;
-        if (window.posProductsCache) window.posProductsCache.set(p.id, p);
-      });
-      window.posProducts = updatedProducts;
-    }
-
-    // Invalider le cache POS pour que la prochaine navigation recharge tout
-    if (window._posDataTime !== undefined) window._posDataTime = 0;
-
-    // Rafraîchir uniquement la grille des produits (sans toucher au panier)
-    if (typeof window.refreshGrid === 'function') {
-      window.refreshGrid();
-    } else if (typeof window.renderProductGrid === 'function') {
-      window.renderProductGrid();
+    // refreshPOSData() dans pos.js re-fetche stock/lots/products
+    // depuis IndexedDB, met à jour posStock/posProducts (variables locales
+    // à pos.js), puis appelle refreshGrid() + refreshCartUI()
+    if (typeof window.refreshPOSData === 'function') {
+      await window.refreshPOSData();
     }
     if (typeof window.refreshCartUI === 'function') {
       window.refreshCartUI();

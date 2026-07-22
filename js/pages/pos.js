@@ -14,6 +14,7 @@ let posCurrentRx = null;
 let posActiveCategory = '';
 let posMobilePayState = 'idle'; // idle | en_attente | confirme | echoue
 let _posDataReady = false; // Cache session : données déjà chargées
+window._posDataTime = 0;
 let _posDataTime = 0; // Timestamp du dernier chargement
 let posProductsCache = new Map(); // Cache pour les produits cliqués/ajoutés
 
@@ -282,7 +283,7 @@ async function renderPOS(container) {
   if (window.lucide) lucide.createIcons();
 
   // 2. Cache session POS — si on revient dans < 2 min, rendu instantané
-  const cacheAge = Date.now() - _posDataTime;
+  const cacheAge = Date.now() - (window._posDataTime || 0);
   if (_posDataReady && posProducts.length > 0 && cacheAge < 120000) {
     renderFullPOSUI(container);
   } else {
@@ -327,7 +328,7 @@ async function renderPOS(container) {
       });
 
       _posDataReady = true;
-      _posDataTime = Date.now();
+      _posDataTime = window._posDataTime = Date.now();
       renderFullPOSUI(container);
       // Patients/prescriptions/assurances en arrière-plan
       Promise.all([
@@ -695,6 +696,7 @@ async function refreshPOSData() {
     p._hasLots = hasAnyLotMap[p.id] || false;
     posProductsCache.set(p.id, p);
   });
+  _posDataTime = window._posDataTime = Date.now();
   
   if (typeof refreshGrid === 'function') refreshGrid();
 }
@@ -3103,6 +3105,7 @@ window.showPatientRepertory = showPatientRepertory;
 window.renderRepertoryPage = renderRepertoryPage;
 window.refreshGrid = refreshGrid;
 window.refreshCartUI = refreshCartUI;
+window.refreshPOSData = refreshPOSData;
 
 // ═══════════════════════════════════════════════════════════════════
 // FEEDBACK AJOUT PANIER — Son + Animation
