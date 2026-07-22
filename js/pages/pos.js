@@ -311,8 +311,7 @@ async function renderPOS(container) {
 
       posStock = {};
       stockAll.forEach(s => { 
-        if (hasAnyLotMap[s.productId]) posStock[s.productId] = rayonStockMap[s.productId] || 0;
-        else posStock[s.productId] = s.quantity; 
+        posStock[s.productId] = (typeof s.quantity === 'number') ? s.quantity : (rayonStockMap[s.productId] || 0);
       });
 
       let products;
@@ -680,8 +679,7 @@ async function refreshPOSData() {
 
   posStock = {};
   stockAll.forEach(s => { 
-    if (hasAnyLotMap[s.productId]) posStock[s.productId] = rayonStockMap[s.productId] || 0;
-    else posStock[s.productId] = s.quantity; 
+    posStock[s.productId] = (typeof s.quantity === 'number') ? s.quantity : (rayonStockMap[s.productId] || 0);
   });
 
   let products;

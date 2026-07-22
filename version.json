@@ -1,5 +1,5 @@
 {
-  "version": "9.8.7",
+  "version": "9.8.8",
   "date": "2026-07-22",
-  "changelog": "v9.8.7 : Correctif rafraîchissement réactif du stock en caisse (POS) via refreshPOSData et invalidation globale du cache session."
+  "changelog": "v9.8.8 : Synchronisation bidirectionnelle directe stock/lots -> POS lors des réajustements manuels."
 }

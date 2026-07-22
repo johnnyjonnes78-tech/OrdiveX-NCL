@@ -791,13 +791,40 @@ async function submitAdjustStock(productId, oldQty) {
     if (diff === 0) { UI.toast('Aucun changement d\u00e9tect\u00e9', 'info'); UI.closeModal(); return; }
     if (!data.reason) { UI.toast('Veuillez s\u00e9lectionner une raison', 'warning'); return; }
 
-    // Mettre \u00e0 jour le stock
+    // Mettre à jour le stock
     var stockAll = await DB.dbGetAll('stock');
     var existing = stockAll.find(function(s) { return s.productId === productId; });
     if (existing) {
       await DB.dbPut('stock', Object.assign({}, existing, { quantity: newQty }));
     } else {
       await DB.dbAdd('stock', { productId: productId, quantity: newQty, reservedQuantity: 0 });
+    }
+
+    // Synchroniser les lots actifs si le produit possède des lots en rayon
+    try {
+      var allLots = await DB.dbGetAll('lots');
+      var prodLots = allLots.filter(function(l) { 
+        return l.productId === productId && l.status === 'active' && (!l.location || l.location === 'rayon'); 
+      }).sort(function(a, b) { 
+        return new Date(b.createdAt || b.expiryDate || 0) - new Date(a.createdAt || a.expiryDate || 0); 
+      });
+      if (prodLots.length > 0) {
+        if (diff > 0) {
+          prodLots[0].quantity = (prodLots[0].quantity || 0) + diff;
+          await DB.dbPut('lots', prodLots[0]);
+        } else if (diff < 0) {
+          var rem = Math.abs(diff);
+          for (var i = 0; i < prodLots.length; i++) {
+            if (rem <= 0) break;
+            var take = Math.min(rem, prodLots[i].quantity || 0);
+            prodLots[i].quantity = (prodLots[i].quantity || 0) - take;
+            rem -= take;
+            await DB.dbPut('lots', prodLots[i]);
+          }
+        }
+      }
+    } catch (lotErr) {
+      console.warn('[AdjustStock] Sync lots :', lotErr);
     }
 
     // Enregistrer le mouvement
