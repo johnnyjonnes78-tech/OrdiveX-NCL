@@ -307,6 +307,8 @@ const _pageStoreMap = {
 function _notifyUIChange(storeName) {
   _pendingUIStores.add(storeName);
   if (_uiRefreshTimer) clearTimeout(_uiRefreshTimer);
+  const currentPage = window.Router?.currentPage;
+  const delay = (currentPage === 'pos' || currentPage === 'stock') ? 50 : 300;
   _uiRefreshTimer = setTimeout(() => {
     _uiRefreshTimer = null;
     const stores = new Set(_pendingUIStores);
@@ -314,12 +316,11 @@ function _notifyUIChange(storeName) {
     try {
       if (window._invalidateDashCache) window._invalidateDashCache();
       const page = window.Router?.currentPage;
-      // Ne jamais rafraîchir les pages sensibles (login, onboarding)
       if (!page || page === 'login' || page === 'onboarding') return;
       // Soft refresh spécial pour le POS : ne pas toucher au panier/session
       if (page === 'pos') {
-        const posStores = _pageStoreMap['pos'] || [];
-        if (posStores.some(s => stores.has(s))) {
+        const posStores = _pageStoreMap['pos'] || ['stock', 'products', 'lots'];
+        if (posStores.some(s => stores.has(s)) || stores.has('stock') || stores.has('products') || stores.has('lots')) {
           _softRefreshPOS();
         }
         return;
@@ -330,7 +331,7 @@ function _notifyUIChange(storeName) {
         _silentRefreshPage(page, [...stores]);
       }
     } catch (e) { /* silencieux */ }
-  }, 1500);
+  }, delay);
 }
 
 // Rafraîchissement silencieux : aucun flash visible pour l'utilisateur
@@ -407,7 +408,9 @@ async function _softRefreshPOS() {
     if (window._posDataTime !== undefined) window._posDataTime = 0;
 
     // Rafraîchir uniquement la grille des produits (sans toucher au panier)
-    if (typeof window.renderProductGrid === 'function') {
+    if (typeof window.refreshGrid === 'function') {
+      window.refreshGrid();
+    } else if (typeof window.renderProductGrid === 'function') {
       window.renderProductGrid();
     }
     if (typeof window.refreshCartUI === 'function') {
@@ -1270,6 +1273,7 @@ async function dbAdd(storeName, data) {
         } else if (navigator.onLine) {
           _scheduleSyncToSupabase();
         }
+        _notifyUIChange(storeName);
       };
       req.onerror = () => { console.error(`[DB] Erreur add ${storeName}:`, req.error); resolve(null); };
       tx.onerror = () => { console.error(`[DB] Transaction add erreur ${storeName}`); resolve(null); };
@@ -1305,6 +1309,7 @@ async function dbPut(storeName, data) {
         } else if (navigator.onLine) {
           _scheduleSyncToSupabase();
         }
+        _notifyUIChange(storeName);
       };
       req.onerror = () => { console.error(`[DB] Erreur put ${storeName}:`, req.error); resolve(null); };
       tx.onerror = () => { console.error(`[DB] Transaction put erreur ${storeName}`); resolve(null); };
@@ -1472,7 +1477,10 @@ async function dbDelete(storeName, id) {
       const tx = db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
       const req = store.delete(id);
-      req.onsuccess = () => resolve(true);
+      req.onsuccess = () => {
+        _notifyUIChange(storeName);
+        resolve(true);
+      };
       req.onerror = () => { console.error(`[DB] Erreur delete ${storeName}/${id}:`, req.error); resolve(false); };
       tx.onerror = () => { console.error(`[DB] Transaction delete erreur ${storeName}`); resolve(false); };
     } catch (e) {
@@ -1560,7 +1568,10 @@ async function dbBulkPut(storeName, dataArray) {
       }
     }
 
-    tx.oncomplete = () => resolve(count);
+    tx.oncomplete = () => {
+      _notifyUIChange(storeName);
+      resolve(count);
+    };
     tx.onerror = () => {
       console.error(`[DB] BulkPut transaction erreur:`, tx.error);
       reject(tx.error);

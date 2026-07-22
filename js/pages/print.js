@@ -57,7 +57,7 @@ const PrintEngine = {
           </div>
         </div>
         <div class="print-footer-center">
-          <p class="print-legal">Document généré par OrdiveX v9.7.75</p>
+          <p class="print-legal">Document généré par OrdiveX v${window.APP_VERSION || '9.8.6'}</p>
           <p class="print-legal">Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
         </div>
         <div class="print-footer-right">
@@ -139,7 +139,7 @@ const PrintEngine = {
         <p class="ticket-thanks">Merci pour votre confiance</p>
         <p class="ticket-advice">Respectez les prescriptions medicales</p>
         <p class="ticket-legal">${pResp} - Pharmacien responsable</p>
-        <p class="ticket-legal">OrdiveX v9.7.75 - ${saleDate.toLocaleDateString('fr-FR')}</p>
+        <p class="ticket-legal">OrdiveX v${window.APP_VERSION || '9.8.6'} - ${saleDate.toLocaleDateString('fr-FR')}</p>
       </div>
     `);
     win.document.close();
@@ -314,7 +314,7 @@ const PrintEngine = {
           <div style="text-align:center"><div style="font-size:10px;color:#888">Ce document tient lieu de facture officielle.</div><div style="font-size:10px;color:#888">Conservez-le comme preuve d'achat.</div></div>
           <div class="inv-sig"><div class="inv-sl"></div><div class="inv-sn">Cachet</div><div class="inv-sr">& Signature</div></div>
         </div>
-        <div class="inv-lg">Document généré par OrdiveX v9.7.75 · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
+        <div class="inv-lg">Document généré par OrdiveX v${window.APP_VERSION || '9.8.6'} · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
       </div>
     `);
     win.document.close();
@@ -911,7 +911,7 @@ const PrintEngine = {
           <div style="text-align:center"><div style="font-size:10px;color:#888">Ce bon de commande engage la pharmacie émettrice.</div><div style="font-size:10px;color:#888">Veuillez nous confirmer la réception et le délai.</div></div>
           <div class="inv-sig"><div class="inv-sl"></div><div class="inv-sn">Pour le Fournisseur</div><div class="inv-sr">Bon pour Accord & Signature</div></div>
         </div>
-        <div class="inv-lg">Document généré par OrdiveX v9.7.75 · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
+        <div class="inv-lg">Document généré par OrdiveX v${window.APP_VERSION || '9.8.6'} · Imprimé le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')} · ${pName}</div>
       </div>
     `);
     win.document.close();
@@ -1066,8 +1066,8 @@ PrintEngine.printPurchaseOrder = async function(orderId) {
     const qteRecueHtml = conforme
       ? '<strong>' + qteRecue + '</strong>'
       : '<span style="color:#c0392b;text-decoration:line-through">' + qteCmd + '</span> <strong style="color:#c0392b">' + qteRecue + '</strong>';
-    const totalHtml = totalLigne > 0 ? UI.formatCurrency(totalLigne) : '<span style="color:#c0392b">\u2014</span>';
-    const lotInfo = it.lotNumber ? '<div style="font-size:10px;color:#555;margin-top:2px">Lot : ' + it.lotNumber + (it.expiryDate ? ' &middot; Exp : ' + it.expiryDate : '') + '</div>' : '';
+    const pvInfo = it.salePrice ? ' &middot; P.V : ' + UI.formatCurrency(it.salePrice) : '';
+    const lotInfo = (it.lotNumber || it.expiryDate || it.salePrice) ? '<div style="font-size:10px;color:#555;margin-top:2px">' + (it.lotNumber ? 'Lot : ' + it.lotNumber : '') + (it.expiryDate ? ' &middot; Exp : ' + it.expiryDate : '') + pvInfo + '</div>' : '';
 
     return '<tr style="' + rowStyle + '"><td>' + (idx+1) + '</td><td><strong>' + (it.productName || it.name || '\u2014') + '</strong>' + lotInfo + '</td><td class="bc-ac">' + qteCmd + '</td><td class="bc-ac">' + qteRecueHtml + '</td><td class="bc-ac">' + badge + '</td><td class="bc-ar">' + UI.formatCurrency(pu) + '</td><td class="bc-ar"><strong>' + totalHtml + '</strong></td></tr>';
   }).join('');
@@ -1179,7 +1179,7 @@ PrintEngine.printPurchaseOrder = async function(orderId) {
         <div class="bc-sig"><div class="bc-sl"></div><div class="bc-sn">${pResp}</div><div class="bc-sr">Pharmacien responsable</div></div>
         <div class="bc-sig"><div class="bc-sl"></div><div class="bc-sn">Fournisseur</div><div class="bc-sr">Signature &amp; Cachet</div></div>
       </div>
-      <div class="bc-lg">Document g&eacute;n&eacute;r&eacute; par OrdiveX v9.7.75 &middot; ${new Date().toLocaleDateString('fr-FR')} &middot; ${pName}</div>
+      <div class="bc-lg">Document g&eacute;n&eacute;r&eacute; par OrdiveX v${window.APP_VERSION || '9.8.6'} &middot; ${new Date().toLocaleDateString('fr-FR')} &middot; ${pName}</div>
     </div>
   `);
   win.document.close();

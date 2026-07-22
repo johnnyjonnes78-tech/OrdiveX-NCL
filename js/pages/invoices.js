@@ -1205,24 +1205,30 @@ function printInvoicePDF(invoiceId) {
           <table>
             <thead>
               <tr>
+                <th style="width: 28px;">#</th>
                 <th>Produit</th>
-                <th>Lot</th>
+                <th>N° Lot</th>
                 <th>Péremption</th>
                 <th style="text-align: right;">Qté</th>
-                <th style="text-align: right;">Prix Unitaire</th>
+                <th style="text-align: right;">P. Achat</th>
+                <th style="text-align: right;">P. Vente</th>
                 <th style="text-align: right;">Total</th>
               </tr>
             </thead>
             <tbody>
-              ${(invoice.items || []).map(item => {
+              ${(invoice.items || []).map((item, idx) => {
                 const itemTotal = item.total || (item.quantity * item.unitPrice) || 0;
+                const hasSalePrice = item.salePrice && item.salePrice > 0;
+                const expDate = item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
                 return `
                   <tr>
+                    <td style="color: #94a3b8; font-weight: 600;">${idx + 1}</td>
                     <td class="product-name">${item.productName}</td>
                     <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${item.lotNumber || '—'}</code></td>
-                    <td>${item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>${expDate}</td>
                     <td style="text-align: right; font-weight: 600;">${item.quantity}</td>
                     <td style="text-align: right;" class="money">${item.unitPrice ? item.unitPrice.toLocaleString('fr-FR') : '0'}</td>
+                    <td style="text-align: right;" class="money">${hasSalePrice ? item.salePrice.toLocaleString('fr-FR') : '—'}</td>
                     <td style="text-align: right; font-weight: 700;" class="money">${itemTotal.toLocaleString('fr-FR')} GNF</td>
                   </tr>
                 `;
@@ -1242,6 +1248,10 @@ function printInvoicePDF(invoiceId) {
               <div class="total-row">
                 <span>Nombre d'articles</span>
                 <span>${invoice.items?.length || 0}</span>
+              </div>
+              <div class="total-row">
+                <span>Quantité totale</span>
+                <span>${(invoice.items || []).reduce((s, i) => s + (i.quantity || 0), 0)}</span>
               </div>
               <div class="total-row grand-total">
                 <span>Total Facture</span>

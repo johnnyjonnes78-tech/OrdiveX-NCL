@@ -1,5 +1,5 @@
 {
-  "version": "9.8.5",
-  "date": "2026-07-19",
-  "changelog": "v9.8.5 : Version finale propre — Résolution du problème d'écriture et de casse de colonne de synchronisation pour le stock."
+  "version": "9.8.6",
+  "date": "2026-07-22",
+  "changelog": "v9.8.6 : Sync instantanée Stock ➔ POS, recherche POS multi-termes surlignée, et impression PDF factures fournisseurs conforme à la rentrée."
 }

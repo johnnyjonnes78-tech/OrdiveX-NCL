@@ -779,6 +779,7 @@ function _scoreProduct(product, query) {
   const ean   = _normalizeSearch(product.ean   || '');
   const cip   = _normalizeSearch(product.cip   || '');
   const cat   = _normalizeSearch(product.category || '');
+  const form  = _normalizeSearch(product.form || '');
 
   // 1. Correspondance exacte code-barres / référence (priorité absolue)
   if (code === q || ean === q || cip === q) return 1000;
@@ -796,12 +797,24 @@ function _scoreProduct(product, query) {
   if (name.includes(q)) return 700;
   if (dci.includes(q))  return 680;
 
-  // 5. Tolérance aux fautes : Levenshtein sur les mots du nom
+  // 5. Recherche multi-mots clés (ex: "doliprane 500", "amox 250")
+  const qTokens = q.split(/\s+/).filter(Boolean);
+  if (qTokens.length > 1) {
+    const fullText = `${name} ${dci} ${code} ${cat} ${form}`;
+    const allTokensMatch = qTokens.every(tok => fullText.includes(tok));
+    if (allTokensMatch) {
+      // Score élevé si le premier terme correspond au nom
+      const firstMatchesName = name.includes(qTokens[0]);
+      return firstMatchesName ? 650 : 550;
+    }
+  }
+
+  // 6. Tolérance aux fautes : Levenshtein sur les mots du nom
   const nameWords = name.split(' ');
   const qWords    = q.split(' ');
   let fuzzyScore  = 0;
   for (const qw of qWords) {
-    if (qw.length < 3) continue; // Ignore les mots trop courts
+    if (qw.length < 3) continue;
     for (const nw of nameWords) {
       if (nw.length < 3) continue;
       const dist = _levenshtein(qw, nw);
@@ -812,24 +825,30 @@ function _scoreProduct(product, query) {
   }
   if (fuzzyScore > 0) return fuzzyScore;
 
-  // 6. Correspondance dans la catégorie
+  // 7. Correspondance dans la catégorie
   if (cat.includes(q)) return 100;
 
   return -1; // Aucune correspondance
 }
 
 /**
- * Met en évidence les correspondances dans un texte pour l'affichage
+ * Met en évidence les correspondances dans un texte pour l'affichage (support multi-termes)
  */
 function _highlightMatch(text, query) {
   if (!query || !text) return text || '';
-  const q = _normalizeSearch(query);
-  const t = _normalizeSearch(text);
-  const idx = t.indexOf(q);
-  if (idx === -1) return text;
-  return text.substring(0, idx)
-    + '<mark class="pos-search-highlight">' + text.substring(idx, idx + query.length) + '</mark>'
-    + text.substring(idx + query.length);
+  const tokens = query.trim().split(/\s+/).filter(t => t.length > 0);
+  if (!tokens.length) return text;
+  
+  let result = String(text);
+  tokens.forEach(tok => {
+    if (tok.length < 1) return;
+    const escaped = tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      result = result.replace(regex, '<mark class="pos-search-highlight">$1</mark>');
+    } catch(e) { }
+  });
+  return result;
 }
 window._highlightMatch = _highlightMatch;
 window._scoreProduct   = _scoreProduct;
@@ -3082,6 +3101,8 @@ window.applySort = applySort;
 window.loadRecentSales = loadRecentSales;
 window.showPatientRepertory = showPatientRepertory;
 window.renderRepertoryPage = renderRepertoryPage;
+window.refreshGrid = refreshGrid;
+window.refreshCartUI = refreshCartUI;
 
 // ═══════════════════════════════════════════════════════════════════
 // FEEDBACK AJOUT PANIER — Son + Animation
