@@ -1,5 +1,5 @@
 {
-  "version": "9.8.8",
-  "date": "2026-07-22",
-  "changelog": "v9.8.8 : Synchronisation bidirectionnelle directe stock/lots -> POS lors des réajustements manuels."
+  "version": "9.8.9",
+  "date": "2026-07-26",
+  "changelog": "v9.8.9 : Import CSV stock entièrement refondu — support virgule/point-virgule, dates Excel converties automatiquement, produits à quantité 0 créés, Code/Catégorie/Rx lus depuis le fichier."
 }

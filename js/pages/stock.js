@@ -886,10 +886,14 @@ window.importStockCsv = async function(event) {
     try {
       UI.toast('Importation et analyse en cours...', 'info');
       const text = e.target.result;
-      const lines = text.split('\\n').filter(l => l.trim() !== '');
+      // Support \r\n (Windows) et \n (Unix)
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
       if (lines.length < 2) throw new Error('Fichier CSV vide ou invalide');
 
-      const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+      // Support virgule ET point-virgule comme séparateur
+      const firstLine = lines[0];
+      const delimiter = firstLine.includes(';') ? ';' : ',';
+      const headers = firstLine.split(delimiter).map(h => h.trim().toLowerCase());
       const mapCol = (names) => {
         for (let n of names) {
           const idx = headers.findIndex(h => h.includes(n));
@@ -898,17 +902,20 @@ window.importStockCsv = async function(event) {
         return -1;
       };
 
-      const cName = mapCol(['name', 'nom', 'produit']);
-      const cDci = mapCol(['dci', 'molecule']);
-      const cBrand = mapCol(['brand', 'marque', 'labo']);
-      const cForm = mapCol(['form', 'forme']);
-      const cBuyPrice = mapCol(['buyprice', 'achat', 'prix achat']);
-      const cSellPrice = mapCol(['sellprice', 'vente', 'prix vente']);
-      const cLot = mapCol(['lot', 'lotnumber']);
-      const cExpiry = mapCol(['expiry', 'peremption', 'expiration']);
-      const cQty = mapCol(['qty', 'quantity', 'quantité', 'quantite']);
-      const cLocation = mapCol(['location', 'emplacement', 'rayon', 'reserve']);
-      const cInvoice = mapCol(['invoice', 'facture']);
+      const cCode     = mapCol(['code']);
+      const cName     = mapCol(['name', 'nom', 'produit']);
+      const cDci      = mapCol(['dci', 'molecule']);
+      const cBrand    = mapCol(['brand', 'marque', 'labo']);
+      const cForm     = mapCol(['form', 'forme']);
+      const cCat      = mapCol(['categorie', 'category', 'cat']);
+      const cBuyPrice = mapCol(['prix achat', 'buyprice', 'achat']);
+      const cSellPrice= mapCol(['prix vente', 'sellprice', 'vente']);
+      const cRx       = mapCol(['rx']);
+      const cLot      = mapCol(['lot', 'lotnumber']);
+      const cExpiry   = mapCol(['peremption', 'expiry', 'expiration']);
+      const cQty      = mapCol(['quantite', 'quantité', 'qty', 'quantity']);
+      const cLocation = mapCol(['location', 'emplacement', 'reserve']);
+      const cInvoice  = mapCol(['invoice', 'facture']);
       const cSupplier = mapCol(['supplier', 'fournisseur']);
 
       if (cName === -1 || cQty === -1) {
@@ -924,37 +931,58 @@ window.importStockCsv = async function(event) {
       let newInvoicesCount = 0;
 
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(';').map(c => c.trim().replace(/^"|"$/g, ''));
+        const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
         if (cols.length < 2) continue;
 
         const pName = cols[cName];
         if (!pName) continue;
 
-        const qty = parseInt(cols[cQty]) || 0;
-        if (qty <= 0) continue;
+        // Quantité : on accepte 0 pour créer le produit sans lot
+        const qty = Math.max(0, parseInt(cols[cQty]) || 0);
 
-        const buyPrice = cBuyPrice !== -1 ? (parseFloat(cols[cBuyPrice]) || 0) : 0;
+        const buyPrice  = cBuyPrice  !== -1 ? (parseFloat(cols[cBuyPrice])  || 0) : 0;
         const sellPrice = cSellPrice !== -1 ? (parseFloat(cols[cSellPrice]) || 0) : 0;
+        const category  = cCat       !== -1 && cols[cCat]  ? cols[cCat]  : 'Médicament';
+        const rxVal     = cRx        !== -1 && cols[cRx]   ? cols[cRx].toLowerCase() : 'non';
+        const requiresRx = rxVal === 'oui' || rxVal === 'yes' || rxVal === 'true' || rxVal === '1';
         const lotNumber = cLot !== -1 && cols[cLot] ? cols[cLot] : '';
-        const expiryStr = cExpiry !== -1 && cols[cExpiry] ? cols[cExpiry] : '2099-12-31';
+        // Conversion date : accepte YYYY-MM-DD ou nombre Excel (ex: 46023)
+        let rawExpiry   = cExpiry !== -1 && cols[cExpiry] ? cols[cExpiry].trim() : '';
+        let expiryStr   = '2099-12-31';
+        if (rawExpiry) {
+          if (/^\d{5,6}$/.test(rawExpiry)) {
+            // Numéro de série Excel → date ISO
+            const excelNum = parseInt(rawExpiry, 10);
+            const baseDate = new Date(1899, 11, 30);
+            const d = new Date(baseDate.getTime() + excelNum * 86400000);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            expiryStr = `${d.getFullYear()}-${mm}-${dd}`;
+          } else {
+            expiryStr = rawExpiry;
+          }
+        }
         let location = cLocation !== -1 && cols[cLocation] ? cols[cLocation].toLowerCase() : 'reserve';
         if (location !== 'rayon' && location !== 'reserve') location = 'reserve';
-        const invoiceNum = cInvoice !== -1 && cols[cInvoice] ? cols[cInvoice] : null;
+        const invoiceNum   = cInvoice  !== -1 && cols[cInvoice]  ? cols[cInvoice]  : null;
         const supplierName = cSupplier !== -1 && cols[cSupplier] ? cols[cSupplier] : null;
 
         // 1. Trouver ou Créer le Produit
         let prod = productsAll.find(p => p.name.toLowerCase() === pName.toLowerCase());
         if (!prod) {
-          const code = pName.substring(0,3).toUpperCase() + Date.now().toString().slice(-4);
+          // Utiliser le code du CSV si présent, sinon en générer un
+          const codeVal = (cCode !== -1 && cols[cCode]) ? cols[cCode] : (pName.substring(0,3).toUpperCase() + Date.now().toString().slice(-5));
           const newProd = {
             name: pName,
-            dci: cDci !== -1 ? cols[cDci] : '',
-            brand: cBrand !== -1 ? cols[cBrand] : '',
-            form: cForm !== -1 ? cols[cForm] : '',
-            code: code,
-            category: 'Médicament',
-            salePrice: sellPrice,
+            dci:      cDci   !== -1 ? cols[cDci]   : '',
+            brand:    cBrand !== -1 ? cols[cBrand]  : '',
+            form:     cForm  !== -1 ? cols[cForm]   : '',
+            code: codeVal,
+            category: category,
+            rayon:    category,
+            salePrice:     sellPrice,
             purchasePrice: buyPrice,
+            requiresPrescription: requiresRx,
             minStock: 10,
             status: 'active'
           };
@@ -962,7 +990,17 @@ window.importStockCsv = async function(event) {
           prod = { ...newProd, id: prodId };
           productsAll.push(prod);
           newProductsCount++;
+        } else {
+          // Mettre à jour les prix si le produit existe déjà et que les prix ont changé
+          if ((sellPrice > 0 && prod.salePrice !== sellPrice) || (buyPrice > 0 && prod.purchasePrice !== buyPrice)) {
+            prod.salePrice = sellPrice || prod.salePrice;
+            prod.purchasePrice = buyPrice || prod.purchasePrice;
+            await DB.dbPut('products', prod);
+          }
         }
+
+        // Si la quantité est 0, on crée juste le produit et on passe au suivant
+        if (qty <= 0) { newProductsCount > 0 && (newProductsCount = newProductsCount); continue; }
 
         // 2. Créer ou Mettre à jour la Facture (Smart Invoice)
         if (invoiceNum) {
@@ -1045,7 +1083,7 @@ window.importStockCsv = async function(event) {
         importedCount++;
       }
 
-      UI.toast(`Import réussi : ${importedCount} lots, ${newProductsCount} produits créés, ${newInvoicesCount} factures créées`, 'success');
+      UI.toast(`Import réussi : ${importedCount} lots avec stock, ${newProductsCount} produits créés/mis à jour`, 'success');
       document.getElementById('import-stock-file').value = '';
       if (typeof DB.syncToSupabase === 'function') DB.syncToSupabase();
       Router.navigate('stock');
@@ -1061,11 +1099,12 @@ window.importStockCsv = async function(event) {
 window.showImportStockModal = function() {
   const content = `
     <div class="info-box" style="margin-bottom:15px">
-      <strong>Format attendu :</strong> Fichier CSV avec séparateur point-virgule (;).<br>
-      Le système reconnaîtra automatiquement les colonnes. S'ils n'existent pas, les produits et les factures seront créés automatiquement.
-      <br><br>
-      Colonnes obligatoires : <b>Nom</b>, <b>Quantité</b>.<br>
-      Si <b>Emplacement</b> (Rayon / Réserve) n'est pas précisé, le stock ira en Réserve par défaut.
+      <strong>Format accepté :</strong> Fichier CSV avec séparateur <b>virgule (,)</b> ou <b>point-virgule (;)</b>.<br>
+      Les colonnes sont détectées automatiquement.<br><br>
+      <b>Colonnes obligatoires :</b> <code>Nom</code>, <code>Quantite</code>.<br>
+      <b>Colonnes optionnelles :</b> <code>Code</code>, <code>DCI</code>, <code>Marque</code>, <code>Categorie</code>, <code>Prix Vente</code>, <code>Prix Achat</code>, <code>Rx</code>, <code>Date de peremption</code>.<br><br>
+      ✅ Les <b>dates de péremption Excel</b> (ex: 46023) sont converties automatiquement.<br>
+      ✅ Les produits avec quantité = 0 sont <b>créés sans lot</b> (stock nul).
     </div>
     <div style="display:flex; gap:10px; justify-content:center;">
       <button class="btn btn-outline" onclick="downloadStockCsvTemplate()"><i data-lucide="download"></i> Télécharger le Modèle</button>
