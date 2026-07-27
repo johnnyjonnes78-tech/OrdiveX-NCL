@@ -1584,6 +1584,82 @@ function renderNaomieReceivingCard(parsed) {
  `;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CRÉATION ASSISTÉE — Naomie ouvre les formulaires de création (Phase 2 / Cas 9)
+// "Crée un nouveau fournisseur", "Nouveau patient Fatoumata Diallo"...
+// Fonctionne depuis n'importe quelle page (comme la navigation). Naomie ouvre le
+// vrai formulaire — pré-rempli si un nom/fournisseur est identifiable — mais c'est
+// toujours l'utilisateur qui complète et clique sur "Enregistrer".
+// ═══════════════════════════════════════════════════════════════════
+const NAOMIE_CREATE_VERBS = ['cree ', 'creer ', 'creez ', 'ajoute ', 'ajouter ', 'ajoutez ', 'nouveau ', 'nouvelle ', 'nouvel '];
+const NAOMIE_CREATE_STOPWORDS = ['cree', 'creer', 'creez', 'ajoute', 'ajouter', 'ajoutez', 'nouveau', 'nouvelle', 'nouvel',
+ 'un', 'une', 'de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'pour', 'moi', 'je', 'veux', 'voudrais',
+ 'souhaite', 'aimerais', 'peux', 'tu', 'svp', 'stp', 'sil', 'vous', 'plait', 'chez', 'merci'];
+const NAOMIE_CREATE_TARGETS = [
+ { keywords: ['fournisseur'], label: 'un nouveau fournisseur', kind: 'supplier' },
+ { keywords: ['patient', 'client'], label: 'un nouveau patient', kind: 'patient' },
+ { keywords: ['bon de commande', 'commande fournisseur', 'commande'], label: 'un bon de commande', kind: 'order' },
+];
+
+async function matchNaomieCreateIntent(rawInput) {
+ const cleaned = _naomieNormalize(rawInput).replace(/[.,;!?']/g, ' ').replace(/\s+/g, ' ').trim();
+ const paddedText = ' ' + cleaned + ' ';
+ if (!NAOMIE_CREATE_VERBS.some(v => paddedText.includes(v))) return null;
+
+ let best = null, bestLen = 0;
+ for (const target of NAOMIE_CREATE_TARGETS) {
+  for (const kw of target.keywords) {
+   if (paddedText.includes(' ' + kw + ' ') && kw.length > bestLen) { bestLen = kw.length; best = target; }
+  }
+ }
+ if (!best) return null;
+
+ const targetWordSet = new Set(best.keywords.join(' ').split(' '));
+ const tokens = cleaned.split(' ').filter(t => t && !NAOMIE_CREATE_STOPWORDS.includes(t) && !targetWordSet.has(t));
+
+ const result = { kind: best.kind, label: best.label, name: tokens.join(' '), supplier: null };
+ if (best.kind === 'order' && tokens.length) {
+  try {
+   const suppliers = await DB.dbGetAll('suppliers');
+   result.supplier = _naomieExtractSupplier(tokens, suppliers).supplier;
+  } catch (e) { /* pas bloquant */ }
+ }
+ return result;
+}
+
+window.NaomieOpenCreateForm = function (parsed) {
+ if (parsed.kind === 'supplier' && typeof showAddSupplier === 'function') {
+  showAddSupplier();
+  if (parsed.name) setTimeout(() => {
+   const f = document.querySelector('#supplier-form [name="name"]');
+   if (f) f.value = parsed.name;
+  }, 30);
+ } else if (parsed.kind === 'patient' && typeof showAddPatient === 'function') {
+  Promise.resolve(showAddPatient()).then(() => {
+   if (parsed.name) {
+    const f = document.querySelector('#patient-form [name="name"]');
+    if (f) f.value = parsed.name;
+   }
+  });
+ } else if (parsed.kind === 'order') {
+  if (parsed.supplier && typeof showNewOrder === 'function') showNewOrder(parsed.supplier.id, parsed.supplier.name);
+  else if (typeof showNewOrderForm === 'function') showNewOrderForm();
+ }
+};
+
+function renderNaomieCreateCard(parsed) {
+ const detail = parsed.kind === 'order'
+  ? (parsed.supplier ? `fournisseur <strong>${_naomieEscapeHtml(parsed.supplier.name)}</strong> pré-sélectionné` : 'choisissez le fournisseur dans le formulaire')
+  : (parsed.name ? `nom pré-rempli : <strong>${_naomieEscapeHtml(parsed.name)}</strong>` : 'complétez les informations');
+ return `
+  <div class="naomie-sale-card" style="border:1px solid rgba(0,0,0,0.1);border-radius:12px;padding:12px;margin-top:6px;background:#fff">
+   <div style="font-weight:700;margin-bottom:4px">📝 Formulaire ouvert : ${_naomieEscapeHtml(parsed.label)}</div>
+   <div style="font-size:13px;color:#555;line-height:1.6">${detail}</div>
+   <div style="font-size:12px;color:#888;margin-top:4px">Complétez et cliquez sur « Enregistrer ».</div>
+  </div>
+ `;
+}
+
 function matchConversation(input) {
  const q = input.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['']/g, ' ');
  let bestMatch = null;
@@ -1646,6 +1722,24 @@ window.submitFreeQuestion = async function() {
  }
  body.innerHTML += `<div class="chat-bubble chat-bot">🧭 J'ouvre <strong>${navTarget.label}</strong>...</div>`;
  }
+ body.scrollTop = body.scrollHeight;
+ }, 500 + Math.random() * 300);
+ }, 50);
+ return;
+ }
+
+ // 0.3 Création assistée — depuis n'importe quelle page ; ouvre le vrai formulaire
+ const createMatch = await matchNaomieCreateIntent(rawText);
+ if (createMatch) {
+ const createTypingId = 'typing-' + Date.now();
+ setTimeout(() => {
+ body.innerHTML += `<div id="${createTypingId}" class="chat-bubble chat-bot"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+ body.scrollTop = body.scrollHeight;
+ setTimeout(() => {
+ const t = document.getElementById(createTypingId);
+ if (t) t.remove();
+ window.NaomieOpenCreateForm(createMatch);
+ body.innerHTML += `<div class="chat-bubble chat-bot">${renderNaomieCreateCard(createMatch)}</div>`;
  body.scrollTop = body.scrollHeight;
  }, 500 + Math.random() * 300);
  }, 50);
