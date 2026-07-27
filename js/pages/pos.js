@@ -2225,6 +2225,13 @@ async function prendreEnChargeTransfert(transferId) {
     posCurrentPatient = t.patientName ? { id: t.patientId, name: t.patientName } : null;
     posCurrentRx = t.rx || null;
     window._activePrepTransferId = t.id;
+    // Tracer le préparateur d'origine — la vente affichera "Vendeur" (celui qui valide)
+    // ET "Préparateur" (celui qui a transféré) sur la facture, comme pour un panier en attente.
+    if (t.preparerId && t.preparerId !== DB.AppState.currentUser?.id) {
+      window._heldCartPreparer = { id: t.preparerId, name: t.preparerName };
+    } else {
+      window._heldCartPreparer = null;
+    }
 
     UI.closeModal();
     refreshCartUI();

@@ -1,5 +1,5 @@
 {
-  "version": "9.9.1",
+  "version": "9.9.2",
   "date": "2026-07-27",
-  "changelog": "v9.9.1 : Nouvelle icône d'application (badge pulsation, identité réelle de l'app, compatible icônes maskable Android) + correctif d'affichage : la rangée d'actions du POS (Vider/Attente/Transférer/File/Devis) débordait de l'écran sur mobile — passage en icônes compactes avec défilement de secours."
+  "changelog": "v9.9.2 : Facture d'une vente transférée à la caisse — affiche désormais le nom du préparateur (celui qui a transféré) et du vendeur (celui qui a encaissé) quand ils sont différents. Rangée d'actions du POS rendue robuste contre tout écrasement silencieux des boutons (Devis/Transférer) — les boutons gardent toujours leur taille naturelle, avec défilement de secours si l'espace manque."
 }

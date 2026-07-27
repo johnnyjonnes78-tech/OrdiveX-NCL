@@ -4451,6 +4451,20 @@ input[type="checkbox"]:checked~.switch-track .switch-thumb {
   display: flex;
   gap: 6px;
   align-items: stretch;
+  /* Filet de sécurité : si l'espace vient à manquer (fenêtre étroite, zoom navigateur,
+     futurs boutons ajoutés), on défile plutôt que de laisser un bouton se faire
+     silencieusement écraser/masquer par le flex-shrink. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.pos-actions-row-1::-webkit-scrollbar {
+  display: none;
+}
+
+.pos-actions-row-1 > * {
+  flex-shrink: 0;
 }
 
 .pos-btn-icon {
