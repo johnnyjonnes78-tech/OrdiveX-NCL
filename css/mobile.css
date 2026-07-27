@@ -980,6 +980,33 @@ img, canvas, video, iframe {
     padding: 12px !important;
   }
 
+  /* Rangée d'actions POS (Vider/Attente/Transférer/File/Devis) — trop de boutons
+     pour tenir en texte complet sur mobile : on passe en icônes seules, avec un
+     défilement horizontal de secours si un écran est encore plus étroit. */
+  .pos-actions-row-1 {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pos-actions-row-1::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pos-actions-row-1 .pos-btn-label {
+    display: none !important;
+  }
+
+  .pos-actions-row-1 .pos-btn-hold,
+  .pos-actions-row-1 .pos-btn-devis {
+    flex: 0 0 auto !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 8px !important;
+  }
+
   .pos-validate-btn,
   .pos-btn-validate,
   .btn-validate-sale {

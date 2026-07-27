@@ -1,5 +1,5 @@
 {
-  "version": "9.9.0",
+  "version": "9.9.1",
   "date": "2026-07-27",
-  "changelog": "v9.9.0 : File de préparation → Caisse — le préparateur transfère une vente prête (bouton \"Transférer à la caisse\" au POS), un caissier — même sur un autre poste — la voit dans la file, la prend en charge et l'encaisse. Synchronisé multi-appareils (nécessite d'exécuter supabase_prep_transfers.sql une fois)."
+  "changelog": "v9.9.1 : Nouvelle icône d'application (badge pulsation, identité réelle de l'app, compatible icônes maskable Android) + correctif d'affichage : la rangée d'actions du POS (Vider/Attente/Transférer/File/Devis) débordait de l'écran sur mobile — passage en icônes compactes avec défilement de secours."
 }
