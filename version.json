@@ -1,5 +1,5 @@
 {
-  "version": "9.8.11",
+  "version": "9.8.12",
   "date": "2026-07-27",
-  "changelog": "v9.8.11 : Naomie devient un agent IA (Phase 2) — vente assistée au Point de Vente : \"Paracétamol 500, deux boîtes\" prépare une carte de confirmation (stock, prix, total) avec ajout au panier en un clic, validation toujours humaine."
+  "changelog": "v9.8.12 : Naomie devient un agent IA (Phase 2 suite) — réception fournisseur assistée : \"J'ai reçu 50 boîtes de Paracétamol 500 de Laborex à 25 000 GNF\" ouvre et pré-remplit le vrai formulaire Entrée Stock, vérification et validation toujours humaines."
 }

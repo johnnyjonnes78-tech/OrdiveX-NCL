@@ -1362,35 +1362,37 @@ function _naomieEscapeHtml(str) {
  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Extrait une quantité (chiffre ou mot-nombre français, avec ou sans unité) et
-// renvoie le texte de recherche produit nettoyé (dosages comme "500" restent intacts).
-function parseNaomieQtyAndQuery(rawInput) {
- const cleaned = _naomieNormalize(rawInput).replace(/[.,;!?']/g, ' ').replace(/\s+/g, ' ').trim();
- let qty = 1;
+// Extrait une quantité (chiffre ou mot-nombre français, en tête ou en paire avec une unité)
+// d'une liste de tokens déjà nettoyée. Renvoie { qty, tokens } — tokens = ce qui reste après extraction.
+function _naomieExtractQty(tokens) {
+ const qtyTokenRegex = new RegExp('^(\\d{1,3}|' + Object.keys(NAOMIE_QTY_WORDS).join('|') + ')$');
+ const unitTokenRegex = new RegExp('^(' + NAOMIE_UNIT_WORDS_PATTERN + ')$');
 
- // 1. Retirer d'abord les mots de liaison (verbes, articles...) pour isoler le coeur de la phrase
- let tokens = cleaned.split(' ').filter(t => t && !NAOMIE_SALE_STOPWORDS.includes(t));
-
- // 2. Une quantité en tête ("trois Doliprane", "2 Doliprane") — la plus fiable une fois les mots de liaison retirés
- if (tokens.length > 1) {
-  const head = tokens[0];
-  if (/^\d{1,3}$/.test(head) || NAOMIE_QTY_WORDS.hasOwnProperty(head)) {
-   qty = /^\d+$/.test(head) ? parseInt(head, 10) : NAOMIE_QTY_WORDS[head];
-   tokens = tokens.slice(1);
-   return { qty: Math.max(1, Math.min(999, qty)), query: tokens.join(' ') };
+ // 1. Priorité à une paire explicite "<quantité> <unité>" n'importe où dans la phrase
+ // (ex: "50 boites paracetamol" — sans cette priorité, "50" serait pris seul et "boites" resterait orphelin)
+ for (let i = 0; i < tokens.length - 1; i++) {
+  if (qtyTokenRegex.test(tokens[i]) && unitTokenRegex.test(tokens[i + 1])) {
+   const head = tokens[i];
+   const qty = /^\d+$/.test(head) ? parseInt(head, 10) : NAOMIE_QTY_WORDS[head];
+   return { qty: Math.max(1, Math.min(999, qty)), tokens: tokens.slice(0, i).concat(tokens.slice(i + 2)) };
   }
  }
-
- // 3. Sinon, une paire "<quantite> <unite>" n'importe où dans la phrase (ex: "Paracetamol 500, deux boites")
- let q = tokens.join(' ');
- const qtyUnitRegex = new RegExp('\\b(\\d{1,3}|' + Object.keys(NAOMIE_QTY_WORDS).join('|') + ')\\s+(' + NAOMIE_UNIT_WORDS_PATTERN + ')\\b');
- const m1 = q.match(qtyUnitRegex);
- if (m1) {
-  qty = /^\d+$/.test(m1[1]) ? parseInt(m1[1], 10) : (NAOMIE_QTY_WORDS[m1[1]] || 1);
-  q = (q.slice(0, m1.index) + ' ' + q.slice(m1.index + m1[0].length)).replace(/\s+/g, ' ').trim();
+ // 2. Sinon, une quantité en tête sans unité explicite (ex: "trois Doliprane")
+ if (tokens.length > 1 && qtyTokenRegex.test(tokens[0])) {
+  const head = tokens[0];
+  const qty = /^\d+$/.test(head) ? parseInt(head, 10) : NAOMIE_QTY_WORDS[head];
+  return { qty: Math.max(1, Math.min(999, qty)), tokens: tokens.slice(1) };
  }
+ return { qty: 1, tokens };
+}
 
- return { qty: Math.max(1, Math.min(999, qty)), query: q };
+// Extrait une quantité et renvoie le texte de recherche produit nettoyé
+// (dosages comme "500" restent intacts, car ce ne sont pas des mots-nombres/unités).
+function parseNaomieQtyAndQuery(rawInput) {
+ const cleaned = _naomieNormalize(rawInput).replace(/[.,;!?']/g, ' ').replace(/\s+/g, ' ').trim();
+ const tokens = cleaned.split(' ').filter(t => t && !NAOMIE_SALE_STOPWORDS.includes(t));
+ const { qty, tokens: rest } = _naomieExtractQty(tokens);
+ return { qty, query: rest.join(' ') };
 }
 
 function matchNaomieSaleIntent(rawInput) {
@@ -1467,6 +1469,121 @@ window.NaomieChooseCandidate = function (productId, qty) {
  body.scrollTop = body.scrollHeight;
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// RÉCEPTION ASSISTÉE — Naomie prépare le formulaire "Entrée Stock" (Phase 2 / Cas 3)
+// "J'ai reçu 50 boîtes de Paracétamol 500 de Laborex à 25 000 GNF"
+// Naomie ouvre le VRAI formulaire d'entrée de stock, pré-rempli — la vérification
+// et le clic sur "Enregistrer l'entrée" restent entièrement humains.
+// Actif uniquement sur la page Stock (window.Router.currentPage === 'stock').
+// ═══════════════════════════════════════════════════════════════════
+const NAOMIE_RECEIVE_TRIGGERS = ['recu', 'reception', 'receptionne', 'livraison', 'livre', 'reappro'];
+// Remarque : "a" est volontairement absent — il sert d'ancre à _naomieExtractPrice ("à 25 000 GNF")
+// et est retiré par cette fonction, pas par la liste générique de mots vides.
+const NAOMIE_RECEIVE_STOPWORDS = ['jai', 'j', 'ai', 'nous', 'avons', 'recu', 'reception', 'receptionne',
+ 'livraison', 'livre', 'de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'chez', 'aupres'];
+
+// Extrait un prix d'achat annoncé après "à"/"a" (ex: "à 25 000 GNF", "a 25000 fg")
+function _naomieExtractPrice(tokens) {
+ for (let i = 0; i < tokens.length; i++) {
+  if (tokens[i] !== 'a') continue;
+  let j = i + 1;
+  let digits = '';
+  while (j < tokens.length && /^\d+$/.test(tokens[j]) && digits.length < 9) { digits += tokens[j]; j++; }
+  if (!digits) continue;
+  if (j < tokens.length && /^(gnf|fg|francs?)$/.test(tokens[j])) j++;
+  return { price: parseInt(digits, 10), tokens: tokens.slice(0, i).concat(tokens.slice(j)) };
+ }
+ return { price: 0, tokens };
+}
+
+// Extrait le nom du fournisseur : le plus long nom de la table Fournisseurs trouvé dans la phrase
+function _naomieExtractSupplier(tokens, suppliers) {
+ const text = ' ' + tokens.join(' ') + ' ';
+ let best = null;
+ for (const s of suppliers) {
+  const name = _naomieNormalize(s.name || '').trim();
+  if (name.length < 3) continue;
+  if (text.includes(' ' + name + ' ') && (!best || name.length > best.name.length)) best = { supplier: s, name };
+ }
+ if (!best) return { supplier: null, tokens };
+ const nameTokens = best.name.split(' ');
+ const remaining = [];
+ for (let i = 0; i < tokens.length; i++) {
+  if (tokens.slice(i, i + nameTokens.length).join(' ') === best.name) { i += nameTokens.length - 1; continue; }
+  remaining.push(tokens[i]);
+ }
+ return { supplier: best.supplier, tokens: remaining };
+}
+
+async function matchNaomieReceivingIntent(rawInput) {
+ const cleaned = _naomieNormalize(rawInput).replace(/[.,;!?']/g, ' ').replace(/\s+/g, ' ').trim();
+ const rawTokens = cleaned.split(' ').filter(Boolean);
+ if (!NAOMIE_RECEIVE_TRIGGERS.some(t => rawTokens.includes(t))) return null;
+ if (typeof window._stockData === 'undefined' && typeof window.renderStockEntry !== 'function') return null;
+
+ let tokens = rawTokens.filter(t => !NAOMIE_RECEIVE_STOPWORDS.includes(t));
+ const qtyResult = _naomieExtractQty(tokens);
+ tokens = qtyResult.tokens;
+ const priceResult = _naomieExtractPrice(tokens);
+ tokens = priceResult.tokens;
+
+ let supplier = null;
+ try {
+  const suppliers = await DB.dbGetAll('suppliers');
+  const supResult = _naomieExtractSupplier(tokens, suppliers);
+  supplier = supResult.supplier;
+  tokens = supResult.tokens;
+ } catch (e) { /* pas bloquant */ }
+
+ const query = tokens.join(' ').trim();
+ if (!query || query.length < 3) return null;
+
+ const products = window._stockData || [];
+ const scored = products
+  .map(p => ({ product: p, score: (typeof window._scoreProduct === 'function') ? window._scoreProduct(p, query) : -1 }))
+  .filter(s => s.score >= 350)
+  .sort((a, b) => b.score - a.score);
+
+ return {
+  query,
+  qty: qtyResult.qty,
+  price: priceResult.price,
+  supplier,
+  product: (scored.length && (!scored[1] || scored[0].score - scored[1].score >= 150)) ? scored[0].product : null,
+ };
+}
+
+window.NaomiePrepareReceiving = async function (parsed) {
+ if (typeof window.renderStockEntry !== 'function') return;
+ window.renderStockEntry();
+ await new Promise(r => setTimeout(r, 30)); // laisser le modal s'insérer dans le DOM
+ const getF = (name) => document.querySelector(`#stock-entry-form [name="${name}"]`);
+ if (getF('quantity')) getF('quantity').value = parsed.qty;
+ if (parsed.price > 0 && getF('purchasePrice')) getF('purchasePrice').value = parsed.price;
+ if (parsed.supplier && getF('supplier')) getF('supplier').value = parsed.supplier.name;
+ const searchInput = document.getElementById('stock-entry-product-search');
+ if (parsed.product && typeof window.selectStockEntryProduct === 'function') {
+  await window.selectStockEntryProduct(parsed.product.id, parsed.product.name);
+ } else if (searchInput) {
+  searchInput.value = parsed.query;
+ }
+};
+
+function renderNaomieReceivingCard(parsed) {
+ const parts = [];
+ parts.push(parsed.product ? _naomieEscapeHtml(parsed.product.name) : `« ${_naomieEscapeHtml(parsed.query)} » (à sélectionner)`);
+ parts.push(`<strong>${parsed.qty}</strong> unité(s)`);
+ if (parsed.supplier) parts.push('fournisseur <strong>' + _naomieEscapeHtml(parsed.supplier.name) + '</strong>');
+ if (parsed.price > 0) parts.push('prix d\'achat <strong>' + UI.formatCurrency(parsed.price) + '</strong>');
+ return `
+  <div class="naomie-sale-card" style="border:1px solid rgba(0,0,0,0.1);border-radius:12px;padding:12px;margin-top:6px;background:#fff">
+   <div style="font-weight:700;margin-bottom:4px">🧾 Entrée de stock préparée</div>
+   <div style="font-size:13px;color:#555;line-height:1.6">${parts.join(' — ')}</div>
+   <div style="font-size:12px;color:#888;margin-top:4px">Le formulaire est ouvert. Vérifiez le lot, la date de péremption puis cliquez « Enregistrer l'entrée ».</div>
+  </div>
+ `;
+}
+
 function matchConversation(input) {
  const q = input.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['']/g, ' ');
  let bestMatch = null;
@@ -1493,7 +1610,7 @@ function matchConversation(input) {
  return { dynamic: false, text: bestMatch.responses[Math.floor(Math.random() * bestMatch.responses.length)] };
 }
 
-window.submitFreeQuestion = function() {
+window.submitFreeQuestion = async function() {
  const input = document.getElementById('support-free-input');
  if (!input ||!input.value.trim()) return;
  const rawText = input.value.trim();
@@ -1550,6 +1667,26 @@ window.submitFreeQuestion = function() {
  ? renderNaomieSaleCard(saleMatch.product, saleMatch.qty)
  : renderNaomieCandidateList(saleMatch.candidates, saleMatch.qty);
  body.innerHTML += `<div class="chat-bubble chat-bot">${html}</div>`;
+ body.scrollTop = body.scrollHeight;
+ }, 500 + Math.random() * 300);
+ }, 50);
+ return;
+ }
+ }
+
+ // 0.6 Réception assistée — uniquement sur la page Stock ; ouvre le vrai formulaire "Entrée Stock", pré-rempli
+ if (window.Router && window.Router.currentPage === 'stock') {
+ const receiveMatch = await matchNaomieReceivingIntent(rawText);
+ if (receiveMatch) {
+ const recvTypingId = 'typing-' + Date.now();
+ setTimeout(() => {
+ body.innerHTML += `<div id="${recvTypingId}" class="chat-bubble chat-bot"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+ body.scrollTop = body.scrollHeight;
+ setTimeout(async () => {
+ const t = document.getElementById(recvTypingId);
+ if (t) t.remove();
+ await window.NaomiePrepareReceiving(receiveMatch);
+ body.innerHTML += `<div class="chat-bubble chat-bot">${renderNaomieReceivingCard(receiveMatch)}</div>`;
  body.scrollTop = body.scrollHeight;
  }, 500 + Math.random() * 300);
  }, 50);
