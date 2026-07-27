@@ -1,5 +1,5 @@
 {
-  "version": "9.8.10",
+  "version": "9.8.11",
   "date": "2026-07-27",
-  "changelog": "v9.8.10 : Naomie devient un agent IA (Phase 1) — navigation intelligente par commande texte : \"Ouvre le stock\", \"Va aux ventes\", \"Montre les péremptions\" ouvrent directement le module concerné, avec respect des permissions utilisateur."
+  "changelog": "v9.8.11 : Naomie devient un agent IA (Phase 2) — vente assistée au Point de Vente : \"Paracétamol 500, deux boîtes\" prépare une carte de confirmation (stock, prix, total) avec ajout au panier en un clic, validation toujours humaine."
 }

@@ -1338,6 +1338,135 @@ function canNaomieNavigateTo(page) {
  return Auth.can(item.permission);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// VENTE ASSISTÉE — Naomie prépare l'ajout au panier POS (Phase 2 / Cas 1)
+// "Paracétamol 500, deux boîtes", "Ajoute aussi de l'Amoxicilline 1g"...
+// Naomie propose toujours une carte de confirmation — jamais d'ajout silencieux,
+// la validation finale ("Ajouter") reste humaine.
+// Actif uniquement quand l'utilisateur est sur la page POS (window.Router.currentPage === 'pos').
+// ═══════════════════════════════════════════════════════════════════
+const NAOMIE_QTY_WORDS = {
+ un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7,
+ huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14,
+ quinze: 15, vingt: 20,
+};
+const NAOMIE_UNIT_WORDS_PATTERN = 'boites?|plaquettes?|unites?|comprimes?|pieces?|x';
+const NAOMIE_SALE_STOPWORDS = ['ajoute', 'ajouter', 'ajoutez', 'aussi', 'encore', 'mets', 'mettre',
+ 'vends', 'vendre', 'moi', 'svp', 'stp', 'sil', 'vous', 'plait', 'de', 'du', 'des', 'la', 'le', 'les', 'l', 'd'];
+
+function _naomieNormalize(str) {
+ return String(str || '').toLowerCase().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '');
+}
+
+function _naomieEscapeHtml(str) {
+ return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Extrait une quantité (chiffre ou mot-nombre français, avec ou sans unité) et
+// renvoie le texte de recherche produit nettoyé (dosages comme "500" restent intacts).
+function parseNaomieQtyAndQuery(rawInput) {
+ const cleaned = _naomieNormalize(rawInput).replace(/[.,;!?']/g, ' ').replace(/\s+/g, ' ').trim();
+ let qty = 1;
+
+ // 1. Retirer d'abord les mots de liaison (verbes, articles...) pour isoler le coeur de la phrase
+ let tokens = cleaned.split(' ').filter(t => t && !NAOMIE_SALE_STOPWORDS.includes(t));
+
+ // 2. Une quantité en tête ("trois Doliprane", "2 Doliprane") — la plus fiable une fois les mots de liaison retirés
+ if (tokens.length > 1) {
+  const head = tokens[0];
+  if (/^\d{1,3}$/.test(head) || NAOMIE_QTY_WORDS.hasOwnProperty(head)) {
+   qty = /^\d+$/.test(head) ? parseInt(head, 10) : NAOMIE_QTY_WORDS[head];
+   tokens = tokens.slice(1);
+   return { qty: Math.max(1, Math.min(999, qty)), query: tokens.join(' ') };
+  }
+ }
+
+ // 3. Sinon, une paire "<quantite> <unite>" n'importe où dans la phrase (ex: "Paracetamol 500, deux boites")
+ let q = tokens.join(' ');
+ const qtyUnitRegex = new RegExp('\\b(\\d{1,3}|' + Object.keys(NAOMIE_QTY_WORDS).join('|') + ')\\s+(' + NAOMIE_UNIT_WORDS_PATTERN + ')\\b');
+ const m1 = q.match(qtyUnitRegex);
+ if (m1) {
+  qty = /^\d+$/.test(m1[1]) ? parseInt(m1[1], 10) : (NAOMIE_QTY_WORDS[m1[1]] || 1);
+  q = (q.slice(0, m1.index) + ' ' + q.slice(m1.index + m1[0].length)).replace(/\s+/g, ' ').trim();
+ }
+
+ return { qty: Math.max(1, Math.min(999, qty)), query: q };
+}
+
+function matchNaomieSaleIntent(rawInput) {
+ if (typeof _posDataReady === 'undefined' || !_posDataReady) return null;
+ if (typeof posProducts === 'undefined' || !posProducts.length) return null;
+
+ const { qty, query } = parseNaomieQtyAndQuery(rawInput);
+ if (!query || query.length < 3) return null;
+
+ const scored = posProducts
+  .map(p => ({ product: p, score: (typeof window._scoreProduct === 'function') ? window._scoreProduct(p, query) : -1 }))
+  .filter(s => s.score >= 350)
+  .sort((a, b) => b.score - a.score);
+
+ if (!scored.length) return null;
+
+ const top = scored[0];
+ const second = scored[1];
+ const highConfidence = !second || (top.score - second.score) >= 150;
+
+ if (highConfidence) return { type: 'confirm', product: top.product, qty };
+ return { type: 'choices', candidates: scored.slice(0, 5).map(s => s.product), qty };
+}
+
+function _naomieStockInfo(product) {
+ const totU = (product.unitsPerBox || 1) * (product.subUnitsPerBox || 1);
+ const avail = ((typeof posStock !== 'undefined' ? posStock[product.id] : 0)) || 0;
+ return { availBoxes: Math.floor(avail / totU) };
+}
+
+function renderNaomieSaleCard(product, qty) {
+ const { availBoxes } = _naomieStockInfo(product);
+ const price = product.salePrice || 0;
+ const total = price * qty;
+ const name = _naomieEscapeHtml(product.name);
+ const dosage = _naomieEscapeHtml(product.dosage || '');
+ const lowStock = availBoxes < qty;
+ return `
+  <div class="naomie-sale-card" style="border:1px solid rgba(0,0,0,0.1);border-radius:12px;padding:12px;margin-top:6px;background:#fff">
+   <div style="font-weight:700;margin-bottom:4px">✅ ${name}${dosage ? ' ' + dosage : ''}</div>
+   <div style="font-size:13px;color:#555;line-height:1.6">
+    Stock : <strong>${availBoxes}</strong> boîte(s)${lowStock ? ' <span style="color:#e74c3c">⚠️ insuffisant</span>' : ''}<br>
+    Quantité : <strong>${qty}</strong><br>
+    Prix : <strong>${UI.formatCurrency(price)}</strong> / boîte — Total : <strong>${UI.formatCurrency(total)}</strong>
+   </div>
+   <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="NaomieAddToCart(${product.id}, ${qty}, this)">➕ Ajouter au panier</button>
+  </div>
+ `;
+}
+
+function renderNaomieCandidateList(candidates, qty) {
+ const items = candidates.map(p => `
+  <div class="naomie-candidate-row" style="padding:8px 10px;border:1px solid rgba(0,0,0,0.1);border-radius:8px;margin-top:6px;cursor:pointer" onclick="NaomieChooseCandidate(${p.id}, ${qty})">
+   ${_naomieEscapeHtml(p.name)}${p.dosage ? ' <span style="color:#888">' + _naomieEscapeHtml(p.dosage) + '</span>' : ''}
+  </div>
+ `).join('');
+ return `<div>J'ai trouvé plusieurs résultats. Lequel souhaitez-vous ?</div>${items}`;
+}
+
+window.NaomieAddToCart = function (productId, qty, btnEl) {
+ if (typeof addToCart !== 'function') return;
+ addToCart(productId, 'box');
+ if (typeof setQtyDirect === 'function') setQtyDirect(productId, 'box', qty);
+ if (btnEl) { btnEl.disabled = true; btnEl.textContent = '✅ Ajouté au panier'; }
+};
+
+window.NaomieChooseCandidate = function (productId, qty) {
+ const body = document.getElementById('support-chat-body');
+ if (!body) return;
+ const p = (typeof posProductsCache !== 'undefined' && posProductsCache.get(productId)) ||
+  (typeof posProducts !== 'undefined' && posProducts.find(x => x.id === productId));
+ if (!p) return;
+ body.innerHTML += `<div class="chat-bubble chat-bot">${renderNaomieSaleCard(p, qty)}</div>`;
+ body.scrollTop = body.scrollHeight;
+};
+
 function matchConversation(input) {
  const q = input.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['']/g, ' ');
  let bestMatch = null;
@@ -1406,6 +1535,28 @@ window.submitFreeQuestion = function() {
  return;
  }
 
+ // 0.5 Vente assistée — uniquement sur la page POS ; Naomie propose, l'utilisateur valide
+ if (window.Router && window.Router.currentPage === 'pos') {
+ const saleMatch = matchNaomieSaleIntent(rawText);
+ if (saleMatch) {
+ const saleTypingId = 'typing-' + Date.now();
+ setTimeout(() => {
+ body.innerHTML += `<div id="${saleTypingId}" class="chat-bubble chat-bot"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+ body.scrollTop = body.scrollHeight;
+ setTimeout(() => {
+ const t = document.getElementById(saleTypingId);
+ if (t) t.remove();
+ const html = saleMatch.type === 'confirm'
+ ? renderNaomieSaleCard(saleMatch.product, saleMatch.qty)
+ : renderNaomieCandidateList(saleMatch.candidates, saleMatch.qty);
+ body.innerHTML += `<div class="chat-bubble chat-bot">${html}</div>`;
+ body.scrollTop = body.scrollHeight;
+ }, 500 + Math.random() * 300);
+ }, 50);
+ return;
+ }
+ }
+
  // 1. Chercher d'abord dans la conversation naturelle (Intents précis et CFO)
  const convReply = matchConversation(rawText);
 
@@ -1453,7 +1604,7 @@ window.submitFreeQuestion = function() {
  // Aucun match — réponse intelligente contextuelle ultra-pro
  const page = (window.Router && window.Router.currentPage) ? window.Router.currentPage : 'dashboard';
  const pageHints = {
- 'pos': 'Je vois que vous êtes au <strong>Point de Vente</strong>. Essayez des mots-clés comme : <strong>vente</strong>, <strong>crédit</strong>, <strong>assurance</strong>, <strong>scan</strong>, <strong>déconditionnement</strong>, <strong>ordonnance</strong>',
+ 'pos': 'Je vois que vous êtes au <strong>Point de Vente</strong>. Dites-moi par exemple <em>« Paracétamol 500, deux boîtes »</em> pour préparer l\'ajout au panier, ou essayez : <strong>vente</strong>, <strong>crédit</strong>, <strong>assurance</strong>, <strong>scan</strong>, <strong>déconditionnement</strong>, <strong>ordonnance</strong>',
  'products': 'Vous êtes dans le <strong>Catalogue Produits</strong>. Essayez : <strong>ajouter</strong>, <strong>import CSV</strong>, <strong>déconditionnement</strong>, <strong>notice</strong>, <strong>DCI</strong>',
  'stock': 'Vous êtes dans la <strong>Gestion des Stocks</strong>. Essayez : <strong>inventaire</strong>, <strong>mouvement</strong>, <strong>FEFO</strong>, <strong>rupture</strong>, <strong>lot</strong>',
  'patients': 'Vous êtes dans les <strong>Dossiers Patients</strong>. Essayez : <strong>allergie</strong>, <strong>fiche patient</strong>, <strong>historique</strong>',
