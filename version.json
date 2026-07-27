@@ -1,5 +1,5 @@
 {
-  "version": "9.9.3",
+  "version": "9.9.4",
   "date": "2026-07-27",
-  "changelog": "v9.9.3 : POS — le bouton VALIDER est désormais toujours empilé sous la rangée d'actions (Vider/Attente/Transférer/File/Devis), plutôt que côte à côte sur grand écran (ancienne règle basée sur la largeur de la fenêtre, jamais celle — bien plus étroite — du panneau panier). Corrige aussi un bug de fond : window.APP_VERSION n'était jamais réellement défini, donc factures, tickets, bons de commande et sauvegardes affichaient toujours un numéro de version obsolète codé en dur au lieu de la version réelle de l'app."
+  "changelog": "v9.9.4 : La rangée d'actions du POS passe désormais à la ligne (au lieu de défiler hors champ, invisible sans le savoir) si l'espace manque — plus aucun bouton ne peut sembler \"disparu\". Ticket de caisse imprimé en écriture nettement plus épaisse et contrastée (poids de police maximal + tracé renforcé) pour rester bien lisible sur imprimante thermique."
 }

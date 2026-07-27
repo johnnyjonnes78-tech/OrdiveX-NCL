@@ -4449,20 +4449,16 @@ input[type="checkbox"]:checked~.switch-track .switch-thumb {
 
 .pos-actions-row-1 {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: stretch;
-  /* Filet de sécurité : si l'espace vient à manquer (fenêtre étroite, zoom navigateur,
-     futurs boutons ajoutés), on défile plutôt que de laisser un bouton se faire
-     silencieusement écraser/masquer par le flex-shrink. */
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
+  row-gap: 8px;
 }
 
-.pos-actions-row-1::-webkit-scrollbar {
-  display: none;
-}
-
+/* Si l'espace manque (fenêtre étroite, zoom navigateur, futurs boutons ajoutés),
+   les boutons passent à la ligne plutôt que d'être coupés/masqués hors champ —
+   contrairement à un défilement horizontal, un retour à la ligne reste visible
+   sans qu'aucune action de l'utilisateur ne soit nécessaire pour le découvrir. */
 .pos-actions-row-1 > * {
   flex-shrink: 0;
 }

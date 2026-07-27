@@ -630,7 +630,12 @@ const PrintEngine = {
   _printStyles(isTicket = false) {
     if (isTicket) {
       return `<style>
-        * { margin:0; padding:0; box-sizing:border-box; font-weight: bold !important; }
+        * {
+          margin:0; padding:0; box-sizing:border-box;
+          font-weight: 900 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
         html, body {
           margin: 0 !important;
           padding: 0 !important;
@@ -642,7 +647,9 @@ const PrintEngine = {
           font-family: 'Courier New', monospace;
           font-size: 13px;
           line-height: 1.3;
-          font-weight: bold !important;
+          font-weight: 900 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         @page {
           size: 80mm auto;
@@ -684,7 +691,7 @@ const PrintEngine = {
             min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
-            font-weight: bold !important;
+            font-weight: 900 !important;
           }
           .ticket-container {
             width: 80mm;
@@ -693,7 +700,16 @@ const PrintEngine = {
             margin: 0 !important;
             padding: 5px 7px 4px 7px !important;
           }
-          * { color: #000 !important; font-weight: bold !important; }
+          /* Le poids "bold" seul rend souvent trop faible sur une imprimante thermique —
+             on épaissit le tracé des caractères en plus du poids maximal pour garantir
+             une écriture bien visible/lisible sur le papier imprimé. */
+          * {
+            color: #000 !important;
+            font-weight: 900 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            -webkit-text-stroke: 0.4px #000;
+          }
         }
       </style>`;
     } else {

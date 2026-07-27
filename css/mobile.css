@@ -981,18 +981,12 @@ img, canvas, video, iframe {
   }
 
   /* Rangée d'actions POS (Vider/Attente/Transférer/File/Devis) — trop de boutons
-     pour tenir en texte complet sur mobile : on passe en icônes seules, avec un
-     défilement horizontal de secours si un écran est encore plus étroit. */
+     pour tenir en texte complet sur mobile : on passe en icônes seules. Si même
+     les icônes ne tiennent pas sur une ligne, elles passent à la ligne suivante
+     (jamais de défilement caché — tout doit rester visible sans action requise). */
   .pos-actions-row-1 {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    flex-wrap: nowrap !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .pos-actions-row-1::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap !important;
+    row-gap: 8px !important;
   }
 
   .pos-actions-row-1 .pos-btn-label {
