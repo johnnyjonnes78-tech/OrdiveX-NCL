@@ -3,7 +3,7 @@
  * Cache-first PWA strategy pour fonctionnement 100% offline
  */
 
-const CACHE_NAME = 'pharma-cache-v9.8.13';
+const CACHE_NAME = 'pharma-cache-v9.9.0';
 const ASSETS = [
   './',
   './index.html',

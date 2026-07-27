@@ -1,5 +1,5 @@
 {
-  "version": "9.8.13",
+  "version": "9.9.0",
   "date": "2026-07-27",
-  "changelog": "v9.8.13 : Naomie devient un agent IA (Phase 2 fin) — création assistée : \"Crée un nouveau fournisseur\", \"Nouveau patient Fatoumata Diallo\", \"Nouvelle commande chez Laborex\" ouvrent directement le vrai formulaire de création, pré-rempli si possible, depuis n'importe quelle page."
+  "changelog": "v9.9.0 : File de préparation → Caisse — le préparateur transfère une vente prête (bouton \"Transférer à la caisse\" au POS), un caissier — même sur un autre poste — la voit dans la file, la prend en charge et l'encaisse. Synchronisé multi-appareils (nécessite d'exécuter supabase_prep_transfers.sql une fois)."
 }

@@ -133,7 +133,7 @@
 
 
 const DB_NAME = 'OrdiveXDB';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 
 const STORES = {
   products: 'products',
@@ -160,6 +160,7 @@ const STORES = {
   inventoryAdjustments: 'inventoryAdjustments',
   insurances: 'insurances',
   insurancePayments: 'insurancePayments',
+  prep_transfers: 'prep_transfers',
 };
 
 let db = null;
@@ -472,7 +473,8 @@ function _setupRealtime(sbClient) {
   const _validStores = new Set([
     'users', 'settings', 'products', 'lots', 'stock', 'movements',
     'suppliers', 'purchaseOrders', 'sales', 'saleItems', 'patients',
-    'prescriptions', 'alerts', 'cashRegister', 'auditLog', 'returns', 'invoices', 'shifts'
+    'prescriptions', 'alerts', 'cashRegister', 'auditLog', 'returns', 'invoices', 'shifts',
+    'prep_transfers'
   ]);
 
   _realtimeSubscription = sbClient.channel('flash-sync-channel')
@@ -766,6 +768,13 @@ async function initDB() {
         als.createIndex('type', 'type');
         als.createIndex('status', 'status');
         als.createIndex('date', 'date');
+      }
+
+      // File de préparation → caisse (transferts de vente entre préparateur et caissier)
+      if (!database.objectStoreNames.contains('prep_transfers')) {
+        const pt = database.createObjectStore('prep_transfers', { keyPath: 'id', autoIncrement: true });
+        pt.createIndex('status', 'status');
+        pt.createIndex('createdAt', 'createdAt');
       }
 
       // Sync queue — cle string generee par OperationQueue
@@ -1687,7 +1696,7 @@ async function _internalSyncToSupabase() {
     // Envoi SÉQUENTIEL et par ordre de priorité absolue (ventes d'abord, catalogues ensuite)
     const storesToSync = [
       'sales', 'saleItems', 'cashRegister', 'movements', 'returns', 'invoices',
-      'patients', 'prescriptions', 'alerts', 'shifts',
+      'patients', 'prescriptions', 'alerts', 'shifts', 'prep_transfers',
       'stock', 'lots', 'purchaseOrders', 'suppliers',
       'insurances', 'insurancePayments', // <-- Assurances synchronisées au cloud
       'users', 'settings',
@@ -2055,7 +2064,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
       'users', 'settings',
       'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
       'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
-      'cashRegister', 'returns', 'invoices', 'shifts',
+      'cashRegister', 'returns', 'invoices', 'shifts', 'prep_transfers',
       'insurances', 'insurancePayments'
     ];
 
@@ -2492,7 +2501,7 @@ async function forceSyncAll() {
   const stores = [
     'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
     'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
-    'cashRegister', 'auditLog', 'users', 'settings', 'returns'
+    'cashRegister', 'auditLog', 'users', 'settings', 'returns', 'prep_transfers'
   ];
 
   let totalMarked = 0;
@@ -2526,7 +2535,7 @@ async function autoBackupToStorage() {
     const stores = [
       'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
       'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
-      'cashRegister', 'auditLog', 'users', 'settings', 'returns',
+      'cashRegister', 'auditLog', 'users', 'settings', 'returns', 'prep_transfers',
       'inventories', 'inventoryAdjustments'
     ];
 
@@ -2693,7 +2702,7 @@ async function restoreFromBackup(backupData) {
     const storesToClear = [
       'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
       'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
-      'cashRegister', 'auditLog', 'settings', 'returns',
+      'cashRegister', 'auditLog', 'settings', 'returns', 'prep_transfers',
       'inventories', 'inventoryAdjustments'
     ];
 

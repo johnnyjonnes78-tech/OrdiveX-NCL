@@ -592,6 +592,13 @@ function renderFullPOSUI(container) {
             <button class="btn btn-ghost pos-btn-icon" onclick="voirPaniersEnAttente()" title="Paniers en attente">
               <i data-lucide="layers"></i>
             </button>
+            <button class="btn btn-secondary pos-btn-hold" onclick="transfererACaisse()" title="Transférer à la caisse">
+              <i data-lucide="send"></i><span class="pos-btn-label">Transférer</span>
+            </button>
+            <button class="btn btn-ghost pos-btn-icon" onclick="voirFilePreparation()" title="File de préparation" style="position:relative">
+              <i data-lucide="list-checks"></i>
+              <span id="prep-queue-badge" class="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px">0</span>
+            </button>
             <button class="pos-btn-devis" onclick="printProformaReceipt()" title="Imprimer un devis">
               <i data-lucide="file-output"></i><span class="pos-btn-label">Devis</span>
             </button>
@@ -622,6 +629,11 @@ function renderFullPOSUI(container) {
   loadRecentSales();
   if (typeof mobileInitPOS === 'function') mobileInitPOS();
   document.getElementById('pos-search').focus();
+
+  // File de préparation : badge initial puis poll léger (visibilité multi-poste)
+  refreshPrepQueueBadge();
+  const _prepQueuePoll = setInterval(refreshPrepQueueBadge, 30000);
+  if (typeof Router !== 'undefined' && Router.onLeave) Router.onLeave(() => clearInterval(_prepQueuePoll));
 
   // Restore held carts: vérifier s'il y a des paniers en attente
   (async function() {
@@ -1241,6 +1253,17 @@ function viderPanier() {
   clearClientUI();
   detachRx();
   window._heldCartPreparer = null; // Reset double traçabilité
+  if (window._activePrepTransferId) {
+    // Panier vidé sans encaisser : relâcher le transfert pour qu'un autre caissier puisse le reprendre
+    const releasedId = window._activePrepTransferId;
+    window._activePrepTransferId = null;
+    DB.dbGet('prep_transfers', releasedId).then(t => {
+      if (t && t.status === 'claimed') {
+        t.status = 'pending'; t.claimedBy = null; t.claimedByName = null; t.claimedAt = null; t.updatedAt = Date.now();
+        return DB.dbPut('prep_transfers', t);
+      }
+    }).then(() => { if (typeof refreshPrepQueueBadge === 'function') refreshPrepQueueBadge(); }).catch(() => {});
+  }
   const rt = document.getElementById('rx-toggle');
   if (rt) { rt.checked = false; onRxToggle(false); }
   const disc = document.getElementById('pos-discount');
@@ -2086,6 +2109,135 @@ async function _removeHeldCart(cartId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// FILE DE PRÉPARATION → CAISSE
+// Le préparateur transfère une vente prête à encaisser ; un caissier —
+// potentiellement sur un autre poste — la voit dans la file, la prend
+// en charge puis l'encaisse via le circuit normal (bouton "Valider").
+// Contrairement aux "paniers en attente" (100% locaux), ceci est
+// synchronisé (store 'prep_transfers'), donc visible depuis n'importe
+// quel poste connecté.
+// ═══════════════════════════════════════════════════════════════════
+async function transfererACaisse() {
+  if (!posCart.length) { UI.toast('Panier vide', 'warning'); return; }
+
+  var transferData = {
+    items: posCart.map(function(c) { return Object.assign({}, c); }),
+    patientId: posCurrentPatient ? posCurrentPatient.id : null,
+    patientName: posCurrentPatient ? posCurrentPatient.name : null,
+    rx: posCurrentRx || null,
+    preparerId: DB.AppState.currentUser?.id || null,
+    preparerName: DB.AppState.currentUser?.name || 'Préparateur',
+    deviceId: DB.AppState.deviceId || null,
+    itemCount: posCart.length,
+    total: posCart.reduce(function(a, c) { return a + (c.total || 0); }, 0),
+    status: 'pending',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  try {
+    var transferId = await DB.dbAdd('prep_transfers', transferData);
+
+    // Notification via le système d'alertes existant (cloche du topbar, déjà synchronisée)
+    try {
+      await DB.dbAdd('alerts', {
+        type: 'PREP_TRANSFER',
+        message: (transferData.preparerName || 'Un préparateur') + ' a transféré une vente à encaisser (' +
+          transferData.itemCount + ' article(s) — ' + UI.formatCurrency(transferData.total) + ')',
+        status: 'unread',
+        date: Date.now(),
+        priority: 'high',
+        transferId: transferId,
+      });
+      if (typeof updateAlertBadge === 'function') updateAlertBadge();
+    } catch (e) { console.warn('[PrepQueue] Alerte non créée:', e); }
+
+    viderPanier();
+    UI.toast('Vente transférée à la caisse (' + transferData.itemCount + ' articles)', 'success', 4000);
+    if (typeof refreshPrepQueueBadge === 'function') refreshPrepQueueBadge();
+  } catch (e) {
+    console.error('[PrepQueue] Erreur transfert:', e);
+    UI.toast('Erreur lors du transfert : ' + e.message, 'error');
+  }
+}
+
+async function _getPendingTransfers() {
+  try {
+    var all = await DB.dbGetAll('prep_transfers');
+    return all.filter(function(t) { return t.status === 'pending' || t.status === 'claimed'; })
+      .sort(function(a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+  } catch (e) { return []; }
+}
+
+async function refreshPrepQueueBadge() {
+  var badge = document.getElementById('prep-queue-badge');
+  if (!badge) return;
+  var pending = await _getPendingTransfers();
+  var count = pending.filter(function(t) { return t.status === 'pending'; }).length;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+  badge.textContent = count > 9 ? '9+' : String(count);
+}
+
+async function voirFilePreparation() {
+  var transfers = await _getPendingTransfers();
+  if (transfers.length === 0) {
+    UI.toast('Aucune vente en attente d\'encaissement', 'info');
+    return;
+  }
+  var html = transfers.map(function(t) {
+    var dateStr = new Date(t.createdAt).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+    var claimedTag = t.status === 'claimed'
+      ? '<div style="font-size:11px;color:var(--warning)">Pris en charge par ' + (t.claimedByName || '?') + '</div>'
+      : '';
+    return '<div class="held-cart-card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)">' +
+      '<div style="flex:1">' +
+        '<div style="font-weight:600;font-size:14px">' + (t.patientName || 'Client comptoir') + '</div>' +
+        '<div style="font-size:12px;color:var(--text-muted)">' + t.itemCount + ' article(s) — ' + UI.formatCurrency(t.total) + ' — ' + dateStr + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted)">Préparé par ' + (t.preparerName || '?') + '</div>' +
+        claimedTag +
+      '</div>' +
+      '<button class="btn btn-xs btn-primary" onclick="prendreEnChargeTransfert(' + t.id + ')"><i data-lucide="log-in"></i> Encaisser</button>' +
+    '</div>';
+  }).join('');
+
+  UI.modal('<i data-lucide="list-checks" class="modal-icon-inline"></i> File de préparation (' + transfers.length + ')', '<div>' + html + '</div>');
+  if (window.lucide) lucide.createIcons();
+}
+
+async function prendreEnChargeTransfert(transferId) {
+  if (posCart.length) {
+    UI.toast('Videz ou mettez en attente le panier actuel avant de prendre en charge un transfert.', 'warning', 5000);
+    return;
+  }
+  try {
+    var t = await DB.dbGet('prep_transfers', transferId);
+    if (!t) { UI.toast('Transfert introuvable', 'error'); return; }
+    if (t.status === 'completed') { UI.toast('Cette vente a déjà été encaissée', 'warning'); return; }
+
+    t.status = 'claimed';
+    t.claimedBy = DB.AppState.currentUser?.id || null;
+    t.claimedByName = DB.AppState.currentUser?.name || null;
+    t.claimedAt = Date.now();
+    t.updatedAt = Date.now();
+    await DB.dbPut('prep_transfers', t);
+
+    posCart = t.items.map(function(c) { return Object.assign({}, c); });
+    posCurrentPatient = t.patientName ? { id: t.patientId, name: t.patientName } : null;
+    posCurrentRx = t.rx || null;
+    window._activePrepTransferId = t.id;
+
+    UI.closeModal();
+    refreshCartUI();
+    if (posCurrentPatient) renderClientBadge(posCurrentPatient);
+    if (typeof refreshPrepQueueBadge === 'function') refreshPrepQueueBadge();
+    UI.toast('Vente prise en charge — vérifiez puis cliquez sur "Valider" pour encaisser', 'success', 5000);
+  } catch (e) {
+    console.error('[PrepQueue] Erreur prise en charge:', e);
+    UI.toast('Erreur : ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // VALIDATION VENTE
 // ═══════════════════════════════════════════════════════════════════
 async function validerVente() {
@@ -2423,6 +2575,22 @@ async function _validerVenteLogic() {
     };
 
     const saleId = await DB.dbAdd('sales', saleData);
+
+    // Si cette vente provient de la file de préparation, clôturer le transfert
+    if (window._activePrepTransferId) {
+      try {
+        const transfer = await DB.dbGet('prep_transfers', window._activePrepTransferId);
+        if (transfer) {
+          transfer.status = 'completed';
+          transfer.completedAt = Date.now();
+          transfer.updatedAt = Date.now();
+          transfer.saleId = saleId;
+          await DB.dbPut('prep_transfers', transfer);
+        }
+      } catch (e) { console.warn('[PrepQueue] Erreur clôture transfert:', e); }
+      window._activePrepTransferId = null;
+      if (typeof refreshPrepQueueBadge === 'function') refreshPrepQueueBadge();
+    }
 
     // Charger le stock UNE SEULE FOIS (pas dans la boucle !)
     const stockAll = await DB.dbGetAll('stock');
