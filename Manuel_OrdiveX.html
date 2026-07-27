@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manuel Officiel OrdiveX â€” ERP Pharmaceutique</title>
+<style>
+  :root {
+    --primary: #1B4F72;
+    --primary-light: #2E86C1;
+    --accent: #0D9B6C;
+    --accent-light: #17D19A;
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: rgba(255,255,255,0.08);
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --warning: #E8913A;
+    --danger: #D63B3B;
+    --info: #2B7BC0;
+    --sidebar-w: 280px;
+    --topbar-h: 54px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* SVG Icons Styles */
+  .svg-icon {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .menu-icon .svg-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2;
+    color: white;
+  }
+  .ch-icon .svg-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--accent-light);
+  }
+  .callout-icon .svg-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* â•â•â• TOPBAR â•â•â• */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: var(--topbar-h);
+    background: rgba(22,27,34,0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; z-index: 200; gap: 14px;
+  }
+  .topbar-logo { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; }
+  .topbar-logo span { color: var(--accent-light); }
+  .topbar-badge {
+    background: linear-gradient(135deg, var(--accent), var(--primary-light));
+    color: white; font-size: 10px; font-weight: 700;
+    padding: 2px 9px; border-radius: 99px; letter-spacing: 0.5px;
+  }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); }
+  
+  .btn-print {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 14px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; transition: all .2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-print:hover { background: var(--primary); border-color: var(--primary-light); }
+
+  /* â•â•â• SIDEBAR â•â•â• */
+  .sidebar {
+    position: fixed; top: var(--topbar-h); left: 0;
+    width: var(--sidebar-w); height: calc(100vh - var(--topbar-h));
+    background: var(--surface); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 16px 0 60px; z-index: 100;
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .toc-title { font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); padding: 0 18px 10px; }
+  .toc-section { font-size: 9px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); padding: 14px 18px 3px; }
+  
+  .toc-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 18px; font-size: 12px;
+    color: var(--text-muted); text-decoration: none;
+    border-left: 2px solid transparent; transition: all .15s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toc-link:hover { color: var(--text); background: rgba(255,255,255,0.04); border-left-color: var(--primary-light); }
+  .toc-link.active { color: var(--accent-light); border-left-color: var(--accent); background: rgba(13,155,108,0.08); font-weight: 600; }
+  .toc-sub { padding-left: 30px; }
+
+  /* â•â•â• MAIN â•â•â• */
+  .main { margin-left: var(--sidebar-w); margin-top: var(--topbar-h); padding: 48px 60px 80px; max-width: 920px; flex: 1; }
+  
+  .cover {
+    text-align: center; padding: 72px 40px 56px;
+    background: linear-gradient(135deg, rgba(27,79,114,.3) 0%, rgba(13,155,108,.12) 100%);
+    border: 1px solid var(--border); border-radius: 20px; margin-bottom: 56px;
+    position: relative; overflow: hidden;
+  }
+  .cover::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle at 65% 35%, rgba(13,155,108,.07) 0%, transparent 55%),
+                radial-gradient(circle at 25% 75%, rgba(27,79,114,.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .cover-logo { font-size: 50px; font-weight: 900; letter-spacing: -2px; margin-bottom: 8px; }
+  .cover-logo span { color: var(--accent-light); }
+  .cover-sub { font-size: 16px; color: var(--text-muted); margin-bottom: 22px; }
+  .cover-ver {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(13,155,108,.15); border: 1px solid rgba(13,155,108,.3);
+    border-radius: 99px; padding: 6px 18px; font-size: 13px; color: var(--accent-light); font-weight: 600;
+  }
+  .cover-meta { display: flex; justify-content: center; gap: 36px; margin-top: 32px; flex-wrap: wrap; }
+  .cover-meta-item { text-align: center; }
+  .cover-meta-item strong { display: block; font-size: 24px; font-weight: 900; color: var(--accent-light); }
+  .cover-meta-item span { font-size: 12px; color: var(--text-muted); }
+
+  /* â•â•â• TYPOGRAPHY â•â•â• */
+  section[id] { scroll-margin-top: calc(var(--topbar-h) + 28px); }
+  h1.chapter {
+    font-size: 26px; font-weight: 800; color: var(--text);
+    margin: 56px 0 8px; padding-top: 56px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  h1.chapter.first { margin-top: 0; padding-top: 0; border-top: none; }
+  .ch-num {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white; font-size: 12px; font-weight: 800;
+    padding: 4px 10px; border-radius: 8px; min-width: 34px; text-align: center;
+  }
+  
+  h2.section {
+    font-size: 17px; font-weight: 700; color: var(--primary-light);
+    margin: 28px 0 10px; padding-left: 12px;
+    border-left: 3px solid var(--primary-light);
+  }
+  h3.subsection { font-size: 15px; font-weight: 700; color: var(--accent-light); margin: 18px 0 8px; }
+  p { margin-bottom: 12px; color: #c9d1d9; }
+
+  /* â•â•â• COMPONENTS â•â•â• */
+  .steps { counter-reset: step; list-style: none; margin: 14px 0; }
+  .steps li { counter-increment: step; display: flex; gap: 13px; margin-bottom: 10px; align-items: flex-start; }
+  .steps li::before {
+    content: counter(step);
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white; font-weight: 700; font-size: 11px;
+    min-width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 3px;
+  }
+  .steps li p { margin: 0; color: #c9d1d9; }
+
+  .bullets { list-style: none; margin: 10px 0; }
+  .bullets li { padding: 6px 0 6px 22px; position: relative; color: #c9d1d9; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .bullets li::before { content: 'â–¸'; position: absolute; left: 0; color: var(--accent); }
+
+  .callout { border-radius: 10px; padding: 13px 16px; margin: 14px 0; display: flex; gap: 11px; align-items: flex-start; font-size: 14px; }
+  .callout p { margin: 0; color: inherit; }
+  .c-tip { background: rgba(13,155,108,.1); border: 1px solid rgba(13,155,108,.25); color: #84e1bc; }
+  .c-warn { background: rgba(232,145,58,.1); border: 1px solid rgba(232,145,58,.3); color: #f0c070; }
+  .c-danger { background: rgba(214,59,59,.1); border: 1px solid rgba(214,59,59,.3); color: #ff9090; }
+  .c-info { background: rgba(43,123,192,.1); border: 1px solid rgba(43,123,192,.3); color: #90c8ff; }
+
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+  .t-g { background: rgba(13,155,108,.2); color: var(--accent-light); border: 1px solid rgba(13,155,108,.3); }
+  .t-b { background: rgba(43,123,192,.2); color: #58a6ff; border: 1px solid rgba(43,123,192,.3); }
+  .t-o { background: rgba(232,145,58,.2); color: #f0a062; border: 1px solid rgba(232,145,58,.3); }
+  .t-r { background: rgba(214,59,59,.2); color: #ff7b7b; border: 1px solid rgba(214,59,59,.3); }
+
+  .roles-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 14px 0; }
+  .role-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .role-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+  .role-card p { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 14px 0; }
+  .menu-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; font-size: 12px; }
+  .menu-icon { width: 30px; height: 30px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .menu-info strong { display: block; font-size: 12px; }
+  .menu-info span { font-size: 11px; color: var(--text-muted); }
+
+  .pay-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin: 14px 0; }
+  .pay-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; font-size: 13px; }
+  .pay-card strong { display: block; margin-bottom: 3px; font-size: 13px; }
+  .pay-card span { color: var(--text-muted); font-size: 11px; }
+
+  .ftable { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  .ftable th { background: var(--surface2); padding: 9px 13px; text-align: left; font-weight: 700; color: var(--text-muted); font-size: 10px; letter-spacing: .5px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .ftable td { padding: 9px 13px; border-bottom: 1px solid rgba(255,255,255,.04); color: #c9d1d9; vertical-align: top; }
+  .ftable tr:hover td { background: rgba(255,255,255,.02); }
+  .req { color: var(--danger); }
+
+  .status-list { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+  .chip { padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+
+  .fiche { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 24px 28px; margin: 20px 0; }
+  .fiche-hdr { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .fiche-num { width: 42px; height: 42px; background: linear-gradient(135deg,var(--accent),var(--accent-light)); border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 900; color: white; flex-shrink: 0; }
+  .fiche-ttl { font-size: 16px; font-weight: 700; }
+  .fiche-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  .cond-box { background: rgba(214,59,59,.08); border: 1px solid rgba(214,59,59,.25); border-radius: 10px; padding: 13px 17px; margin: 10px 0; }
+  .cond-box h4 { font-size: 13px; font-weight: 700; color: #ff8888; margin-bottom: 7px; }
+  .cond-box ol { margin-left: 16px; font-size: 13px; color: #c9d1d9; }
+  .cond-box ol li { margin-bottom: 4px; }
+
+  .divider { height: 1px; background: var(--border); margin: 48px 0; }
+
+  /* â•â•â• PRINT OPTIMIZATION (HIGHLY PROFESSIONAL PDF) â•â•â• */
+  @media print {
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+    
+    body {
+      background: #ffffff !important;
+      color: #1a202c !important;
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+
+    .topbar, .sidebar, .btn-print, .divider {
+      display: none !important;
+    }
+
+    .main {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+
+    /* Keep layout together */
+    h1, h2, h3, h4, h5, h6 {
+      page-break-after: avoid;
+      page-break-inside: avoid;
+      color: #1b4f72 !important;
+    }
+
+    p, li, td, th {
+      color: #2d3748 !important;
+    }
+
+    /* Page de couverture de prestige */
+    .cover {
+      background: linear-gradient(135deg, #f0f4f8 0%, #e8f5e9 100%) !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 16px !important;
+      padding: 60mm 20mm 40mm 20mm !important;
+      height: 257mm !important;
+      page-break-after: always !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+      box-sizing: border-box !important;
+      margin-bottom: 0 !important;
+    }
+    .cover::before { display: none !important; }
+    .cover-logo { font-size: 44pt !important; color: #1b4f72 !important; font-weight: 900 !important; }
+    .cover-logo span { color: #0d9b6c !important; }
+    .cover-sub { font-size: 14pt !important; color: #475569 !important; margin-bottom: 32px !important; }
+    .cover-ver {
+      background: #1b4f72 !important;
+      color: #ffffff !important;
+      border: none !important;
+      padding: 6px 18px !important;
+      font-size: 11pt !important;
+      border-radius: 99px !important;
+    }
+    .cover-meta {
+      margin-top: 48px !important;
+      gap: 36px !important;
+    }
+    .cover-meta-item strong { color: #1b4f72 !important; font-size: 22pt !important; }
+    .cover-meta-item span { color: #64748b !important; }
+
+    /* Titres de chapitres premium */
+    h1.chapter {
+      page-break-before: always;
+      margin-top: 0 !important;
+      padding-top: 12mm !important;
+      border-top: 2px solid #1b4f72 !important;
+      color: #1b4f72 !important;
+      font-size: 20pt !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
+      padding-bottom: 8px;
+    }
+
+    h1.chapter.first {
+      page-break-before: avoid;
+      border-top: none !important;
+      padding-top: 0 !important;
+    }
+
+    .ch-num {
+      background: #1b4f72 !important;
+      color: #ffffff !important;
+      padding: 3px 10px !important;
+      border-radius: 6px !important;
+      font-size: 11pt !important;
+      border: none !important;
+    }
+
+    h2.section {
+      border-left: 4px solid #0d9b6c !important;
+      color: #1b4f72 !important;
+      font-size: 14pt !important;
+      margin-top: 24px !important;
+      padding-left: 10px !important;
+    }
+    h3.subsection {
+      color: #0d9b6c !important;
+      font-size: 12pt !important;
+    }
+
+    /* Conteneurs et cartes stylisÃ©s pour impression */
+    .role-card, .menu-item, .pay-card, .fiche, .cond-box, .callout {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 8px !important;
+      color: #1a202c !important;
+      box-shadow: none !important;
+      page-break-inside: avoid;
+    }
+
+    .callout {
+      border-left: 4px solid #1b4f72 !important;
+    }
+    .c-tip {
+      background: #f0fdf4 !important;
+      border-left-color: #0d9b6c !important;
+      color: #14532d !important;
+    }
+    .c-warn {
+      background: #fffbeb !important;
+      border-left-color: #e8913a !important;
+      color: #78350f !important;
+    }
+    .c-danger {
+      background: #fef2f2 !important;
+      border-left-color: #d63b3b !important;
+      color: #7f1d1d !important;
+    }
+    .c-info {
+      background: #eff6ff !important;
+      border-left-color: #2b7bc0 !important;
+      color: #1e3a8a !important;
+    }
+
+    .tag, .chip {
+      background: #f1f5f9 !important;
+      color: #1e293b !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+    .t-r {
+      background: #fef2f2 !important;
+      color: #991b1b !important;
+      border-color: #fca5a5 !important;
+    }
+
+    /* Grilles prÃ©servÃ©es pour impression */
+    .roles-grid, .pay-grid {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 12px !important;
+    }
+    .menu-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
+
+    .ftable {
+      page-break-inside: auto;
+    }
+    .ftable tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+    .ftable th {
+      background: #f1f5f9 !important;
+      color: #1e293b !important;
+      border-bottom: 2px solid #cbd5e1 !important;
+    }
+    .ftable td {
+      border-bottom: 1px solid #e2e8f0 !important;
+      color: #334155 !important;
+    }
+
+    /* Impression propre des icÃ´nes vectorielles */
+    .svg-icon {
+      stroke: #1b4f72 !important;
+    }
+    .menu-icon {
+      background: #1b4f72 !important;
+    }
+    .menu-icon .svg-icon {
+      stroke: #ffffff !important;
+    }
+  }
+
+  /* â•â•â• HAMBURGER BUTTON (mobile only) â•â•â• */
+  .btn-hamburger {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .btn-hamburger:hover { background: var(--surface2); }
+  .btn-hamburger svg { width: 20px; height: 20px; }
+
+  /* â•â•â• MOBILE OVERLAY (backdrop) â•â•â• */
+  .sidebar-overlay {
+    visibility: hidden;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 250;           /* au-dessus de la topbar (200) */
+    opacity: 0;
+    transition: opacity .28s ease, visibility .28s ease;
+  }
+  .sidebar-overlay.active {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* â•â•â• MOBILE CLOSE BTN inside sidebar â•â•â• */
+  .sidebar-close {
+    display: none;
+    position: absolute; top: 10px; right: 12px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 9px;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 16px; line-height: 1;
+    transition: all .2s;
+  }
+  .sidebar-close:hover { color: var(--text); background: var(--border); }
+
+  @media (max-width: 820px) {
+    :root { --sidebar-w: 0px; }
+    .btn-hamburger { display: flex; }
+    .topbar-right { gap: 8px; }
+
+    /* Sidebar hors-Ã©cran par dÃ©faut, en overlay fixe */
+    .sidebar {
+      position: fixed !important;   /* conserve le positionnement fixe */
+      top: 0 !important;            /* occupe tout l'Ã©cran en hauteur */
+      left: 0 !important;
+      height: 100vh !important;
+      width: 280px !important;
+      transform: translateX(-100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+      z-index: 300 !important;      /* au-dessus de l'overlay ET de la topbar */
+      padding-top: 52px !important; /* espace sous la topbar */
+    }
+    .sidebar-close { display: block; }
+
+    /* Sidebar ouverte via JS */
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .main { padding: 24px 16px; margin-left: 0 !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button class="btn-hamburger" id="btn-hamburger" aria-label="Ouvrir le sommaire">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="topbar-logo">Ordive<span>X</span></div>
+  <div class="topbar-badge">ERP Pharmaceutique</div>
+  <div class="topbar-right">
+    <span>v9.7.56 — Manuel Officiel</span>
+    <button class="btn-print" id="btn-print">
+      <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+      Imprimer en PDF
+    </button>
+  </div>
+</div>
+
+<!-- MOBILE OVERLAY -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- SIDEBAR TOC -->
+<nav class="sidebar" id="sidebar">
+  <button class="sidebar-close" id="sidebar-close" aria-label="Fermer le sommaire">âœ•</button>
+  <div class="toc-title">Sommaire</div>
+  <a class="toc-link" href="#preface">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>
+    PrÃ©face
+  </a>
+  
+  <div class="toc-section">DÃ©couverte</div>
+  <a class="toc-link" href="#ch1">
+    <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+    1 â€” PrÃ©sentation
+  </a>
+  <a class="toc-link toc-sub" href="#ch1-interface">Interface & Navigation</a>
+  <a class="toc-link toc-sub" href="#ch1-roles">RÃ´les Utilisateurs</a>
+  
+  <div class="toc-section">Connexion</div>
+  <a class="toc-link" href="#ch2">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+    2 â€” Connexion & Session
+  </a>
+  
+  <div class="toc-section">Point de Vente</div>
+  <a class="toc-link" href="#ch3">
+    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    3 â€” Point de Vente (POS)
+  </a>
+  <a class="toc-link toc-sub" href="#ch3-panier">Recherche & Panier</a>
+  <a class="toc-link toc-sub" href="#ch3-pay">Modes de paiement</a>
+  <a class="toc-link toc-sub" href="#ch3-assur">Vente avec Assurance</a>
+  <a class="toc-link toc-sub" href="#ch3-credit">Vente Ã  CrÃ©dit</a>
+  <a class="toc-link toc-sub" href="#ch3-devis">Devis</a>
+  
+  <div class="toc-section">Caisse</div>
+  <a class="toc-link" href="#ch4">
+    <svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    4 â€” Caisse JournaliÃ¨re
+  </a>
+  
+  <div class="toc-section">Catalogue</div>
+  <a class="toc-link" href="#ch5">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="m10.5 20.5 10-10a4.95 4.95 0 0 0-7-7l-10 10a4.95 4.95 0 0 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+    5 â€” Catalogue Produits
+  </a>
+  <a class="toc-link toc-sub" href="#ch5-fiche">Fiche produit complÃ¨te</a>
+  <a class="toc-link toc-sub" href="#ch5-filtres">Filtres & Recherche</a>
+  
+  <div class="toc-section">Achats</div>
+  <a class="toc-link" href="#ch6">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    6 â€” Fournisseurs
+  </a>
+  <a class="toc-link" href="#ch7">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    7 â€” Factures Fournisseurs
+  </a>
+  <a class="toc-link toc-sub" href="#ch7-creer">Enregistrer une facture</a>
+  <a class="toc-link toc-sub" href="#ch7-recv">EntrÃ©e de Stock & Validation</a>
+  
+  <div class="toc-section">Stock</div>
+  <a class="toc-link" href="#ch8">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+    8 â€” Gestion des Stocks
+  </a>
+  <a class="toc-link" href="#ch9">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+    9 â€” Inventaires Physiques
+  </a>
+  <a class="toc-link" href="#ch10">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+    10 â€” RÃ©approvisionnement
+  </a>
+  
+  <div class="toc-section">Patients</div>
+  <a class="toc-link" href="#ch11">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    11 â€” Dossiers Patients
+  </a>
+  <a class="toc-link" href="#ch12">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    12 â€” Ordonnances
+  </a>
+  <a class="toc-link" href="#ch13">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    13 â€” CrÃ©ances & Assurances
+  </a>
+  
+  <div class="toc-section">TraÃ§abilitÃ©</div>
+  <a class="toc-link" href="#ch14">
+    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    14 â€” TraÃ§abilitÃ© & Pharmavig.
+  </a>
+  
+  <div class="toc-section">Analytique</div>
+  <a class="toc-link" href="#ch15">
+    <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+    15 â€” Tableau de Bord
+  </a>
+  <a class="toc-link" href="#ch16">
+    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    16 â€” Historique Ventes
+  </a>
+  <a class="toc-link" href="#ch17">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+    17 â€” Retours MÃ©dicaments
+  </a>
+  <a class="toc-link" href="#ch18">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    18 â€” Sorties de Stock
+  </a>
+  <a class="toc-link" href="#ch19">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    19 â€” Rapports & Analytique
+  </a>
+  <a class="toc-link" href="#ch20">
+    <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    20 â€” MÃ©triques Business
+  </a>
+  
+  <div class="toc-section">Administration</div>
+  <a class="toc-link" href="#ch21">
+    <svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    21 â€” Ã‰quipes Matin / Soir
+  </a>
+  <a class="toc-link" href="#ch22">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+    22 â€” Centre d'Impression
+  </a>
+  <a class="toc-link" href="#ch23">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    23 â€” Alertes SystÃ¨me
+  </a>
+  <a class="toc-link" href="#ch24">
+    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    24 â€” ParamÃ¨tres
+  </a>
+  
+  <div class="toc-section">Fiches Pratiques</div>
+  <a class="toc-link" href="#fiche1">â‘  Vendre avec Assurance</a>
+  <a class="toc-link" href="#fiche2">â‘¡ Vendre Ã  CrÃ©dit</a>
+  <a class="toc-link" href="#fiche3">â‘¢ Retrouver une facture</a>
+  <a class="toc-link" href="#fiche4">â‘£ CrÃ©er un mÃ©dicament</a>
+  <a class="toc-link" href="#fiche5">â‘¤ Enregistrer Facture</a>
+  
+  <div class="toc-section">RÃ©fÃ©rence</div>
+  <a class="toc-link" href="#bonnes-pratiques">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    Bonnes Pratiques
+  </a>
+  <a class="toc-link" href="#glossaire">
+    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    Glossaire
+  </a>
+  <a class="toc-link" href="#faq">
+    <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    FAQ & DÃ©pannage
+  </a>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-logo">Ordive<span>X</span></div>
+    <div class="cover-sub">ERP Pharmaceutique Professionnel â€” RÃ©publique de GuinÃ©e</div>
+    <div class="cover-ver">âœ¦ Version 9.7.49 &nbsp;Â·&nbsp; Manuel Officiel d'Utilisation</div>
+    <div class="cover-meta">
+      <div class="cover-meta-item"><strong>24</strong><span>Chapitres</span></div>
+      <div class="cover-meta-item"><strong>5</strong><span>Fiches pratiques</span></div>
+      <div class="cover-meta-item"><strong>3</strong><span>RÃ´les utilisateurs</span></div>
+      <div class="cover-meta-item"><strong>6</strong><span>Modes de paiement</span></div>
+    </div>
+  </div>
+
+  <!-- PRÃ‰FACE -->
+  <section id="preface">
+    <h1 class="chapter first">
+      <span class="ch-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg></span>
+      PrÃ©face
+    </h1>
+    <p><strong>OrdiveX est lâ€™alliÃ© technologique incontournable des officines modernes en RÃ©publique de GuinÃ©e : optimisez vos opÃ©rations, sÃ©curisez vos flux financiers et pilotez la performance de votre pharmacie avec une prÃ©cision chirurgicale.</strong></p>
+    <p>Bienvenue dans le manuel d'utilisation officiel d'<strong>OrdiveX ERP Pharmaceutique</strong>. Ce guide est rÃ©digÃ© Ã  partir de la structure et de la logique rÃ©elles du code de l'application. Chaque bouton, champ de saisie et flux utilisateur dÃ©crit correspond exactement Ã  l'interface logicielle rÃ©elle.</p>
+    <p>OrdiveX est une solution de gestion intÃ©grÃ©e, moderne et sÃ©curisÃ©e, conÃ§ue pour fonctionner de maniÃ¨re autonome (100% locale et hors ligne) avec synchronisation cloud automatique dÃ¨s qu'Internet est disponible.</p>
+    <h3 class="subsection">Ã€ qui s'adresse ce guide ?</h3>
+    <ul class="bullets">
+      <li><strong>Caissiers & Vendeurs</strong> â€” MaÃ®triser la caisse, les encaissements et tous les modes de paiement.</li>
+      <li><strong>Pharmaciens & GÃ©rants</strong> â€” Gestion des stocks, commandes, rapports et traÃ§abilitÃ© rÃ©glementaire.</li>
+      <li><strong>Administrateurs</strong> â€” Configuration complÃ¨te, gestion des utilisateurs et pilotage global.</li>
+    </ul>
+  </section>
+
+  <!-- CH1 -->
+  <section id="ch1">
+    <h1 class="chapter">
+      <span class="ch-num">1</span>
+      PrÃ©sentation d'OrdiveX
+    </h1>
+    <p>OrdiveX s'utilise directement dans un navigateur internet (Google Chrome recommandÃ©). L'application s'adapte aux ordinateurs de caisse et aux tablettes tactiles. Elle peut Ãªtre installÃ©e sur l'appareil via le bouton <strong>Installer l'app</strong> (ðŸ“±) de la barre supÃ©rieure.</p>
+
+    <section id="ch1-interface">
+      <h2 class="section">1.1 Interface & Structure de Navigation</h2>
+      <p>L'interface est divisÃ©e en trois zones permanentes :</p>
+      <ul class="bullets">
+        <li><strong>La barre latÃ©rale gauche (Menu) :</strong> Permet d'accÃ©der aux diffÃ©rents modules de l'application. Elle affiche Ã©galement le nom de l'utilisateur connectÃ©, son rÃ´le, ainsi que le statut rÃ©seau (pastille verte pour <em>En ligne</em> et grise pour <em>Hors ligne</em>).</li>
+        <li><strong>La barre supÃ©rieure (Topbar) :</strong> Permet d'accÃ©der rapidement au module de rÃ©approvisionnement (ðŸ”„), au centre d'impression (ðŸ–¨ï¸), aux alertes (ðŸ””), au moniteur rÃ©seau (ðŸ“¡) et Ã  l'installation.</li>
+        <li><strong>La zone centrale de travail :</strong> Affiche le module sÃ©lectionnÃ©.</li>
+      </ul>
+      <p>Le menu latÃ©ral affiche les modules suivants (selon votre rÃ´le) :</p>
+      <div class="menu-grid">
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="menu-info"><strong>Tableau de Bord</strong><span>Tous les rÃ´les</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="menu-info"><strong>Point de Vente</strong><span>Tous les rÃ´les</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="menu-info"><strong>Caisse JournaliÃ¨re</strong><span>Tous les rÃ´les</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="m10.5 20.5 10-10a4.95 4.95 0 0 0-7-7l-10 10a4.95 4.95 0 0 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg></div><div class="menu-info"><strong>Catalogue Produits</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="menu-info"><strong>Gestion des Stocks</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><div class="menu-info"><strong>Inventaires Physiques</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></div><div class="menu-info"><strong>RÃ©approvisionnement</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div class="menu-info"><strong>Ordonnances</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="menu-info"><strong>Dossiers Patients</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div class="menu-info"><strong>CrÃ©ances & Assurances</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="menu-info"><strong>Fournisseurs</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="menu-info"><strong>Bons de Commande</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="menu-info"><strong>TraÃ§abilitÃ© & Pharmavig.</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="menu-info"><strong>Historique Ventes</strong><span>Tous les rÃ´les</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div><div class="menu-info"><strong>Retours MÃ©dicaments</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/></svg></div><div class="menu-info"><strong>Sorties de Stock</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="menu-info"><strong>Rapports & Analytique</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div><div class="menu-info"><strong>MÃ©triques Business</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg></div><div class="menu-info"><strong>Centre d'Impression</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><div class="menu-info"><strong>Alertes</strong><span>Tous les rÃ´les</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="menu-info"><strong>Ã‰quipes Matin / Soir</strong><span>Admin, Pharmacien</span></div></div>
+        <div class="menu-item"><div class="menu-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><div class="menu-info"><strong>ParamÃ¨tres</strong><span>Admin uniquement</span></div></div>
+      </div>
+    </section>
+
+    <section id="ch1-roles">
+      <h2 class="section">1.2 RÃ´les Utilisateurs</h2>
+      <div class="roles-grid">
+        <div class="role-card">
+          <h4>ðŸ”´ Caissier</h4>
+          <p>Point de Vente, Caisse JournaliÃ¨re, Historique des Ventes et Alertes. Ne peut pas modifier les prix, gÃ©rer les stocks ni accÃ©der aux rapports financiers.</p>
+        </div>
+        <div class="role-card">
+          <h4>ðŸŸ¡ Pharmacien</h4>
+          <p>AccÃ¨s complet Ã  la gestion opÃ©rationnelle (stocks, commandes, inventaires, patients, traÃ§abilitÃ© et rapports). Ne peut pas accÃ©der aux ParamÃ¨tres systÃ¨me d'administration.</p>
+        </div>
+        <div class="role-card">
+          <h4>ðŸŸ¢ Administrateur</h4>
+          <p>ContrÃ´le total. CrÃ©ation des comptes utilisateurs, configuration gÃ©nÃ©rale de l'officine et accÃ¨s au Journal d'Audit.</p>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- CH2 -->
+  <section id="ch2">
+    <h1 class="chapter">
+      <span class="ch-num">2</span>
+      Connexion & Session
+    </h1>
+    <p>Ã€ chaque dÃ©marrage d'OrdiveX, une connexion est requise. Le logiciel ne restaure pas automatiquement la session prÃ©cÃ©dente (sÃ©curitÃ© renforcÃ©e).</p>
+    <h2 class="section">2.1 Se connecter</h2>
+    <ol class="steps">
+      <li><p>Saisissez votre <strong>identifiant</strong> (prÃ©nom ou code caissier, insensible Ã  la casse).</p></li>
+      <li><p>Tapez votre <strong>mot de passe</strong> (sensible Ã  la casse â€” vÃ©rifiez que le Verr. Maj n'est pas actif).</p></li>
+      <li><p>Cliquez sur <strong>Se connecter</strong>. La session est crÃ©Ã©e et toutes vos actions sont tracÃ©es sous votre nom.</p></li>
+    </ol>
+    <h2 class="section">2.2 DÃ©connexion</h2>
+    <p>Cliquez sur l'icÃ´ne ðŸšª (dÃ©connexion) en bas de la barre latÃ©rale gauche. L'application retourne immÃ©diatement Ã  l'Ã©cran de connexion.</p>
+    <div class="callout c-warn">
+      <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <p>Ne partagez jamais votre identifiant et mot de passe. Toutes les ventes, modifications et actions sensibles sont enregistrÃ©es sous votre nom dans le Journal d'Audit, de faÃ§on permanente et inaltÃ©rable.</p>
+    </div>
+    <h2 class="section">2.3 Mot de passe oubliÃ©</h2>
+    <p>Adressez-vous Ã  l'<strong>Administrateur</strong>. Depuis <em>ParamÃ¨tres â†’ Utilisateurs</em>, il peut modifier directement votre mot de passe.</p>
+  </section>
+
+  <!-- CH3 -->
+  <section id="ch3">
+    <h1 class="chapter">
+      <span class="ch-num">3</span>
+      Point de Vente (POS)
+    </h1>
+    <p>Le Point de Vente (POS) est le module le plus utilisÃ© au quotidien pour rÃ©aliser les ventes clients. Accessible Ã  tous les rÃ´les.</p>
+    <p>L'interface est divisÃ©e en deux zones : Ã  <strong>gauche</strong>, la grille des produits avec barre de recherche et filtres ; Ã  <strong>droite</strong>, le panneau panier avec patient, ordonnance, totaux et paiement.</p>
+
+    <section id="ch3-panier">
+      <h2 class="section">3.1 Recherche de produits et gestion du panier</h2>
+      <p>La barre de recherche en haut Ã  gauche permet de trouver un produit par son <strong>nom commercial</strong>, sa <strong>DCI</strong> (molÃ©cule gÃ©nÃ©rique) ou son <strong>code produit</strong>. La recherche s'active Ã  partir de 2 caractÃ¨res.</p>
+      <p>Une barre de catÃ©gories permet de filtrer par famille thÃ©rapeutique. Chaque vignette affiche le nom, le prix et le stock. Les produits en rupture affichent un badge <span class="tag t-r">Rupture</span>. Les options de tri disponibles sont : DÃ©faut, Nom Aâ†’Z, Nom Zâ†’A, Prix â†‘, Prix â†“, Stock â†‘, Stock â†“.</p>
+      <ol class="steps">
+        <li><p>Tapez le nom dans la barre de recherche. Les rÃ©sultats s'affichent en temps rÃ©el.</p></li>
+        <li><p>Cliquez sur le produit. Si la vente Ã  l'unitÃ© est activÃ©e, des boutons distincts apparaissent (BoÃ®te, Plaquette, UnitÃ©). Cliquez sur l'unitÃ© souhaitÃ©e.</p></li>
+        <li><p>Le produit est ajoutÃ© au panier. OrdiveX sÃ©lectionne automatiquement le lot expirant le plus tÃ´t (<strong>mÃ©thode FEFO</strong>).</p></li>
+        <li><p>Dans le panier (panneau droit), modifiez la quantitÃ© si besoin. Utilisez le champ <strong>Remise</strong> (en bas du panier) pour appliquer une rÃ©duction en GNF.</p></li>
+      </ol>
+      <div class="callout c-tip">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+        <p><strong>Multi-ventes :</strong> Vous pouvez ouvrir plusieurs paniers simultanÃ©ment en cliquant sur l'icÃ´ne <strong>+</strong> en haut du panneau panier. Utile pour mettre en attente un client sans perdre sa saisie.</p>
+      </div>
+      <div class="callout c-info">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+        <p><strong>Panier en attente :</strong> Le bouton <strong>Attente</strong> (icÃ´ne pause â¸) suspend le panier en cours. Le bouton <strong>Couches</strong> (icÃ´ne ðŸ“š) liste et restaure tous les paniers en attente.</p>
+      </div>
+      <div class="callout c-warn">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <p><strong>Alerte interactions mÃ©dicamenteuses :</strong> OrdiveX surveille 30 combinaisons critiques connues (ex: Warfarine + Aspirine, MÃ©thotrexate + TrimÃ©thoprime, Simvastatine + Ã‰rythromycineâ€¦). Si deux mÃ©dicaments incompatibles sont dans le mÃªme panier, une alerte s'affiche avant la validation.</p>
+      </div>
+
+      <h3 class="subsection">Associer un patient au panier</h3>
+      <p>Dans le panneau droit, la section <strong>Patient</strong> affiche le bouton <em>Choisir un patientâ€¦</em>. Cliquez dessus pour ouvrir le rÃ©pertoire des patients enregistrÃ©s. L'association d'un patient est <strong>obligatoire</strong> pour les ventes Ã  CrÃ©dit. Le bouton <strong>+ Nouveau</strong> permet de crÃ©er un patient Ã  la volÃ©e depuis le POS.</p>
+
+      <h3 class="subsection">Lier une ordonnance</h3>
+      <p>Dans la section <strong>Ordonnance</strong> du panneau panier, activez le toggle. Le bouton <strong>Lier une ordonnance</strong> permet de sÃ©lectionner une ordonnance existante pour l'associer Ã  la vente.</p>
+    </section>
+
+    <section id="ch3-pay">
+      <h2 class="section">3.2 Modes de paiement disponibles</h2>
+      <div class="pay-grid">
+        <div class="pay-card"><strong>ðŸ’µ EspÃ¨ces</strong><span>Saisir le montant reÃ§u. La monnaie Ã  rendre est calculÃ©e automatiquement. Des raccourcis rapides (billets courants) accÃ©lÃ¨rent la saisie.</span></div>
+        <div class="pay-card"><strong>ðŸ“± O. Money</strong><span>Orange Money. Saisir le numÃ©ro de tÃ©lÃ©phone client puis envoyer la demande de paiement mobile.</span></div>
+        <div class="pay-card"><strong>ðŸ“± MTN MoMo</strong><span>MTN Mobile Money. MÃªme logique qu'Orange Money avec envoi de demande de paiement.</span></div>
+        <div class="pay-card"><strong>â†”ï¸ Mixte</strong><span>Paiement combinÃ© : deux modes de paiement simultanÃ©ment (ex : EspÃ¨ces + Orange Money). Saisir le montant pour chaque mode.</span></div>
+        <div class="pay-card"><strong>ðŸ›¡ï¸ Assurance</strong><span>Tiers payant. Ventilation Part Entreprise / Part Patient automatique. Voir section 3.3.</span></div>
+        <div class="pay-card"><strong>ðŸ“… CrÃ©dit</strong><span>Vente Ã  crÃ©dit avec date d'Ã©chÃ©ance. Patient identifiÃ© obligatoire. Plafond de crÃ©dit vÃ©rifiÃ© automatiquement. Voir section 3.4.</span></div>
+      </div>
+      <p>Pour les mobiles (O. Money / MTN MoMo), l'action <strong>Envoyer la demande de paiement</strong> est disponible. Un SMS de confirmation peut Ãªtre renvoyÃ© au client aprÃ¨s la vente.</p>
+    </section>
+
+    <section id="ch3-assur">
+      <h2 class="section">3.3 Vente avec Assurance (Tiers Payant)</h2>
+      <p>Ce mode permet de diviser le montant entre un organisme payeur (entreprise, mutuelle) et le patient (ticket modÃ©rateur). OrdiveX calcule et affiche les deux parts en temps rÃ©el.</p>
+      <ol class="steps">
+        <li><p>Ajoutez les produits au panier. (Optionnel) Identifiez le patient.</p></li>
+        <li><p>Dans la zone Paiement, cliquez sur le bouton <strong>Assurance</strong>.</p></li>
+        <li><p>Renseignez le champ <strong>Organisme &amp; Prise en charge</strong> : nom de la mutuelle ou de l'entreprise employeur.</p></li>
+        <li><p>Renseignez la <strong>RÃ©f. Prise en charge</strong> : numÃ©ro du bon de prise en charge papier remis par le patient.</p></li>
+        <li><p>Saisissez le <strong>Montant pris en charge par l'entreprise</strong> (uniquement la part couverte, pas le total de la facture).</p></li>
+        <li><p>La <strong>Part Patient</strong> (ticket modÃ©rateur = Total âˆ’ Part Entreprise) est calculÃ©e automatiquement et affichÃ©e en vert.</p></li>
+        <li><p>SÃ©lectionnez le mode de rÃ¨glement du patient (EspÃ¨ces, O. Money ou MTN MoMo) et saisissez le montant reÃ§u.</p></li>
+        <li><p>Cliquez sur <strong>Valider</strong>. Le reÃ§u imprimÃ© porte la mention <em>FACTURE / REÃ‡U</em> et dÃ©taille les deux parts sÃ©parÃ©ment.</p></li>
+      </ol>
+      <div class="callout c-tip">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+        <p>La banniÃ¨re bleue (Part Entreprise) et verte (Part Patient) s'affiche dans le panier dÃ¨s que le mode Assurance est activÃ©, pour une vÃ©rification visuelle avant validation.</p>
+      </div>
+    </section>
+
+    <section id="ch3-credit">
+      <h2 class="section">3.4 Vente Ã  CrÃ©dit (Dette Patient)</h2>
+      <div class="cond-box">
+        <h4>â›” 3 conditions obligatoires â€” le bouton Valider est bloquÃ© si elles ne sont pas remplies :</h4>
+        <ol>
+          <li>Un patient doit Ãªtre <strong>sÃ©lectionnÃ© et identifiÃ©</strong> dans le panier (interdit pour un client anonyme).</li>
+          <li>Le patient doit avoir un <strong>plafond de crÃ©dit supÃ©rieur Ã  0</strong> (dÃ©fini dans sa fiche par l'Admin ou le Pharmacien).</li>
+          <li>Le total du nouveau panier ne doit <strong>pas dÃ©passer le plafond disponible</strong> (plafond âˆ’ dettes existantes).</li>
+        </ol>
+      </div>
+      <ol class="steps">
+        <li><p>Ajoutez les produits au panier et cliquez sur <strong>Choisir un patientâ€¦</strong> pour identifier le client.</p></li>
+        <li><p>Dans la zone Paiement, cliquez sur <strong>CrÃ©dit</strong>.</p></li>
+        <li><p>VÃ©rifiez ou modifiez la <strong>Date d'Ã©chÃ©ance du crÃ©dit</strong> (par dÃ©faut : aujourd'hui + 30 jours).</p></li>
+        <li><p>Cliquez sur <strong>Valider</strong>. La vente est enregistrÃ©e en statut <em>En attente</em> et le stock est immÃ©diatement dÃ©duit.</p></li>
+      </ol>
+      <p><strong>Pour encaisser le remboursement d'une dette :</strong> Allez dans <strong>Dossiers Patients</strong>, ouvrez la fiche du patient, puis utilisez l'onglet dettes pour enregistrer le paiement reÃ§u.</p>
+    </section>
+
+    <section id="ch3-devis">
+      <h2 class="section">3.5 Devis (Proforma)</h2>
+      <p>Le bouton <strong>Devis</strong> (panneau droit, rangÃ©e d'actions) gÃ©nÃ¨re et imprime une estimation tarifÃ©e <strong>sans dÃ©duire le stock</strong> et sans enregistrer de vente. Utile pour informer un patient du coÃ»t d'une ordonnance avant qu'il ne confirme son achat.</p>
+    </section>
+  </section>
+
+  <!-- CH4 -->
+  <section id="ch4">
+    <h1 class="chapter">
+      <span class="ch-num">4</span>
+      Caisse JournaliÃ¨re
+    </h1>
+    <p>Accessible via <strong>Caisse JournaliÃ¨re</strong> pour tous les rÃ´les. Affiche le bilan financier complet de la journÃ©e en cours, calculÃ© et mis Ã  jour automatiquement.</p>
+    <h2 class="section">4.1 Ventilation par mode de paiement</h2>
+    <ul class="bullets">
+      <li><strong>EspÃ¨ces</strong> â€” Total encaissÃ© en cash aujourd'hui.</li>
+      <li><strong>Orange Money</strong> â€” Total des paiements mobile Orange.</li>
+      <li><strong>MTN MoMo</strong> â€” Total des paiements mobile MTN.</li>
+      <li><strong>Virement</strong> â€” Total des virements bancaires.</li>
+      <li><strong>CrÃ©dit</strong> â€” Montant des ventes Ã  crÃ©dit ouvertes ce jour.</li>
+      <li><strong>Assurance</strong> â€” SÃ©paration entre Part Entreprise (en attente de rÃ¨glement) et Part Patient (encaissÃ©e immÃ©diatement).</li>
+    </ul>
+    <p>La caisse intÃ¨gre Ã©galement : les <strong>remboursements de dettes reÃ§us aujourd'hui</strong> (ventes antÃ©rieures payÃ©es ce jour), les <strong>retours approuvÃ©s</strong> (dÃ©duits du total) et affiche en bas le <strong>CA net du mois en cours</strong>.</p>
+    <div class="callout c-tip">
+      <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+      <p>Confrontez chaque soir le total affichÃ© dans la Caisse JournaliÃ¨re avec l'argent physique dans le tiroir avant de fermer. Tout Ã©cart inexpliquÃ© doit Ãªtre signalÃ© et investiguÃ© immÃ©diatement.</p>
+    </div>
+  </section>
+
+  <!-- CH5 -->
+  <section id="ch5">
+    <h1 class="chapter">
+      <span class="ch-num">5</span>
+      Catalogue Produits
+    </h1>
+    <p>Accessible via <strong>Catalogue Produits</strong> (Admin et Pharmacien). Affiche tous les mÃ©dicaments et produits rÃ©fÃ©rencÃ©s. Les 4 KPIs en haut de page sont : <strong>Valeur Stock (Achat)</strong>, <strong>Valeur Stock (Vente)</strong>, <strong>Profit Potentiel</strong> et <strong>En Rupture</strong>.</p>
+
+    <section id="ch5-fiche">
+      <h2 class="section">5.1 CrÃ©er une fiche produit</h2>
+      <p>Cliquez sur <strong>+ Nouveau Produit</strong> (bouton bleu, haut Ã  droite). Le formulaire contient les champs suivants :</p>
+      <table class="ftable">
+        <thead><tr><th>Champ</th><th>Requis</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Code</strong></td><td><span class="req">Oui</span></td><td>Identifiant unique, gÃ©nÃ©rÃ© automatiquement (modifiable). Peut Ãªtre le code-barres imprimÃ© sur la boÃ®te.</td></tr>
+          <tr><td><strong>DCI</strong></td><td>Non</td><td>DÃ©nomination Commune Internationale â€” molÃ©cule active (ex : ParacÃ©tamol). Bouton <em>Base RCP</em> pour enrichissement automatique.</td></tr>
+          <tr><td><strong>Nom commercial</strong></td><td><span class="req">Oui</span></td><td>Marque commerciale (ex : Doliprane 1000mg).</td></tr>
+          <tr><td><strong>Marque / Laboratoire</strong></td><td>Non</td><td>Texte libre ou sÃ©lection dans la liste (Sanofi, Pfizer, GSK, Bayer, Novartis, AstraZenecaâ€¦).</td></tr>
+          <tr><td><strong>Forme galÃ©nique</strong></td><td>Non</td><td>ComprimÃ©, Sirop, Injectable, Pommade, GÃ©luleâ€¦</td></tr>
+          <tr><td><strong>Dosage</strong></td><td>Non</td><td>Ex : 500mg, 250mg/5ml, 1g.</td></tr>
+          <tr><td><strong>CatÃ©gorie</strong></td><td><span class="req">Oui</span></td><td>Famille thÃ©rapeutique (Antibiotique, Antalgique, Antihypertenseurâ€¦).</td></tr>
+          <tr><td><strong>Statut</strong></td><td>Non</td><td>OTC (sans ordonnance) ou Rx (sur ordonnance obligatoire).</td></tr>
+          <tr><td><strong>Type de produit</strong></td><td>Non</td><td>SpÃ©cialitÃ© (calcule automatiquement Prix vente = Prix achat Ã— 1,40) ou GÃ©nÃ©rique (Ã— 1,12).</td></tr>
+          <tr><td><strong>Prix d'achat (GNF)</strong></td><td>Non</td><td>Prix auquel la pharmacie achÃ¨te au grossiste. Sert au calcul de marge.</td></tr>
+          <tr><td><strong>Prix de vente (GNF)</strong></td><td><span class="req">Oui</span></td><td>Prix affichÃ© en rayon, appliquÃ© au Point de Vente.</td></tr>
+          <tr><td><strong>Seuil minimum</strong></td><td>Non</td><td>QuantitÃ© en dessous de laquelle une alerte "Stock Bas" se dÃ©clenche. DÃ©faut : 10 boÃ®tes.</td></tr>
+          <tr><td><strong>DÃ©conditionnement</strong></td><td>Non</td><td>Active la vente Ã  l'unitÃ© : sous-unitÃ©s par boÃ®te, plaquettes, gÃ©lules, et leurs prix individuels.</td></tr>
+          <tr><td><strong>Substance ContrÃ´lÃ©e</strong></td><td>Non</td><td>Si Oui : classification obligatoire (StupÃ©fiant / Psychotrope / PrÃ©curseur).</td></tr>
+          <tr><td><strong>Notice mÃ©dicale</strong></td><td>Non</td><td>Posologie recommandÃ©e, PrÃ©cautions d'emploi, Contre-indications, Effets indÃ©sirables, RCP complet.</td></tr>
+        </tbody>
+      </table>
+      <p>Cliquez sur <strong>Enregistrer</strong>. Le produit est disponible immÃ©diatement au Point de Vente.</p>
+    </section>
+
+    <section id="ch5-filtres">
+      <h2 class="section">5.2 Recherche et filtres</h2>
+      <ul class="bullets">
+        <li><strong>Recherche textuelle</strong> â€” Par nom commercial, DCI ou code produit.</li>
+        <li><strong>CatÃ©gorie</strong> â€” Filtrer par famille thÃ©rapeutique.</li>
+        <li><strong>Forme galÃ©nique</strong> â€” ComprimÃ©, Sirop, Injectableâ€¦</li>
+        <li><strong>Statut Rx/OTC</strong> â€” Produits sur ordonnance ou sans ordonnance.</li>
+        <li><strong>Tri</strong> â€” De A Ã  Z, De Z Ã  A, ou Ordre d'ajout.</li>
+      </ul>
+      <p>Les boutons en haut Ã  droite : <strong>Importer</strong> (CSV en masse), <strong>PDF</strong> (imprimer le catalogue) et <strong>CSV</strong> (exporter vers Excel).</p>
+    </section>
+  </section>
+
+  <!-- CH6 -->
+  <section id="ch6">
+    <h1 class="chapter">
+      <span class="ch-num">6</span>
+      Fournisseurs
+    </h1>
+    <p>Accessible via <strong>Fournisseurs</strong> dans le menu (section Achats). Liste tous les grossistes et laboratoires partenaires.</p>
+    <h2 class="section">6.1 Ajouter un fournisseur</h2>
+    <ol class="steps">
+      <li><p>Cliquez sur <strong>+ Nouveau Fournisseur</strong>.</p></li>
+      <li><p>Renseignez son nom, tÃ©lÃ©phone, email et adresse.</p></li>
+      <li><p>Cliquez sur <strong>Enregistrer</strong>.</p></li>
+    </ol>
+    <h2 class="section">6.2 Fiche fournisseur</h2>
+    <p>En cliquant sur le nom d'un fournisseur, sa fiche affiche : le <strong>total des achats</strong> effectuÃ©s chez lui, la <strong>date du dernier achat</strong> et l'<strong>historique complet de toutes ses commandes</strong> avec leurs statuts.</p>
+  </section>
+
+  <!-- CH7 -->
+  <section id="ch7">
+    <h1 class="chapter">
+      <span class="ch-num">7</span>
+      Factures Fournisseurs & EntrÃ©es de Stock
+    </h1>
+    <p>Accessible via <strong>Factures Professionnelles</strong> dans le menu (section Achats). Ce module centralise l'enregistrement de vos factures d'achat fournisseurs. Il s'agit de la procÃ©dure officielle pour lier une facture d'achat Ã  l'incrÃ©mentation de vos stocks de mÃ©dicaments et assurer leur valorisation financiÃ¨re.</p>
+    <p>Le tableau de bord affiche : le nombre de factures en <span class="chip badge-neutral">Brouillon</span>, le nombre de factures <span class="chip badge-success">ValidÃ©es</span>, et le <strong>Total ValidÃ©</strong> (montant total en GNF des achats validÃ©s).</p>
+
+    <section id="ch7-creer">
+      <h2 class="section">7.1 Enregistrer une Facture d'Achat</h2>
+      <ol class="steps">
+        <li><p>Cliquez sur <strong>Nouvelle Facture</strong> (bouton bleu, haut Ã  droite).</p></li>
+        <li><p>Renseignez le <strong>NÂ° Facture</strong> figurant sur le document papier du fournisseur.</p></li>
+        <li><p>SÃ©lectionnez le <strong>Fournisseur</strong> dans la liste dÃ©roulante.</p></li>
+        <li><p>Indiquez la <strong>Date de facturation</strong> et choisissez le <strong>Mode de paiement</strong> (virement, chÃ¨que, espÃ¨ces, mobile money, crÃ©dit).</p></li>
+        <li><p>Ajoutez les produits reÃ§us en cliquant sur <strong>Ajouter article</strong> : recherchez le produit par son nom, indiquez la <strong>QuantitÃ©</strong> reÃ§ue, le <strong>P. Achat</strong> unitaire et le <strong>P. Vente</strong> (qui se calcule automatiquement selon le type de produit ou peut Ãªtre forcÃ© manuellement).</p></li>
+        <li><p>Renseignez obligatoirement le <strong>NÂ° de Lot</strong> du fabricant et la <strong>Date d'expiration</strong> pour chaque produit afin d'assurer la traÃ§abilitÃ© rÃ©glementaire.</p></li>
+      </ol>
+    </section>
+
+    <section id="ch7-recv">
+      <h2 class="section">7.2 Validation & EntrÃ©e en Stock</h2>
+      <p>Une facture d'achat peut Ãªtre enregistrÃ©e sous deux statuts distincts :</p>
+      <ul class="bullets">
+        <li><strong>Brouillon (draft) :</strong> Enregistre les donnÃ©es saisies (bouton <em>Enregistrer Brouillon</em>). Le stock n'est pas modifiÃ©. Utile pour prÃ©parer la saisie avant vÃ©rification physique.</li>
+        <li><strong>ValidÃ©e (validated) :</strong> Valide dÃ©finitivement la facture (bouton <em>Valider</em>). <strong>Cette action met Ã  jour le stock en temps rÃ©el</strong> en y ajoutant les quantitÃ©s saisies pour chaque produit et active les lots correspondants.</li>
+      </ul>
+      <div class="callout c-warn">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <p>La validation d'une facture d'achat est irrÃ©versible. VÃ©rifiez scrupuleusement les quantitÃ©s physiques livrÃ©es et la conformitÃ© des numÃ©ros de lots avant de valider.</p>
+      </div>
+      <div class="callout c-tip">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+        <p>Le bouton <strong>Valider &amp; Stock</strong> dans la liste des factures permet de valider instantanÃ©ment une facture restÃ©e Ã  l'Ã©tat de brouillon aprÃ¨s vÃ©rification.</p>
+      </div>
+    </section>
+  </section>
+
+  <!-- CH8 -->
+  <section id="ch8">
+    <h1 class="chapter">
+      <span class="ch-num">8</span>
+      Gestion des Stocks
+    </h1>
+    <p>Accessible via <strong>Gestion des Stocks</strong>. Vue en temps rÃ©el de tous les niveaux de stock de l'officine avec filtres avancÃ©s.</p>
+    <h2 class="section">8.1 Indicateurs de la barre de statistiques</h2>
+    <ul class="bullets">
+      <li><strong>Produits</strong> â€” Nombre total de rÃ©fÃ©rences dans le catalogue.</li>
+      <li><strong>En Stock</strong> â€” Produits avec une quantitÃ© supÃ©rieure Ã  0.</li>
+      <li><strong>Stock Bas</strong> â€” Produits dont la quantitÃ© est entre 1 et le seuil minimum.</li>
+      <li><strong>Ruptures</strong> â€” Produits avec quantitÃ© = 0.</li>
+      <li><strong>Exp. &lt;90j</strong> â€” Lots expirant dans moins de 90 jours.</li>
+    </ul>
+    <h2 class="section">8.2 Filtres disponibles</h2>
+    <ul class="bullets">
+      <li><strong>Chercher un produit</strong> â€” Recherche par nom.</li>
+      <li><strong>Tous les Ã©tats</strong> â€” En stock normal / Stock bas / Rupture / Expiration proche.</li>
+      <li><strong>Tous les emplacements</strong> â€” <em>En Rayon</em> ou <em>En RÃ©serve</em> (OrdiveX gÃ¨re deux emplacements physiques distincts).</li>
+      <li><strong>Toutes catÃ©gories</strong> â€” Filtrer par famille thÃ©rapeutique.</li>
+      <li><strong>Toutes les formes</strong> â€” ComprimÃ©, Sirop, Injectableâ€¦</li>
+      <li><strong>Tri</strong> â€” De A Ã  Z / De Z Ã  A / Ordre d'ajout.</li>
+    </ul>
+    <h2 class="section">8.3 EntrÃ©e de stock manuelle</h2>
+    <p>Le bouton <strong>EntrÃ©e Stock</strong> (bleu, haut Ã  droite) permet d'ajouter des quantitÃ©s sans Bon de Commande (ex : don, rÃ©gularisation d'Ã©cart). Le bouton <strong>Importer Stock (CSV)</strong> permet des mises Ã  jour en masse.</p>
+  </section>
+
+  <!-- CH9 -->
+  <section id="ch9">
+    <h1 class="chapter">
+      <span class="ch-num">9</span>
+      Inventaires Physiques
+    </h1>
+    <p>Accessible via <strong>Inventaires Physiques</strong>. Ce module guide Ã  travers un processus structurÃ© en 5 vues : <em>Historique â†’ CrÃ©er â†’ Saisie â†’ Validation â†’ SynthÃ¨se</em>.</p>
+    <ol class="steps">
+      <li><p>Depuis l'<strong>Historique</strong>, cliquez sur <strong>Nouvel Inventaire</strong>.</p></li>
+      <li><p>La vue <strong>CrÃ©er</strong> propose de sÃ©lectionner les produits (inventaire complet ou ciblÃ© par catÃ©gorie/emplacement).</p></li>
+      <li><p>La vue <strong>Saisie</strong> affiche chaque produit avec son stock thÃ©orique. Entrez la <strong>quantitÃ© rÃ©elle comptÃ©e</strong> sur les Ã©tagÃ¨res.</p></li>
+      <li><p>La vue <strong>Validation</strong> affiche les Ã©carts (stock thÃ©orique vs rÃ©el). VÃ©rifiez et confirmez les ajustements.</p></li>
+      <li><p>La vue <strong>SynthÃ¨se</strong> prÃ©sente le rapport final avec tous les ajustements appliquÃ©s.</p></li>
+    </ol>
+    <div class="callout c-tip">
+      <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+      <p>L'historique complet de tous les inventaires passÃ©s est accessible avec la date, l'heure et l'opÃ©rateur. Indispensable pour les inspections DNPM.</p>
+    </div>
+  </section>
+
+  <!-- CH10 -->
+  <section id="ch10">
+    <h1 class="chapter">
+      <span class="ch-num">10</span>
+      RÃ©approvisionnement
+    </h1>
+    <p>Accessible via le menu <strong>RÃ©approvisionnement</strong> ou le bouton ðŸ”„ dans la topbar. Ce module, alimentÃ© par l'IA <strong>Naomi</strong>, analyse le stock en temps rÃ©el et gÃ©nÃ¨re automatiquement une liste des produits Ã  commander, basÃ©e sur :</p>
+    <ul class="bullets">
+      <li>Les produits dont la quantitÃ© est infÃ©rieure au <strong>seuil minimum</strong> dÃ©fini dans leur fiche.</li>
+      <li>La <strong>vÃ©locitÃ© des ventes rÃ©centes</strong> (les produits qui s'Ã©coulent rapidement sont priorisÃ©s).</li>
+    </ul>
+    <p>Depuis cet Ã©cran, un bouton permet de crÃ©er directement un <strong>Bon de Commande prÃ©-rempli</strong> avec les produits suggÃ©rÃ©s. Vous pouvez accepter ou refuser chaque suggestion.</p>
+  </section>
+
+  <!-- CH11 -->
+  <section id="ch11">
+    <h1 class="chapter">
+      <span class="ch-num">11</span>
+      Dossiers Patients
+    </h1>
+    <p>Accessible via <strong>Dossiers Patients</strong> (Admin et Pharmacien). DonnÃ©es de santÃ© protÃ©gÃ©es â€” accÃ¨s restreint au personnel habilitÃ©, conformÃ©ment aux normes DNPM.</p>
+    <h2 class="section">11.1 Informations du dossier patient</h2>
+    <p>La liste affiche : nom, tÃ©lÃ©phone, date de naissance (avec Ã¢ge calculÃ© automatiquement), allergies connues, nombre d'ordonnances et adresse. La recherche se fait par <strong>nom ou numÃ©ro de tÃ©lÃ©phone</strong>.</p>
+    <h2 class="section">11.2 CrÃ©er un patient</h2>
+    <ol class="steps">
+      <li><p>Cliquez sur <strong>Nouveau Patient</strong>.</p></li>
+      <li><p>Renseignez : nom complet, tÃ©lÃ©phone, date de naissance, adresse, allergies connues et plafond de crÃ©dit autorisÃ© (en GNF).</p></li>
+      <li><p>Cliquez sur <strong>Enregistrer</strong>.</p></li>
+    </ol>
+    <p>La fiche du patient (bouton <strong>Dossier</strong>) regroupe l'historique des ordonnances, des achats et l'Ã©tat de ses crÃ©ances.</p>
+    <p>Boutons disponibles : <strong>Nouveau Patient</strong>, <strong>PDF</strong> (imprimer la liste), <strong>Exporter CSV</strong>, <strong>Importer</strong> (CSV).</p>
+  </section>
+
+  <!-- CH12 -->
+  <section id="ch12">
+    <h1 class="chapter">
+      <span class="ch-num">12</span>
+      Ordonnances
+    </h1>
+    <p>Accessible via <strong>Ordonnances</strong>. Permet d'enregistrer, suivre et lier des prescriptions mÃ©dicales aux ventes au Point de Vente.</p>
+    <p>Au POS, la section <strong>Ordonnance</strong> dispose d'un interrupteur. Quand activÃ©, le bouton <strong>Lier une ordonnance</strong> permet de sÃ©lectionner une ordonnance existante et de l'associer Ã  la vente. Cette liaison garantit la traÃ§abilitÃ© lÃ©gale de la dispensation sur ordonnance.</p>
+  </section>
+
+  <!-- CH13 -->
+  <section id="ch13">
+    <h1 class="chapter">
+      <span class="ch-num">13</span>
+      CrÃ©ances & Assurances
+    </h1>
+    <p>Accessible via <strong>CrÃ©ances &amp; Assurances</strong>. Ce module centralise le suivi financier des ventes Assurance dont la <em>Part Entreprise</em> est en attente de rÃ¨glement.</p>
+    <ul class="bullets">
+      <li>Visualisation des montants dus par chaque organisme assureur.</li>
+      <li>Enregistrement des remboursements reÃ§us des mutuelles et employeurs.</li>
+      <li>GÃ©nÃ©ration de rÃ©capitulatifs pour la facturation pÃ©riodique aux organismes.</li>
+      <li>Suivi des ventes Ã  crÃ©dit patient et enregistrement des remboursements.</li>
+    </ul>
+  </section>
+
+  <!-- CH14 -->
+  <section id="ch14">
+    <h1 class="chapter">
+      <span class="ch-num">14</span>
+      TraÃ§abilitÃ© & Pharmacovigilance
+    </h1>
+    <p>Accessible via <strong>TraÃ§abilitÃ© &amp; Pharmavig.</strong>. Module indispensable pour la conformitÃ© BPD/DNPM et la gestion des risques.</p>
+    <h2 class="section">14.1 FonctionnalitÃ©s disponibles</h2>
+    <ul class="bullets">
+      <li><strong>Lots actifs</strong> â€” Vue complÃ¨te de tous les lots en circulation : numÃ©ro de lot, date d'expiration, quantitÃ© restante, emplacement.</li>
+      <li><strong>Produits pÃ©rimÃ©s</strong> â€” Lots dont la date d'expiration est dÃ©passÃ©e. La <strong>perte financiÃ¨re</strong> (quantitÃ© Ã— prix d'achat) est calculÃ©e et affichÃ©e pour chaque lot.</li>
+      <li><strong>Expiration proche (&lt;90 jours)</strong> â€” Liste prioritaire des lots Ã  surveiller et Ã  Ã©couler en urgence.</li>
+      <li><strong>Destruction officielle de lot</strong> â€” Un bouton permet de dÃ©truire un lot pÃ©rimÃ©. Un rapport de destruction est gÃ©nÃ©rÃ© automatiquement pour l'audit rÃ©glementaire.</li>
+      <li><strong>Mouvements de stock</strong> â€” TraÃ§abilitÃ© complÃ¨te : qui a fait quoi, sur quel produit, quand et en quelle quantitÃ©.</li>
+      <li><strong>Prescriptions</strong> â€” Consultation des ordonnances liÃ©es Ã  des lots spÃ©cifiques (rappel de lot).</li>
+    </ul>
+    <div class="callout c-danger">
+      <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+      <p>La destruction de lots est irrÃ©versible. Elle ne peut Ãªtre effectuÃ©e que par un <strong>Pharmacien</strong> ou un <strong>Administrateur</strong>. Un enregistrement permanent est crÃ©Ã© dans le Journal d'Audit.</p>
+    </div>
+  </section>
+
+  <!-- CH15 -->
+  <section id="ch15">
+    <h1 class="chapter">
+      <span class="ch-num">15</span>
+      Tableau de Bord
+    </h1>
+    <p>Accessible Ã  tous les rÃ´les. Les donnÃ©es financiÃ¨res dÃ©taillÃ©es (marge) sont masquÃ©es pour les Caissiers. AffichÃ© quasi-instantanÃ©ment grÃ¢ce Ã  un cache mÃ©moire de 30 secondes.</p>
+    <h2 class="section">15.1 Indicateurs clÃ©s (KPIs)</h2>
+    <table class="ftable">
+      <thead><tr><th>Indicateur</th><th>DÃ©finition prÃ©cise</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Ventes Aujourd'hui</strong></td><td>CA net du jour = ventes âˆ’ retours approuvÃ©s du jour. Nombre de transactions en sous-titre.</td></tr>
+        <tr><td><strong>CA du Mois</strong></td><td>CA net du mois = ventes âˆ’ retours approuvÃ©s du mois. Pour Admin/Pharmacien : taux de marge brute (%) affichÃ© en sous-titre.</td></tr>
+        <tr><td><strong>Produits Actifs</strong></td><td>Nombre total de rÃ©fÃ©rences dans le catalogue. Nombre de produits en stock bas affichÃ© en sous-titre.</td></tr>
+        <tr><td><strong>Alertes Actives</strong></td><td>Nombre d'alertes non lues (stock bas, expiration, ruptures). CarrÃ© rouge clignotant si > 0.</td></tr>
+      </tbody>
+    </table>
+    <h2 class="section">15.2 Graphiques</h2>
+    <ul class="bullets">
+      <li><strong>Ventes des 15 derniers jours</strong> â€” Courbe jour par jour (net de retours approuvÃ©s).</li>
+      <li><strong>Modes de paiement (mois)</strong> â€” Donut : EspÃ¨ces / Orange Money / MTN MoMo / CrÃ©dit / Virement.</li>
+    </ul>
+    <h2 class="section">15.3 Panneaux infÃ©rieurs</h2>
+    <ul class="bullets">
+      <li><strong>Top Produits du Mois</strong> â€” Top 5 par chiffre d'affaires mensuel avec barre de progression relative.</li>
+      <li><strong>Alertes RÃ©centes</strong> â€” Les 5 derniÃ¨res alertes non lues avec bouton de marquage individuel.</li>
+      <li><strong>Stocks Bas</strong> â€” Les 6 premiers produits en stock bas ou rupture avec barre de niveau visuelle.</li>
+    </ul>
+  </section>
+
+  <!-- CH16 -->
+  <section id="ch16">
+    <h1 class="chapter">
+      <span class="ch-num">16</span>
+      Historique des Ventes
+    </h1>
+    <p>Accessible via <strong>Historique Ventes</strong> (tous les rÃ´les). Affiche toutes les transactions enregistrÃ©es avec filtres multiples.</p>
+    <h2 class="section">16.1 Filtres disponibles</h2>
+    <ul class="bullets">
+      <li>Filtre par <strong>date</strong> (Aujourd'hui, Cette semaine, Ce mois, Plage personnalisÃ©e).</li>
+      <li>Filtre par <strong>mode de paiement</strong> (Tous, EspÃ¨ces, Orange Money, MTN MoMo, CrÃ©dit, Assurance, Virement).</li>
+      <li>Filtre par <strong>statut</strong> (ComplÃ©tÃ©, En attente de paiement, AnnulÃ©).</li>
+      <li><strong>Recherche</strong> par numÃ©ro de ticket ou nom du patient.</li>
+    </ul>
+    <h2 class="section">16.2 Actions sur une vente</h2>
+    <p>Cliquez sur l'icÃ´ne <strong>DÃ©tails</strong> (ðŸ‘ï¸) pour voir chaque mÃ©dicament vendu, son numÃ©ro de lot, sa quantitÃ© et son prix unitaire. Le bouton <strong>RÃ©imprimer</strong> gÃ©nÃ¨re une copie du reÃ§u original.</p>
+  </section>
+
+  <!-- CH17 -->
+  <section id="ch17">
+    <h1 class="chapter">
+      <span class="ch-num">17</span>
+      Retours de MÃ©dicaments
+    </h1>
+    <p>Accessible via <strong>Retours MÃ©dicaments</strong>. Traite les retours de produits par les clients (boÃ®tes non ouvertes, erreur de dÃ©livrance, produit non conforme).</p>
+    <p>Un retour approuvÃ© gÃ©nÃ¨re automatiquement : un <strong>remboursement</strong> dans le mode de paiement d'origine et une <strong>rÃ©incrÃ©mentation du stock</strong> si le mÃ©dicament est jugÃ© conforme Ã  la revente. Tous les retours sont tracÃ©s dans le Journal d'Audit.</p>
+  </section>
+
+  <!-- CH18 -->
+  <section id="ch18">
+    <h1 class="chapter">
+      <span class="ch-num">18</span>
+      Sorties de Stock
+    </h1>
+    <p>Accessible via <strong>Sorties de Stock</strong>. Enregistre les mouvements de stock <strong>hors vente</strong> : pertes, casses, dons, usage interne de la pharmacie, destructions hors module TraÃ§abilitÃ©.</p>
+    <p>Chaque sortie est tracÃ©e avec la raison, la quantitÃ©, la date et l'utilisateur responsable. Ces donnÃ©es alimentent le module Rapports & Analytique pour le calcul des pertes rÃ©elles.</p>
+  </section>
+
+  <!-- CH19 -->
+  <section id="ch19">
+    <h1 class="chapter">
+      <span class="ch-num">19</span>
+      Rapports & Analytique
+    </h1>
+    <p>Accessible via <strong>Rapports &amp; Analytique</strong>. Centralise les rapports exportables de l'officine.</p>
+    <ul class="bullets">
+      <li><strong>Rapport de clÃ´ture</strong> â€” SynthÃ¨se quotidienne, hebdomadaire ou mensuelle des ventes.</li>
+      <li><strong>Rapport des achats</strong> â€” Suivi des dÃ©penses fournisseurs sur la pÃ©riode.</li>
+      <li><strong>Rapport des mouvements</strong> â€” TraÃ§abilitÃ© dÃ©taillÃ©e de chaque entrÃ©e et sortie de stock.</li>
+    </ul>
+    <p>Tous les rapports sont filtrables par <strong>date</strong> et exportables en <strong>PDF</strong> (impression propre A4) ou <strong>CSV</strong> (intÃ©gration comptabilitÃ© externe).</p>
+  </section>
+
+  <!-- CH20 -->
+  <section id="ch20">
+    <h1 class="chapter">
+      <span class="ch-num">20</span>
+      MÃ©triques Business
+    </h1>
+    <p>Accessible via <strong>MÃ©triques Business</strong>. Tableau de bord analytique avancÃ© rÃ©servÃ© aux Admin et Pharmaciens.</p>
+    <ul class="bullets">
+      <li><strong>Marge brute globale</strong> â€” DiffÃ©rence entre le total des ventes et le coÃ»t d'achat des marchandises vendues (COGS).</li>
+      <li><strong>Rotation du stock</strong> â€” Vitesse d'Ã©coulement. Une rotation Ã©levÃ©e indique une officine dynamique avec peu de risque de pÃ©remption.</li>
+      <li><strong>Produits dormants</strong> â€” MÃ©dicaments avec peu ou pas de ventes sur la pÃ©riode analysÃ©e. Risque de perte Ã  pÃ©remption.</li>
+      <li><strong>Panier moyen</strong> â€” CA total Ã· nombre de tickets. Indicateur de la valeur moyenne d'un client.</li>
+      <li><strong>Analyse par catÃ©gorie</strong> â€” Performance commerciale par famille thÃ©rapeutique.</li>
+    </ul>
+  </section>
+
+  <!-- CH21 -->
+  <section id="ch21">
+    <h1 class="chapter">
+      <span class="ch-num">21</span>
+      Ã‰quipes Matin / Soir
+    </h1>
+    <p>Accessible via <strong>Ã‰quipes Matin / Soir</strong> (Admin et Pharmacien). GÃ¨re les sessions de travail du personnel en 3 Ã©quipes configurables :</p>
+    <ul class="bullets">
+      <li>ðŸŒ… <strong>Ã‰quipe Matin</strong> â€” 07h00 Ã  14h00.</li>
+      <li>ðŸŒ† <strong>Ã‰quipe Soir</strong> â€” 14h00 Ã  22h00.</li>
+      <li>ðŸŒ™ <strong>Ã‰quipe Nuit</strong> â€” 22h00 Ã  07h00.</li>
+    </ul>
+    <h2 class="section">21.1 Les 6 onglets du module</h2>
+    <ul class="bullets">
+      <li><strong>Planning du jour</strong> â€” Ã‰quipe actuellement ouverte avec ses KPIs temps rÃ©el (ventes, CA, articles vendus).</li>
+      <li><strong>Liste Ã©quipes</strong> â€” Affectation du personnel par Ã©quipe.</li>
+      <li><strong>TÃ¢ches</strong> â€” TÃ¢ches Ã  accomplir pendant la session en cours.</li>
+      <li><strong>Absences</strong> â€” Enregistrement et suivi des absences.</li>
+      <li><strong>Historique ventes</strong> â€” Ventes rattachÃ©es Ã  chaque session passÃ©e.</li>
+      <li><strong>Rapport rapide</strong> â€” SynthÃ¨se chiffrÃ©e de la session active ou sÃ©lectionnÃ©e.</li>
+    </ul>
+    <p>Seul un Admin ou Pharmacien peut cliquer sur <strong>Ouvrir une session</strong> ou <strong>ClÃ´turer</strong> l'Ã©quipe active. Une seule session peut Ãªtre ouverte Ã  la fois.</p>
+  </section>
+
+  <!-- CH22 -->
+  <section id="ch22">
+    <h1 class="chapter">
+      <span class="ch-num">22</span>
+      Centre d'Impression
+    </h1>
+    <p>Accessible via <strong>Centre d'Impression</strong> ou le bouton ðŸ–¨ï¸ dans la topbar. Centralise tous les documents imprimables.</p>
+    <ul class="bullets">
+      <li><strong>Tickets de caisse (80mm)</strong> â€” Format thermique standard avec nom pharmacie, opÃ©rateur, articles, total, monnaie.</li>
+      <li><strong>Factures A4 PDF</strong> â€” Format officiel pour ventes Assurance ou clients professionnels.</li>
+      <li><strong>Bons de commande A4</strong> â€” Documents Ã  remettre aux fournisseurs.</li>
+      <li><strong>Rapports de clÃ´ture</strong> â€” SynthÃ¨ses financiÃ¨res imprimables.</li>
+      <li><strong>Listes de stock</strong> â€” Catalogue avec prix et niveaux de stock pour contrÃ´le.</li>
+    </ul>
+  </section>
+
+  <!-- CH23 -->
+  <section id="ch23">
+    <h1 class="chapter">
+      <span class="ch-num">23</span>
+      Alertes SystÃ¨me
+    </h1>
+    <p>Accessible via <strong>Alertes</strong> (tous les rÃ´les) ou la cloche ðŸ”” dans la topbar (badge rouge = alertes non lues). Les alertes sont gÃ©nÃ©rÃ©es automatiquement par le moteur OrdiveX.</p>
+    <table class="ftable">
+      <thead><tr><th>Type d'alerte</th><th>DÃ©clencheur automatique</th><th>Niveau</th></tr></thead>
+      <tbody>
+        <tr><td>ðŸ“¦ Stock bas</td><td>QuantitÃ© â‰¤ seuil minimum dÃ©fini dans la fiche produit.</td><td><span class="tag t-o">Attention</span></td></tr>
+        <tr><td>ðŸ• Expiration proche</td><td>Lot expirant dans moins de 90 jours.</td><td><span class="tag t-o">Attention</span></td></tr>
+        <tr><td>âš ï¸ Expiration critique</td><td>Lot expirant dans moins de 30 jours.</td><td><span class="tag t-r">Critique</span></td></tr>
+        <tr><td>âŒ Rupture de stock</td><td>QuantitÃ© = 0 pour un produit actif.</td><td><span class="tag t-r">Critique</span></td></tr>
+      </tbody>
+    </table>
+    <p>Chaque alerte peut Ãªtre marquÃ©e comme lue (bouton âœ“). Le bouton <strong>Tout marquer comme lu</strong> traite toutes les alertes en une seule action.</p>
+  </section>
+
+  <!-- CH24 -->
+  <section id="ch24">
+    <h1 class="chapter">
+      <span class="ch-num">24</span>
+      ParamÃ¨tres & Administration
+    </h1>
+    <p>Accessible via <strong>ParamÃ¨tres</strong> â€” <strong>Administrateur uniquement.</strong></p>
+    <h2 class="section">24.1 Informations de la pharmacie</h2>
+    <p>Nom de la pharmacie, slogan, adresse. Ces informations apparaissent sur tous les tickets de caisse et documents PDF imprimÃ©s par OrdiveX.</p>
+    <h2 class="section">24.2 Gestion des utilisateurs</h2>
+    <ol class="steps">
+      <li><p>Allez dans l'onglet <strong>Utilisateurs</strong> des ParamÃ¨tres.</p></li>
+      <li><p>Cliquez sur <strong>Nouvel Utilisateur</strong>.</p></li>
+      <li><p>DÃ©finissez : <strong>nom complet</strong>, <strong>nom d'utilisateur</strong> (identifiant), <strong>mot de passe</strong> et <strong>rÃ´le</strong> (admin / pharmacien / caissier).</p></li>
+      <li><p>Cliquez sur <strong>Enregistrer</strong>. L'utilisateur peut immÃ©diatement se connecter.</p></li>
+    </ol>
+    <h2 class="section">24.3 Journal d'Audit</h2>
+    <p>Toutes les actions sensibles sont enregistrÃ©es de faÃ§on inaltÃ©rable : connexions, dÃ©connexions, ventes, modifications de prix, ajouts et suppressions de produits, destructions de lots. Indispensable pour les inspections rÃ©glementaires DNPM/BPD.</p>
+    <h2 class="section">24.4 Sauvegardes</h2>
+    <p>La synchronisation cloud est automatique dÃ¨s que la connexion internet est disponible. Pour une sauvegarde locale manuelle : exportez les tables critiques (Stock, Ventes, Produits) en CSV depuis leurs modules respectifs et archivez-les sur disque dur externe.</p>
+  </section>
+
+  <!-- FICHES PRATIQUES -->
+  <div class="divider"></div>
+
+  <section id="fiches">
+    <h1 class="chapter" style="margin-top:0;padding-top:0;border-top:none;">
+      <span class="ch-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+      Fiches Pratiques
+    </h1>
+    <p>ProcÃ©dures pas Ã  pas pour les opÃ©rations les plus courantes, avec les noms exacts des boutons et champs tels qu'ils apparaissent dans le logiciel.</p>
+
+    <div class="fiche" id="fiche1">
+      <div class="fiche-hdr">
+        <div class="fiche-num">â‘ </div>
+        <div><div class="fiche-ttl">Vendre avec une Assurance (Tiers Payant)</div><div class="fiche-sub">Ventilation automatique Part Entreprise / Part Patient</div></div>
+      </div>
+      <ol class="steps">
+        <li><p>Ouvrez <strong>Point de Vente</strong>.</p></li>
+        <li><p>(Optionnel) Cliquez sur <strong>Choisir un patientâ€¦</strong> et identifiez le client assurÃ©.</p></li>
+        <li><p>Ajoutez les mÃ©dicaments prescrits au panier.</p></li>
+        <li><p>Dans la zone Paiement, cliquez sur le bouton <strong>Assurance</strong>.</p></li>
+        <li><p>Renseignez <strong>Organisme &amp; Prise en charge</strong> : nom de la mutuelle ou de l'entreprise employeur.</p></li>
+        <li><p>Renseignez la <strong>RÃ©f. Prise en charge</strong> : numÃ©ro figurant sur le bon papier prÃ©sentÃ© par l'assurÃ©.</p></li>
+        <li><p>Saisissez le <strong>Montant pris en charge par l'entreprise</strong> (uniquement la part couverte, pas le total).</p></li>
+        <li><p>La <strong>Part Patient</strong> (ticket modÃ©rateur) est calculÃ©e automatiquement. VÃ©rifiez-la.</p></li>
+        <li><p>SÃ©lectionnez le mode de rÃ¨glement du patient (EspÃ¨ces, O. Money ou MTN MoMo) et saisissez le montant reÃ§u.</p></li>
+        <li><p>Cliquez sur <strong>Valider</strong>. Le reÃ§u porte la mention <em>FACTURE / REÃ‡U</em> avec dÃ©tail des deux parts.</p></li>
+      </ol>
+    </div>
+
+    <div class="fiche" id="fiche2">
+      <div class="fiche-hdr">
+        <div class="fiche-num">â‘¡</div>
+        <div><div class="fiche-ttl">Vendre Ã  CrÃ©dit (Dette Patient)</div><div class="fiche-sub">3 conditions vÃ©rifiÃ©es automatiquement par le logiciel</div></div>
+      </div>
+      <div class="cond-box">
+        <h4>â›” Conditions requises (sinon le bouton Valider reste bloquÃ©) :</h4>
+        <ol>
+          <li>Un patient enregistrÃ© doit Ãªtre <strong>sÃ©lectionnÃ©</strong> dans le panier.</li>
+          <li>Son <strong>plafond de crÃ©dit</strong> doit Ãªtre supÃ©rieur Ã  0 (dÃ©fini dans sa fiche par l'Admin).</li>
+          <li>Le cumul (dettes existantes + ce panier) ne doit <strong>pas dÃ©passer</strong> son plafond autorisÃ©.</li>
+        </ol>
+      </div>
+      <ol class="steps">
+        <li><p>Ouvrez <strong>Point de Vente</strong>. Cliquez sur <strong>Choisir un patientâ€¦</strong> et sÃ©lectionnez le patient.</p></li>
+        <li><p>Ajoutez les produits au panier.</p></li>
+        <li><p>Dans la zone Paiement, cliquez sur <strong>CrÃ©dit</strong>.</p></li>
+        <li><p>VÃ©rifiez la <strong>Date d'Ã©chÃ©ance du crÃ©dit</strong> (dÃ©faut : +30 jours). Modifiez si besoin.</p></li>
+        <li><p>Cliquez sur <strong>Valider</strong>. La vente est enregistrÃ©e "En attente de paiement" et le stock est dÃ©duit.</p></li>
+      </ol>
+      <h3 class="subsection">Enregistrer un remboursement</h3>
+      <ol class="steps">
+        <li><p>Allez dans <strong>Dossiers Patients</strong>, trouvez le patient et cliquez sur <strong>Dossier</strong>.</p></li>
+        <li><p>Dans sa fiche, localisez la vente Ã  crÃ©dit et enregistrez le paiement reÃ§u. Le plafond disponible remonte automatiquement.</p></li>
+      </ol>
+    </div>
+
+    <div class="fiche" id="fiche3">
+      <div class="fiche-hdr">
+        <div class="fiche-num">â‘¢</div>
+        <div><div class="fiche-ttl">Retrouver et tracer une facture de vente</div><div class="fiche-sub">RÃ©imprimer un reÃ§u perdu ou vÃ©rifier le contenu d'une vente</div></div>
+      </div>
+      <ol class="steps">
+        <li><p>Allez dans <strong>Historique Ventes</strong>.</p></li>
+        <li><p>Utilisez le filtre <strong>Date</strong> pour restreindre la pÃ©riode (Aujourd'hui, Ce mois, ou plage personnalisÃ©e).</p></li>
+        <li><p>Utilisez le filtre <strong>Mode de paiement</strong> si vous cherchez une vente CrÃ©dit ou Assurance.</p></li>
+        <li><p>Tapez le numÃ©ro de ticket ou le nom du patient dans la barre de recherche.</p></li>
+        <li><p>Cliquez sur l'icÃ´ne <strong>DÃ©tails</strong> (ðŸ‘ï¸) pour voir chaque article, son lot, sa quantitÃ© et son prix.</p></li>
+        <li><p>Cliquez sur <strong>RÃ©imprimer</strong> pour imprimer une copie du reÃ§u.</p></li>
+      </ol>
+    </div>
+
+    <div class="fiche" id="fiche4">
+      <div class="fiche-hdr">
+        <div class="fiche-num">â‘£</div>
+        <div><div class="fiche-ttl">CrÃ©er un nouveau mÃ©dicament dans le Catalogue</div><div class="fiche-sub">Un produit doit exister dans le catalogue avant de pouvoir Ãªtre vendu ou commandÃ©</div></div>
+      </div>
+      <ol class="steps">
+        <li><p>Allez dans <strong>Catalogue Produits</strong>.</p></li>
+        <li><p>Cliquez sur <strong>+ Nouveau Produit</strong> (bouton bleu, haut Ã  droite).</p></li>
+        <li><p>Saisissez le <strong>Code</strong> (gÃ©nÃ©rÃ© automatiquement, modifiable â€” vous pouvez utiliser le code-barres de la boÃ®te).</p></li>
+        <li><p>Saisissez le <strong>Nom commercial</strong> (ex : Doliprane 1000mg) et la <strong>DCI</strong> (ex : ParacÃ©tamol).</p></li>
+        <li><p>Choisissez la <strong>CatÃ©gorie</strong>, la <strong>Forme galÃ©nique</strong> et le <strong>Dosage</strong>.</p></li>
+        <li><p>Indiquez le <strong>Prix d'achat</strong> et le <strong>Prix de vente</strong> en GNF.</p></li>
+        <li><p>DÃ©finissez le <strong>Seuil minimum</strong> (dÃ©faut : 10 boÃ®tes) â€” seuil qui dÃ©clenchera l'alerte Stock Bas.</p></li>
+        <li><p>Si mÃ©dicament sur ordonnance : changez le <strong>Statut</strong> en <em>Rx â€” Sur ordonnance</em>.</p></li>
+        <li><p>Cliquez sur <strong>Enregistrer</strong>. Le produit est disponible immÃ©diatement au POS.</p></li>
+      </ol>
+      <div class="callout c-tip">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+        <p>Activez l'option <strong>DÃ©conditionnement</strong> si vous souhaitez vendre ce mÃ©dicament Ã  la plaquette ou Ã  la gÃ©lule, avec un prix unitaire distinct du prix de la boÃ®te.</p>
+      </div>
+    </div>
+
+    <div class="fiche" id="fiche5">
+      <div class="fiche-hdr">
+        <div class="fiche-num">â‘¤</div>
+        <div><div class="fiche-ttl">Enregistrer et rÃ©ceptionner une facture fournisseur (EntrÃ©e en stock)</div><div class="fiche-sub">Liaison directe entre la facture d'achat et l'incrÃ©mentation physique des stocks</div></div>
+      </div>
+      <ol class="steps">
+        <li><p>Allez dans le module <strong>Factures Professionnelles</strong> (sous la section <em>Factures</em> ou <em>Achats</em>).</p></li>
+        <li><p>Cliquez sur le bouton <strong>Nouvelle Facture</strong> en haut Ã  droite.</p></li>
+        <li><p>Renseignez les mÃ©tadonnÃ©es gÃ©nÃ©rales de la facture :<br>
+          â€” <strong>NÂ° Facture</strong> : saisissez le numÃ©ro unique figurant sur le document papier du fournisseur.<br>
+          â€” <strong>Fournisseur</strong> : sÃ©lectionnez le grossiste concernÃ©.<br>
+          â€” <strong>Date de facturation</strong> : entrez la date d'Ã©mission de la facture.<br>
+          â€” <strong>Mode de paiement</strong> : chÃ¨que, virement, espÃ¨ces, mobile money ou crÃ©dit.
+        </p></li>
+        <li><p>Ajoutez chaque produit en cliquant sur <strong>Ajouter article</strong> :<br>
+          â€” <strong>Produit</strong> : recherchez le mÃ©dicament dans le catalogue.<br>
+          â€” <strong>QtÃ©</strong> : saisissez la quantitÃ© physique reÃ§ue.<br>
+          â€” <strong>P. Achat</strong> : indiquez le prix d'achat unitaire facturÃ© par le grossiste.<br>
+          â€” <strong>P. Vente</strong> : vÃ©rifiez ou modifiez le prix de vente qui sera appliquÃ© au POS.<br>
+          â€” <strong>NÂ° de Lot</strong> : recopiez le numÃ©ro de lot imprimÃ© sur les boÃ®tes.<br>
+          â€” <strong>Date expiration</strong> : saisissez la date de pÃ©remption du lot.
+        </p></li>
+        <li><p>Cliquez sur l'un des boutons de validation en bas du formulaire :<br>
+          â€” <strong>Enregistrer Brouillon</strong> : sauvegarde la facture Ã  l'Ã©tat de brouillon (sans modifier le stock).<br>
+          â€” <strong>Valider (Mettre Ã  jour stocks)</strong> : valide dÃ©finitivement la facture et <strong>met Ã  jour le stock en temps rÃ©el</strong> pour tous les produits et lots concernÃ©s.
+        </p></li>
+      </ol>
+      <div class="callout c-warn">
+        <div class="callout-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <p>L'enregistrement d'une facture d'achat est le seul moyen de valoriser vos stocks et d'intÃ©grer des lots traÃ§ables (NÂ° Lot et Date expiration) requis pour la pharmacovigilance DNPM. Ne mettez jamais en vente un mÃ©dicament avant d'avoir validÃ© sa facture fournisseur.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BONNES PRATIQUES -->
+  <section id="bonnes-pratiques">
+    <h1 class="chapter">
+      <span class="ch-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+      Bonnes Pratiques de Gestion
+    </h1>
+
+    <h2 class="section">OpÃ©rations quotidiennes</h2>
+    <ul class="bullets">
+      <li><strong>RÃ©ceptionner les livraisons le jour mÃªme</strong> â€” Un mÃ©dicament en rayon non rÃ©ceptionnÃ© dans le logiciel ne peut pas Ãªtre vendu correctement et fausse les indicateurs de stock.</li>
+      <li><strong>Un seul appareil de caisse en cas de coupure rÃ©seau :</strong> Si la connexion internet s'interrompt, les diffÃ©rents postes informatiques ne peuvent plus se synchroniser en temps rÃ©el. Pour Ã©viter les doublons de vente ou les erreurs de caisse, dÃ©signez un poste unique comme "Caisse active" pour enregistrer toutes les transactions hors ligne. Les autres postes ne doivent Ãªtre utilisÃ©s que pour la consultation. La synchronisation globale se fera automatiquement au retour de la connexion.</li>
+      <li><strong>Comparer la caisse chaque soir</strong> â€” Confrontez le rapport de Caisse JournaliÃ¨re avec l'argent physique dans le tiroir avant de fermer. Tout Ã©cart inexpliquÃ© doit Ãªtre investiguÃ© immÃ©diatement.</li>
+    </ul>
+
+    <h2 class="section">Gestion du stock</h2>
+    <ul class="bullets">
+      <li><strong>Inventaires tournants hebdomadaires</strong> â€” Au lieu d'un seul grand inventaire annuel, comptez une famille de produits par semaine (sirops cette semaine, injectables la suivante). Les Ã©carts sont dÃ©tectÃ©s et corrigÃ©s en continu sans bloquer l'activitÃ©.</li>
+      <li><strong>Surveiller la TraÃ§abilitÃ© chaque semaine</strong> â€” RepÃ©rez les lots approchant 90 jours d'expiration. Mettez ces produits en avant en rayon pour les Ã©couler avant la perte.</li>
+      <li><strong>Ne jamais supprimer un produit actif</strong> â€” Si un mÃ©dicament n'est plus commercialisÃ©, dÃ©sactivez-le dans sa fiche plutÃ´t que de le supprimer, pour conserver l'historique complet des ventes et des lots.</li>
+    </ul>
+
+    <h2 class="section">SÃ©curitÃ© et traÃ§abilitÃ©</h2>
+    <ul class="bullets">
+      <li><strong>Un compte par opÃ©rateur</strong> â€” Chaque employÃ© se connecte avec son propre identifiant. Ne partagez jamais une session ouverte : la traÃ§abilitÃ©, les audits et les responsabilitÃ©s sont liÃ©s Ã  l'utilisateur connectÃ©.</li>
+      <li><strong>Surveiller les marges mensuellement</strong> â€” Consultez les MÃ©triques Business une fois par mois. Une baisse anormale de marge brute indique souvent une erreur de prix d'achat lors d'une rÃ©ception.</li>
+      <li><strong>Plafonds de crÃ©dit raisonnables</strong> â€” DÃ©finissez des plafonds rÃ©alistes. VÃ©rifiez rÃ©guliÃ¨rement les crÃ©ances dans <em>CrÃ©ances &amp; Assurances</em> pour Ã©viter l'accumulation de dettes impayÃ©es.</li>
+      <li><strong>ProtÃ©ger l'ordinateur par un onduleur</strong> â€” Les coupures de courant brusques peuvent corrompre les donnÃ©es locales. Branchez le PC de caisse sur un onduleur en permanence.</li>
+    </ul>
+  </section>
+
+  <!-- GLOSSAIRE -->
+  <section id="glossaire">
+    <h1 class="chapter">
+      <span class="ch-icon"><svg class="svg-icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+      Glossaire
+    </h1>
+    <table class="ftable">
+      <thead><tr><th>Terme</th><th>DÃ©finition</th></tr></thead>
+      <tbody>
+        <tr><td><strong>DCI</strong></td><td>DÃ©nomination Commune Internationale â€” Nom gÃ©nÃ©rique de la molÃ©cule active (ex : ParacÃ©tamol, Amoxicilline).</td></tr>
+        <tr><td><strong>OTC</strong></td><td>Over The Counter â€” MÃ©dicament vendu sans ordonnance.</td></tr>
+        <tr><td><strong>Rx</strong></td><td>MÃ©dicament dÃ©livrÃ© uniquement sur prÃ©sentation d'une ordonnance mÃ©dicale valide.</td></tr>
+        <tr><td><strong>FEFO</strong></td><td>First Expired, First Out â€” Les lots qui expirent le plus tÃ´t sont vendus en prioritÃ©.</td></tr>
+        <tr><td><strong>FIFO</strong></td><td>First In, First Out â€” Les premiers produits entrÃ©s en stock sont les premiers vendus.</td></tr>
+        <tr><td><strong>Marge brute</strong></td><td>Prix de vente âˆ’ Prix d'achat. BÃ©nÃ©fice brut avant charges opÃ©rationnelles.</td></tr>
+        <tr><td><strong>COGS</strong></td><td>Cost of Goods Sold â€” CoÃ»t d'achat des marchandises effectivement vendues sur une pÃ©riode donnÃ©e.</td></tr>
+        <tr><td><strong>Ticket modÃ©rateur</strong></td><td>Part du montant restant Ã  la charge du patient aprÃ¨s dÃ©duction de sa prise en charge d'assurance.</td></tr>
+        <tr><td><strong>Tiers payant</strong></td><td>MÃ©canisme par lequel un organisme (employeur, mutuelle) paie directement une partie des mÃ©dicaments, sans avance de frais par le patient.</td></tr>
+        <tr><td><strong>NÂ° de Lot</strong></td><td>NumÃ©ro unique identifiant un groupe de mÃ©dicaments fabriquÃ©s dans les mÃªmes conditions. Sert aux rappels de lot en cas d'incident.</td></tr>
+        <tr><td><strong>TraÃ§abilitÃ©</strong></td><td>Suivi ininterrompu d'un lot de mÃ©dicament depuis le fournisseur jusqu'au patient final. Obligation lÃ©gale.</td></tr>
+        <tr><td><strong>RCP</strong></td><td>RÃ©sumÃ© des CaractÃ©ristiques du Produit â€” Document officiel dÃ©crivant un mÃ©dicament (indications, posologie, contre-indications, effets indÃ©sirables).</td></tr>
+        <tr><td><strong>DNPM</strong></td><td>Direction Nationale de la Pharmacie et du MÃ©dicament â€” AutoritÃ© rÃ©glementaire pharmaceutique de GuinÃ©e.</td></tr>
+        <tr><td><strong>BPD</strong></td><td>Bonnes Pratiques de Distribution â€” Normes rÃ©glementaires encadrant la gestion et la distribution des mÃ©dicaments.</td></tr>
+        <tr><td><strong>LiveSync</strong></td><td>Technologie OrdiveX de synchronisation automatique des donnÃ©es locales vers le cloud dÃ¨s le retour de la connexion internet.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <h1 class="chapter">
+      <span class="ch-icon"><svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+      FAQ & DÃ©pannage
+    </h1>
+
+    <h3 class="subsection">Le produit ne s'ajoute pas au panier (bouton grisÃ©)</h3>
+    <p><strong>Cause :</strong> Le stock de ce produit est Ã  0 dans le logiciel.<br><strong>Solution :</strong> Si vous en avez physiquement en rayon, allez dans <strong>Gestion des Stocks â†’ EntrÃ©e Stock</strong> pour corriger, ou rÃ©ceptionnez le Bon de Commande correspondant.</p>
+
+    <h3 class="subsection">Le bouton Valider est bloquÃ© pour une vente Ã  crÃ©dit</h3>
+    <p><strong>Cause :</strong> Aucun patient sÃ©lectionnÃ©, ou plafond de crÃ©dit dÃ©passÃ©.<br><strong>Solution :</strong> Identifiez le patient. Si le plafond est insuffisant, il doit rembourser une partie de ses dettes avant une nouvelle vente Ã  crÃ©dit.</p>
+
+    <h3 class="subsection">Je ne retrouve pas une commande fournisseur rÃ©cente</h3>
+    <p><strong>Cause :</strong> La commande a Ã©tÃ© crÃ©Ã©e en <em>Brouillon</em> (statut En attente).<br><strong>Solution :</strong> Dans <strong>Bons de Commande</strong>, filtrez par statut <strong>En attente</strong>.</p>
+
+    <h3 class="subsection">L'indicateur reste "Hors ligne" (pastille grise)</h3>
+    <p><strong>Cause :</strong> La connexion internet est absente.<br><strong>Solution :</strong> Continuez Ã  travailler normalement. Cliquez sur la pastille quand la connexion revient pour forcer la synchronisation. Aucune donnÃ©e n'est perdue.</p>
+
+    <h3 class="subsection">Erreur de mot de passe Ã  la connexion</h3>
+    <p><strong>Solution :</strong> VÃ©rifiez le Verr. Maj (Caps Lock). Si l'erreur persiste, contactez l'Administrateur pour rÃ©initialisation depuis <em>ParamÃ¨tres â†’ Utilisateurs</em>.</p>
+
+    <h3 class="subsection">Un mÃ©dicament apparaÃ®t en rupture mais il en reste en rayon</h3>
+    <p><strong>Cause :</strong> La livraison a Ã©tÃ© mise en rayon sans Ãªtre rÃ©ceptionnÃ©e dans OrdiveX.<br><strong>Solution :</strong> Finalisez le Bon de Commande correspondant via <strong>RÃ©ceptionner</strong>, ou faites une entrÃ©e directe dans <strong>Gestion des Stocks â†’ EntrÃ©e Stock</strong>.</p>
+
+    <h3 class="subsection">Je veux crÃ©er un utilisateur caissier supplÃ©mentaire</h3>
+    <p><strong>Solution :</strong> Allez dans <strong>ParamÃ¨tres</strong> (Admin uniquement) â†’ onglet Utilisateurs â†’ <strong>Nouvel Utilisateur</strong>. DÃ©finissez son identifiant, mot de passe et choisissez le rÃ´le <em>caissier</em>.</p>
+  </section>
+
+  <div class="divider"></div>
+  <div style="text-align:center;color:var(--text-muted);font-size:13px;padding:16px 0 40px">
+    <div style="font-weight:800;color:var(--text);margin-bottom:6px;font-size:15px">OrdiveX ERP Pharmaceutique — v9.7.56</div>
+    <div>PropulsÃ© par <strong>TrillionX</strong> Â· RÃ©publique de GuinÃ©e Â· 2026</div>
+    <div style="margin-top:6px;font-size:11px">Manuel rÃ©digÃ© Ã  partir du code source rÃ©el de l'application.</div>
+  </div>
+
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  /* â”€â”€â”€ Ã‰lÃ©ments â”€â”€â”€ */
+  var sidebar     = document.getElementById('sidebar');
+  var overlay     = document.getElementById('sidebar-overlay');
+  var btnHamburger = document.getElementById('btn-hamburger');
+  var btnClose    = document.getElementById('sidebar-close');
+  var btnPrint    = document.getElementById('btn-print');
+  var links       = document.querySelectorAll('.toc-link[href^="#"]');
+  var sections    = document.querySelectorAll('section[id]');
+
+  /* â”€â”€â”€ Fonctions sidebar â”€â”€â”€ */
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function toggleSidebar() {
+    if (sidebar.classList.contains('open')) { closeSidebar(); } else { openSidebar(); }
+  }
+
+  /* â”€â”€â”€ Branchement des Ã©vÃ©nements (click + touchstart pour iOS) â”€â”€â”€ */
+  if (btnHamburger) {
+    btnHamburger.addEventListener('click', toggleSidebar);
+    btnHamburger.addEventListener('touchstart', function(e){ e.preventDefault(); toggleSidebar(); }, { passive: false });
+  }
+
+  if (btnClose) {
+    btnClose.addEventListener('click', closeSidebar);
+    btnClose.addEventListener('touchstart', function(e){ e.preventDefault(); closeSidebar(); }, { passive: false });
+  }
+
+  if (overlay) {
+    overlay.addEventListener('click', closeSidebar);
+    overlay.addEventListener('touchstart', function(e){ e.preventDefault(); closeSidebar(); }, { passive: false });
+  }
+
+  if (btnPrint) {
+    btnPrint.addEventListener('click', function(){ window.print(); });
+  }
+
+  /* â”€â”€â”€ Fermer sidebar au clic sur un lien (mobile) â”€â”€â”€ */
+  links.forEach(function(link) {
+    link.addEventListener('click', function() {
+      if (window.innerWidth <= 820) closeSidebar();
+    });
+  });
+
+  /* â”€â”€â”€ Touche Ã‰chap â”€â”€â”€ */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+
+  /* â”€â”€â”€ Sommaire actif (IntersectionObserver) â”€â”€â”€ */
+  if ('IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) {
+          var id = e.target.id;
+          links.forEach(function(l) {
+            l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+          });
+        }
+      });
+    }, { rootMargin: '-60px 0px -72% 0px', threshold: 0 });
+    sections.forEach(function(s) { obs.observe(s); });
+  }
+
+});
+</script>
+</body>
+</html>
+

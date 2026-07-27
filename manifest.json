@@ -1,0 +1,36 @@
+{
+  "name": "OrdiveX — ERP Pharmaceutique",
+  "short_name": "OrdiveX",
+  "description": "ERP Pharmaceutique Premium — Gestion stocks, ventes, ordonnances",
+  "start_url": ".",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "fr",
+  "categories": [
+    "business",
+    "medical"
+  ],
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Point de Vente",
+      "url": "./index.html#pos",
+      "description": "Ouvrir le point de vente"
+    },
+    {
+      "name": "Tableau de Bord",
+      "url": "./index.html#dashboard",
+      "description": "Voir le tableau de bord"
+    }
+  ]
+}

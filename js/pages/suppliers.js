@@ -1,0 +1,2043 @@
+/**
+ * OrdiveX — Module Achats & Fournisseurs
+ * Commandes, réceptions, litiges, évaluation fournisseurs
+ */
+
+async function renderSuppliers(container) {
+  UI.loading(container, 'Chargement des fournisseurs...');
+  const [suppliers, orders] = await Promise.all([
+    DB.dbGetAll('suppliers'),
+    DB.dbGetAll('purchaseOrders'),
+  ]);
+
+  // Stats per supplier
+  const supplierStats = {};
+  orders.forEach(o => {
+    if (!supplierStats[o.supplierId]) supplierStats[o.supplierId] = { total: 0, count: 0, lastOrder: null };
+    supplierStats[o.supplierId].total += o.totalAmount || 0;
+    supplierStats[o.supplierId].count++;
+    if (!supplierStats[o.supplierId].lastOrder || o.date > supplierStats[o.supplierId].lastOrder) {
+      supplierStats[o.supplierId].lastOrder = o.date;
+    }
+  });
+
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'sent').length;
+  const totalSpent = orders.filter(o => o.status === 'received').reduce((a, o) => a + (o.totalAmount || 0), 0);
+
+  container.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Achats & Fournisseurs</h1>
+        <p class="page-subtitle">${suppliers.length} fournisseurs — ${totalOrders} commandes</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="exportSuppliersPDF()"><i data-lucide="printer"></i> PDF</button>
+        <button class="btn btn-secondary" onclick="Router.navigate('purchase-orders')"><i data-lucide="file-text"></i> Bons de Commande</button>
+        <button class="btn btn-primary" onclick="showAddSupplier()"><i data-lucide="plus"></i> Nouveau Fournisseur</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid kpi-grid-3">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon"><i data-lucide="factory"></i></div>
+        <div class="kpi-content">
+          <div class="kpi-value">${suppliers.length}</div>
+          <div class="kpi-label">Fournisseurs actifs</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-orange ${pendingOrders > 0 ? 'kpi-alert' : ''}">
+        <div class="kpi-icon"><i data-lucide="package"></i></div>
+        <div class="kpi-content">
+          <div class="kpi-value">${pendingOrders}</div>
+          <div class="kpi-label">Commandes en cours</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon"><i data-lucide="credit-card"></i></div>
+        <div class="kpi-content">
+          <div class="kpi-value">${UI.formatCurrency(totalSpent)}</div>
+          <div class="kpi-label">Achats total</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-bar" style="margin-bottom:20px; background:var(--surface); padding:16px; border-radius:12px; border:1px solid var(--border); display:flex; gap:12px; align-items:center;">
+      <input type="text" id="supplier-search" placeholder="Rechercher par nom, agrément, téléphone..." class="form-control" style="flex:1" oninput="filterSuppliersList()">
+      <select id="supplier-status-filter" class="form-control" style="width:200px" onchange="filterSuppliersList()">
+        <option value="">Tous les statuts</option>
+        <option value="active">Actif</option>
+        <option value="inactive">Inactif</option>
+      </select>
+    </div>
+
+    <div id="suppliers-grid" class="suppliers-grid"></div>
+  `;
+
+  // Pagination des fournisseurs
+  window._suppliersAll = suppliers;
+  window._suppliersFilteredList = null; // Reset au re-rendu complet
+  window._supplierStats = supplierStats;
+  window._supplierOrders = orders;
+  window._suppliersPage = 1;
+  renderSuppliersPage();
+  if (window.lucide) lucide.createIcons();
+}
+
+window.filterSuppliersList = function() {
+  const query = (document.getElementById('supplier-search')?.value || '').toLowerCase();
+  const status = document.getElementById('supplier-status-filter')?.value || '';
+  
+  let filtered = window._suppliersAll || [];
+  
+  if (query) {
+    filtered = filtered.filter(s => 
+      (s.name || '').toLowerCase().includes(query) ||
+      (s.agrément || '').toLowerCase().includes(query) ||
+      (s.phone || '').toLowerCase().includes(query)
+    );
+  }
+  
+  if (status) {
+    filtered = filtered.filter(s => s.status === status);
+  }
+  
+  window._suppliersFilteredList = filtered;
+  window._suppliersPage = 1;
+  renderSuppliersPage();
+};
+
+function renderSuppliersPage() {
+  const suppliers = window._suppliersFilteredList || window._suppliersAll || [];
+  const supplierStats = window._supplierStats || {};
+  const orders = window._supplierOrders || [];
+  const page = window._suppliersPage || 1;
+  const perPage = 20;
+  const totalPages = Math.max(1, Math.ceil(suppliers.length / perPage));
+  const start = (page - 1) * perPage;
+  const pageData = suppliers.slice(start, start + perPage);
+
+  const container = document.getElementById('suppliers-grid');
+  if (!container) return;
+
+  if (suppliers.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon"><i data-lucide="factory"></i></div><p>Aucun fournisseur enregistré</p></div>';
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  container.innerHTML = pageData.map(sup => {
+    const stats = supplierStats[sup.id] || { total: 0, count: 0, lastOrder: null };
+    const supOrders = orders.filter(o => o.supplierId === sup.id);
+    let score = 50;
+    if (supOrders.length > 0) {
+      const deliveredOrders = supOrders.filter(o => o.status === 'received');
+      const onTimeOrders = deliveredOrders.filter(o => {
+        if (!o.expectedDate || !o.receivedAt) return true;
+        return new Date(o.receivedAt) <= new Date(o.expectedDate);
+      });
+      const onTimeRate = deliveredOrders.length > 0 ? onTimeOrders.length / deliveredOrders.length : 0.5;
+      const completionRate = deliveredOrders.length / supOrders.length;
+      const volumeBonus = Math.min(1, supOrders.length / 10);
+      score = Math.round((onTimeRate * 40) + (completionRate * 40) + (volumeBonus * 20));
+      score = Math.max(10, Math.min(100, score));
+    }
+    return `
+      <div class="supplier-card">
+        <div class="supplier-card-header">
+          <div class="supplier-avatar">${sup.name?.charAt(0) || 'S'}</div>
+          <div class="supplier-info">
+            <h3 class="supplier-name">${sup.name}</h3>
+            <div class="supplier-meta">
+              ${sup.agrément ? `<code class="code-tag">${sup.agrément}</code>` : ''}
+              <span class="badge badge-${sup.status === 'active' ? 'success' : 'neutral'}">${sup.status === 'active' ? 'Actif' : 'Inactif'}</span>
+            </div>
+          </div>
+          <div class="supplier-score">
+            <div class="score-circle score-${score >= 80 ? 'good' : score >= 60 ? 'medium' : 'bad'}">${score}</div>
+            <span class="score-label">Score</span>
+          </div>
+        </div>
+        <div class="supplier-contact">
+          ${sup.phone ? `<span><i data-lucide="phone"></i> ${sup.phone}</span>` : ''}
+          ${sup.email ? `<span><i data-lucide="mail"></i> ${sup.email}</span>` : ''}
+        </div>
+        <div class="supplier-stats-row">
+          <div class="supplier-stat">
+            <span class="stat-val-sm">${stats.count}</span>
+            <span class="stat-lbl-sm">Commandes</span>
+          </div>
+          <div class="supplier-stat">
+            <span class="stat-val-sm">${UI.formatCurrency(stats.total)}</span>
+            <span class="stat-lbl-sm">Total achats</span>
+          </div>
+          <div class="supplier-stat">
+            <span class="stat-val-sm">${sup.paymentTerms || 30}j</span>
+            <span class="stat-lbl-sm">Délai paiement</span>
+          </div>
+        </div>
+        <div class="supplier-actions">
+          <button class="btn btn-sm btn-secondary" onclick="showEditSupplier(${sup.id})" title="Modifier"><i data-lucide="pencil"></i></button>
+          <button class="btn btn-sm btn-primary" onclick="showNewOrder(${sup.id}, '${sup.name}')"><i data-lucide="plus"></i> Commander</button>
+          <button class="btn btn-sm btn-secondary" onclick="viewSupplierDetail(${sup.id})">Détail <i data-lucide="arrow-right"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Barre de pagination
+  if (totalPages > 1) {
+    container.insertAdjacentHTML('beforeend', `
+      <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:16px 0;gap:12px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:var(--text-muted)">${suppliers.length} fournisseurs — Page ${page}/${totalPages}</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="goSuppliersPage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>◀ Précédent</button>
+          <button class="btn btn-secondary btn-sm" onclick="goSuppliersPage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>Suivant ▶</button>
+        </div>
+      </div>
+    `);
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function goSuppliersPage(p) {
+  window._suppliersPage = p;
+  renderSuppliersPage();
+}
+
+function showAddSupplier() {
+  UI.modal('<i data-lucide="factory" class="modal-icon-inline"></i> Nouveau Fournisseur', `
+    <form id="supplier-form" class="form-grid">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Raison sociale *</label>
+          <input type="text" name="name" class="form-control" required placeholder="Ex: LABOREX Guinée">
+        </div>
+        <div class="form-group">
+          <label>N° Agrément DNPM</label>
+          <input type="text" name="agrément" class="form-control" placeholder="DNPM-GRO-XXX">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Contact principal</label>
+          <input type="text" name="contact" class="form-control" placeholder="Nom du contact">
+        </div>
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input type="tel" name="phone" class="form-control" placeholder="+224 6XX XXX XXX">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Délai de paiement (jours)</label>
+          <input type="number" name="paymentTerms" class="form-control" value="30" min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Adresse</label>
+        <input type="text" name="address" class="form-control" placeholder="Adresse complète">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Spécialité produits</label>
+          <input type="text" name="specialty" class="form-control" placeholder="Ex: Génériques, Biologiques, ...">
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select name="status" class="form-control"><option value="active">Actif</option><option value="inactive">Inactif</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea name="note" class="form-control" rows="2"></textarea>
+      </div>
+    </form>
+  `, {
+    footer: `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitSupplier()"><i data-lucide="check"></i> Enregistrer</button>
+    `
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+async function submitSupplier() {
+  const form = document.getElementById('supplier-form');
+  if (!form?.checkValidity()) { form?.reportValidity(); return; }
+  const data = Object.fromEntries(new FormData(form));
+  data.name = UI.normalizeText(data.name);
+  if (data.contact) data.contact = UI.normalizeText(data.contact);
+  if (data.specialty) data.specialty = UI.normalizeText(data.specialty);
+  if (data.address) data.address = UI.normalizeText(data.address);
+  data.paymentTerms = parseInt(data.paymentTerms || 30);
+  try {
+    await DB.dbAdd('suppliers', data);
+    await DB.writeAudit('ADD_SUPPLIER', 'suppliers', null, { name: data.name });
+    UI.closeModal();
+    UI.toast('Fournisseur ajouté', 'success');
+    Router.navigate('suppliers');
+  } catch (err) { UI.toast('Erreur : ' + err.message, 'error'); }
+}
+
+/**
+ * Modifier un fournisseur existant — pré-remplit le formulaire avec les données actuelles
+ */
+async function showEditSupplier(supId) {
+  try {
+    var sup = await DB.dbGet('suppliers', supId);
+    if (!sup) { UI.toast('Fournisseur introuvable', 'error'); return; }
+
+    UI.modal('<i data-lucide="pencil" class="modal-icon-inline"></i> Modifier le Fournisseur', `
+      <form id="edit-supplier-form" class="form-grid">
+        <input type="hidden" name="id" value="${sup.id}">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Raison sociale *</label>
+            <input type="text" name="name" class="form-control" required value="${(sup.name || '').replace(/"/g, '&quot;')}">
+          </div>
+          <div class="form-group">
+            <label>N° Agrément DNPM</label>
+            <input type="text" name="agrément" class="form-control" value="${(sup.agrément || '').replace(/"/g, '&quot;')}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contact principal</label>
+            <input type="text" name="contact" class="form-control" value="${(sup.contact || '').replace(/"/g, '&quot;')}">
+          </div>
+          <div class="form-group">
+            <label>Téléphone</label>
+            <input type="tel" name="phone" class="form-control" value="${(sup.phone || '').replace(/"/g, '&quot;')}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" class="form-control" value="${(sup.email || '').replace(/"/g, '&quot;')}">
+          </div>
+          <div class="form-group">
+            <label>Délai de paiement (jours)</label>
+            <input type="number" name="paymentTerms" class="form-control" value="${sup.paymentTerms || 30}" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Adresse</label>
+          <input type="text" name="address" class="form-control" value="${(sup.address || '').replace(/"/g, '&quot;')}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Spécialité produits</label>
+            <input type="text" name="specialty" class="form-control" value="${(sup.specialty || '').replace(/"/g, '&quot;')}">
+          </div>
+          <div class="form-group">
+            <label>Statut</label>
+            <select name="status" class="form-control">
+              <option value="active" ${sup.status === 'active' ? 'selected' : ''}>Actif</option>
+              <option value="inactive" ${sup.status !== 'active' ? 'selected' : ''}>Inactif</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <textarea name="note" class="form-control" rows="2">${(sup.note || '').replace(/</g, '&lt;')}</textarea>
+        </div>
+      </form>
+    `, {
+      footer: `
+        <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+        <button class="btn btn-primary" onclick="submitEditSupplier(${sup.id})"><i data-lucide="check"></i> Sauvegarder</button>
+      `
+    });
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    UI.toast('Erreur chargement fournisseur : ' + (err.message || err), 'error');
+  }
+}
+
+async function submitEditSupplier(supId) {
+  try {
+    var form = document.getElementById('edit-supplier-form');
+    if (!form || !form.checkValidity()) { if (form) form.reportValidity(); return; }
+    var existing = await DB.dbGet('suppliers', supId);
+    if (!existing) { UI.toast('Fournisseur introuvable', 'error'); return; }
+    var data = Object.fromEntries(new FormData(form));
+    data.name = UI.normalizeText(data.name);
+    if (data.contact) data.contact = UI.normalizeText(data.contact);
+    if (data.specialty) data.specialty = UI.normalizeText(data.specialty);
+    if (data.address) data.address = UI.normalizeText(data.address);
+    data.paymentTerms = parseInt(data.paymentTerms) || 30;
+    // Préserver les champs internes (complaints, etc.)
+    var updated = Object.assign({}, existing, data, { id: supId });
+    await DB.dbPut('suppliers', updated);
+    await DB.writeAudit('EDIT_SUPPLIER', 'suppliers', supId, { name: data.name });
+    UI.closeModal();
+    UI.toast('Fournisseur modifié avec succès', 'success');
+    Router.navigate('suppliers');
+  } catch (err) {
+    UI.toast('Erreur modification : ' + (err.message || err), 'error');
+  }
+}
+
+async function viewSupplierDetail(supId) {
+  const [sup, orders, invoices, users] = await Promise.all([
+    DB.dbGet('suppliers', supId),
+    DB.dbGetAll('purchaseOrders', 'supplierId', supId),
+    DB.dbGetAll('invoices', 'supplierId', supId),
+    DB.dbGetAll('users'),
+  ]);
+  if (!sup) return;
+
+  const sortedOrders = orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const complaints = sup.complaints || [];
+  const openComplaints = complaints.filter(c => c.status === 'open').length;
+
+  // Stocker dans window pour le filtrage interactif
+  window._historySupplier = sup;
+  window._historyOrders = orders;
+  window._historyInvoices = invoices;
+  window._historyUsers = users;
+
+  // Extraire les options de filtrage de médicaments (tous les produits achetés ou commandés)
+  const uniqueProducts = {};
+  invoices.forEach(inv => {
+    (inv.items || []).forEach(item => {
+      uniqueProducts[item.productId] = item.productName;
+    });
+  });
+  orders.forEach(ord => {
+    (ord.items || []).forEach(item => {
+      uniqueProducts[item.productId] = item.productName;
+    });
+  });
+  const prodOptions = Object.entries(uniqueProducts)
+    .map(([id, name]) => `<option value="${id}">${name}</option>`)
+    .join('');
+
+  // Extraire les options de factures / commandes uniques
+  const uniqueRefs = new Set();
+  invoices.forEach(i => { if (i.invoiceNumber) uniqueRefs.add(i.invoiceNumber); });
+  orders.forEach(o => { if (o.orderNumber) uniqueRefs.add(o.orderNumber); });
+  const invoiceOptions = Array.from(uniqueRefs)
+    .sort()
+    .map(ref => `<option value="${ref}">${ref}</option>`)
+    .join('');
+
+  // Extraire les utilisateurs uniques
+  const uniqueUserIds = new Set();
+  invoices.forEach(i => { if (i.createdBy) uniqueUserIds.add(i.createdBy); });
+  orders.forEach(o => { if (o.createdBy) uniqueUserIds.add(o.createdBy); });
+  const userMap = {};
+  users.forEach(u => { userMap[u.id] = u.name || u.username; });
+  const userOptions = Array.from(uniqueUserIds)
+    .map(uid => `<option value="${uid}">${userMap[uid] || 'Inconnu'}</option>`)
+    .join('');
+
+  UI.modal(`<i data-lucide="factory" class="modal-icon-inline"></i> ${sup.name}`, `
+    <div class="supplier-detail">
+      <!-- BARRE D'ONGLETS -->
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-primary sup-tab-btn active" id="sup-tab-btn-info" onclick="switchSupplierTab(${supId}, 'info')">Fiche Fournisseur</button>
+          <button class="btn btn-sm btn-ghost sup-tab-btn" id="sup-tab-btn-history" onclick="switchSupplierTab(${supId}, 'history')">Historique Commercial</button>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="UI.closeModal(); showEditSupplier(${supId})"><i data-lucide="pencil"></i> Modifier les informations</button>
+      </div>
+
+      <!-- ONGLET 1 : FICHE COMMERCIALE -->
+      <div id="sup-tab-content-info" class="sup-tab-content">
+        <div class="rx-detail-grid" style="margin-bottom:16px">
+          <div class="rx-detail-card">
+            <h4>Informations</h4>
+            <div class="detail-row"><span>Agrément</span><span><code>${sup.agrément || '—'}</code></span></div>
+            <div class="detail-row"><span>Contact</span><span>${sup.contact || '—'}</span></div>
+            <div class="detail-row"><span>Téléphone</span><span>${sup.phone || '—'}</span></div>
+            <div class="detail-row"><span>Email</span><span>${sup.email || '—'}</span></div>
+            <div class="detail-row"><span>Délai paiement</span><span>${sup.paymentTerms || 30} jours</span></div>
+          </div>
+          <div class="rx-detail-card">
+            <h4>Statistiques</h4>
+            <div class="detail-row"><span>Total commandes</span><span><strong>${orders.length}</strong></span></div>
+            <div class="detail-row"><span>Total achats</span><span><strong>${UI.formatCurrency(orders.reduce((a, o) => a + (o.totalAmount || 0), 0))}</strong></span></div>
+            <div class="detail-row"><span>Dernière commande</span><span>${orders[0]?.date ? UI.formatDate(orders[0].date) : '—'}</span></div>
+            <div class="detail-row"><span>Statut</span><span><span class="badge badge-${sup.status === 'active' ? 'success' : 'neutral'}">${sup.status}</span></span></div>
+            <div class="detail-row"><span>Réclamations ouvertes</span><span>${openComplaints > 0 ? `<span class="badge badge-danger">${openComplaints}</span>` : '<span class="text-muted">0</span>'}</span></div>
+          </div>
+        </div>
+        <h4 style="margin-bottom:8px">Historique récent des commandes</h4>
+        ${sortedOrders.length === 0 ? '<p class="text-muted">Aucune commande</p>' : `
+          <table class="data-table"><thead><tr><th>N° BC</th><th>Date</th><th>Montant</th><th>Statut</th></tr></thead>
+          <tbody>${sortedOrders.slice(0, 5).map(o => `
+            <tr>
+              <td><code>${o.orderNumber || o.id}</code></td>
+              <td>${UI.formatDate(o.date)}</td>
+              <td>${UI.formatCurrency(o.totalAmount || 0)}</td>
+              <td><span class="badge badge-${o.status === 'received' ? 'success' : o.status === 'sent' ? 'info' : o.status === 'cancelled' ? 'danger' : 'warning'}">${({pending:'Brouillon',sent:'Envoyée',partial:'Partielle',received:'Reçue',cancelled:'Annulée'})[o.status] || o.status}</span></td>
+            </tr>`).join('')}</tbody>
+          </table>`}
+
+        <!-- RÉCLAMATIONS -->
+        <div style="margin-top:24px; border-top:1px solid var(--border); padding-top:16px">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
+            <h4 style="margin:0"><i data-lucide="alert-circle"></i> Réclamations</h4>
+            <button class="btn btn-sm btn-danger" onclick="showAddComplaint(${supId})"><i data-lucide="plus"></i> Nouvelle réclamation</button>
+          </div>
+          <div id="complaints-list-${supId}">
+            ${complaints.length === 0 ? '<p class="text-muted" style="font-size:13px">Aucune réclamation enregistrée pour ce fournisseur.</p>' :
+            complaints.sort((a, b) => new Date(b.date) - new Date(a.date)).map((c, idx) => `
+              <div class="complaint-card">
+                <div class="complaint-header">
+                  <span class="complaint-type ${c.type}">${({quality:'Qualité', delivery:'Livraison', missing:'Manquant', other:'Autre'})[c.type] || c.type}</span>
+                  <span class="complaint-date">${UI.formatDate(c.date)}</span>
+                </div>
+                <div class="complaint-desc">${c.description}</div>
+                ${c.orderRef ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">Réf. commande : <code>${c.orderRef}</code></div>` : ''}
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px">
+                  <span class="complaint-status ${c.status}">
+                    ${c.status === 'open' ? '⏳ Ouverte' : '✅ Résolue'}
+                  </span>
+                  ${c.status === 'open' ? `<button class="btn btn-xs btn-success" onclick="resolveComplaint(${supId}, ${idx})"><i data-lucide="check"></i> Résoudre</button>` : ''}
+                </div>
+                ${c.resolution ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(46,175,125,0.06); border-radius:6px; font-size:12px; color:var(--text-muted)"><strong>Résolution :</strong> ${c.resolution}</div>` : ''}
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- ONGLET 2 : HISTORIQUE COMPLET -->
+      <div id="sup-tab-content-history" class="sup-tab-content" style="display:none">
+        <!-- FILTRES -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; background:#F8FAFC; border:1px solid var(--border); padding:12px; border-radius:8px; margin-bottom:16px">
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block">Médicament</label>
+            <select id="hist-filter-product" class="form-control text-xs" style="padding:4px 8px; height:30px" onchange="filterSupplierHistory()">
+              <option value="">Tous</option>
+              ${prodOptions}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block">Facture/Commande</label>
+            <select id="hist-filter-invoice" class="form-control text-xs" style="padding:4px 8px; height:30px" onchange="filterSupplierHistory()">
+              <option value="">Toutes</option>
+              ${invoiceOptions}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block">Utilisateur</label>
+            <select id="hist-filter-user" class="form-control text-xs" style="padding:4px 8px; height:30px" onchange="filterSupplierHistory()">
+              <option value="">Tous</option>
+              ${userOptions}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block">Date début</label>
+            <input type="date" id="hist-filter-from" class="form-control text-xs" style="padding:4px 8px; height:30px" onchange="filterSupplierHistory()">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; display:block">Date fin</label>
+            <input type="date" id="hist-filter-to" class="form-control text-xs" style="padding:4px 8px; height:30px" onchange="filterSupplierHistory()">
+          </div>
+        </div>
+
+        <!-- EXPORTS DE L'HISTORIQUE -->
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px">
+          <button class="btn btn-xs btn-secondary" onclick="exportSupplierHistoryPDF()"><i data-lucide="printer"></i> PDF</button>
+          <button class="btn btn-xs btn-secondary" onclick="exportSupplierHistoryCSV()"><i data-lucide="download"></i> Exporter CSV</button>
+        </div>
+
+        <!-- STATS DE L'HISTORIQUE -->
+        <div class="supplier-stats-row" style="margin-bottom:16px; background:#F1F5F9; border-radius:8px; padding:10px; display:grid; grid-template-columns:repeat(4, 1fr); text-align:center;">
+          <div class="supplier-stat">
+            <span class="stat-val-sm" id="hist-stat-invoices-count">0</span>
+            <span class="stat-lbl-sm">Factures validées</span>
+          </div>
+          <div class="supplier-stat">
+            <span class="stat-val-sm" id="hist-stat-total-spent">0 GNF</span>
+            <span class="stat-lbl-sm">Total acheté</span>
+          </div>
+          <div class="supplier-stat">
+            <span class="stat-val-sm" id="hist-stat-avg-invoice">0 GNF</span>
+            <span class="stat-lbl-sm">Montant moyen</span>
+          </div>
+          <div class="supplier-stat">
+            <span class="stat-val-sm" id="hist-stat-last-buy">—</span>
+            <span class="stat-lbl-sm">Dernier achat</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <!-- LISTE DES OPÉRATIONS -->
+          <div>
+            <h5 style="margin:0 0 8px 0; font-size:12px; text-transform:uppercase; color:var(--text-muted); font-weight:700">Toutes les opérations (Commandes & Factures)</h5>
+            <div id="supplier-history-table-container"></div>
+          </div>
+          
+          <!-- PRODUITS LES PLUS ACHETÉS -->
+          <div>
+            <h5 style="margin:0 0 8px 0; font-size:12px; text-transform:uppercase; color:var(--text-muted); font-weight:700">Produits les plus achetés (Top 5)</h5>
+            <div id="supplier-history-top-products" style="background:#F8FAFC; border:1px solid var(--border); border-radius:8px; padding:12px">
+              <p class="text-muted text-xs">Aucun produit</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `, { size: 'large' });
+  if (window.lucide) lucide.createIcons();
+}
+
+window.switchSupplierTab = function(supId, tabName) {
+  document.querySelectorAll('.sup-tab-btn').forEach(btn => {
+    btn.classList.remove('btn-primary', 'active');
+    btn.classList.add('btn-ghost');
+  });
+  
+  const activeBtn = document.getElementById(`sup-tab-btn-${tabName}`);
+  if (activeBtn) {
+    activeBtn.classList.remove('btn-ghost');
+    activeBtn.classList.add('btn-primary', 'active');
+  }
+
+  document.querySelectorAll('.sup-tab-content').forEach(content => {
+    content.style.display = 'none';
+  });
+  
+  const activeContent = document.getElementById(`sup-tab-content-${tabName}`);
+  if (activeContent) activeContent.style.display = 'block';
+
+  if (tabName === 'history') {
+    filterSupplierHistory();
+  }
+};
+
+window.filterSupplierHistory = function() {
+  const prodId = document.getElementById('hist-filter-product')?.value || '';
+  const invoiceNum = document.getElementById('hist-filter-invoice')?.value || '';
+  const userId = document.getElementById('hist-filter-user')?.value || '';
+  const fromDate = document.getElementById('hist-filter-from')?.value || '';
+  const toDate = document.getElementById('hist-filter-to')?.value || '';
+
+  let filteredInvoices = window._historyInvoices || [];
+  let filteredOrders = window._historyOrders || [];
+
+  // Filtrer les factures
+  if (fromDate) filteredInvoices = filteredInvoices.filter(i => i.date >= fromDate);
+  if (toDate) filteredInvoices = filteredInvoices.filter(i => i.date <= toDate);
+  if (invoiceNum) filteredInvoices = filteredInvoices.filter(i => i.invoiceNumber === invoiceNum);
+  if (userId) filteredInvoices = filteredInvoices.filter(i => String(i.createdBy) === userId);
+  if (prodId) {
+    filteredInvoices = filteredInvoices.filter(i => (i.items || []).some(item => String(item.productId) === prodId));
+  }
+
+  // Filtrer les commandes
+  if (fromDate) filteredOrders = filteredOrders.filter(o => o.date >= fromDate);
+  if (toDate) filteredOrders = filteredOrders.filter(o => o.date <= toDate);
+  if (invoiceNum) filteredOrders = filteredOrders.filter(o => o.orderNumber === invoiceNum);
+  if (userId) filteredOrders = filteredOrders.filter(o => String(o.createdBy) === userId);
+  if (prodId) {
+    filteredOrders = filteredOrders.filter(o => (o.items || []).some(item => String(item.productId) === prodId));
+  }
+
+  // Combiner les opérations
+  const operations = [];
+  filteredInvoices.forEach(i => {
+    operations.push({
+      date: i.date,
+      type: 'Facture',
+      ref: i.invoiceNumber || String(i.id),
+      amount: i.totalAmount || 0,
+      status: i.status === 'validated' ? 'Validée' : 'Brouillon',
+      statusClass: i.status === 'validated' ? 'success' : 'neutral',
+      createdBy: i.createdBy,
+      items: i.items || []
+    });
+  });
+
+  filteredOrders.forEach(o => {
+    operations.push({
+      date: o.date,
+      type: 'Commande',
+      ref: o.orderNumber || String(o.id),
+      amount: o.totalAmount || 0,
+      status: ({pending:'Brouillon', sent:'Envoyée', partial:'Partielle', received:'Reçue', cancelled:'Annulée'})[o.status] || o.status,
+      statusClass: o.status === 'received' ? 'success' : o.status === 'sent' ? 'info' : o.status === 'cancelled' ? 'danger' : 'warning',
+      createdBy: o.createdBy,
+      items: o.items || []
+    });
+  });
+
+  // Trier par date décroissante
+  operations.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  window._historyFilteredOps = operations;
+
+  // Calculer les statistiques sur les factures validées
+  const validatedInvoices = filteredInvoices.filter(i => i.status === 'validated');
+  const totalSpent = validatedInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+  const invoicesCount = validatedInvoices.length;
+  const avgInvoice = invoicesCount > 0 ? Math.round(totalSpent / invoicesCount) : 0;
+  const lastBuy = validatedInvoices.length > 0 ? validatedInvoices.sort((a,b) => new Date(b.date) - new Date(a.date))[0].date : null;
+
+  document.getElementById('hist-stat-invoices-count').textContent = invoicesCount;
+  document.getElementById('hist-stat-total-spent').textContent = UI.formatCurrency(totalSpent);
+  document.getElementById('hist-stat-avg-invoice').textContent = UI.formatCurrency(avgInvoice);
+  document.getElementById('hist-stat-last-buy').textContent = lastBuy ? UI.formatDate(lastBuy) : '—';
+
+  // Calculer les produits les plus achetés
+  const prodQty = {};
+  validatedInvoices.forEach(i => {
+    (i.items || []).forEach(item => {
+      if (!prodId || String(item.productId) === prodId) {
+        prodQty[item.productName] = (prodQty[item.productName] || 0) + (item.quantity || 0);
+      }
+    });
+  });
+  const topProds = Object.entries(prodQty).sort((a,b) => b[1] - a[1]).slice(0, 5);
+  const topContainer = document.getElementById('supplier-history-top-products');
+  if (topContainer) {
+    if (topProds.length === 0) {
+      topContainer.innerHTML = '<p class="text-muted text-xs" style="margin:0">Aucun produit</p>';
+    } else {
+      topContainer.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:8px">
+          ${topProds.map(([name, qty], idx) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px">
+              <span style="font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px">${idx+1}. ${name}</span>
+              <span class="badge badge-neutral" style="font-size:10px">${qty} unit.</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+  }
+
+  // Rendu de la table
+  const userMap = {};
+  (window._historyUsers || []).forEach(u => { userMap[u.id] = u.name || u.username; });
+
+  const tableContainer = document.getElementById('supplier-history-table-container');
+  if (tableContainer) {
+    const columns = [
+      { label: 'Date', render: r => UI.formatDate(r.date) },
+      { label: 'Type', render: r => `<span style="font-weight:600; color:${r.type === 'Facture' ? '#2E86C1' : '#27AE60'}">${r.type}</span>` },
+      { label: 'Référence', render: r => `<code>${r.ref}</code>` },
+      { label: 'Montant', render: r => `<strong>${UI.formatCurrency(r.amount)}</strong>` },
+      { label: 'Statut', render: r => `<span class="badge badge-${r.statusClass}">${r.status}</span>` },
+      { label: 'Auteur', render: r => userMap[r.createdBy] || '<span class="text-muted">Inconnu</span>' }
+    ];
+    UI.table(tableContainer, columns, operations, {
+      emptyMessage: 'Aucune opération trouvée avec ces filtres.',
+      emptyIcon: 'history'
+    });
+  }
+};
+
+window.exportSupplierHistoryCSV = function() {
+  const operations = window._historyFilteredOps || [];
+  if (operations.length === 0) return UI.toast("Aucune donnée à exporter", "warning");
+
+  const userMap = {};
+  (window._historyUsers || []).forEach(u => { userMap[u.id] = u.name || u.username; });
+
+  const csvRows = [
+    ["Date", "Type", "Reference", "Montant", "Statut", "Auteur"]
+  ];
+
+  operations.forEach(op => {
+    const author = userMap[op.createdBy] || 'Inconnu';
+    csvRows.push([
+      `"${op.date}"`,
+      `"${op.type}"`,
+      `"${op.ref}"`,
+      op.amount,
+      `"${op.status}"`,
+      `"${author.replace(/"/g, '""')}"`
+    ]);
+  });
+
+  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.map(e => e.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  
+  const supplierName = window._historySupplier?.name || 'fournisseur';
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `historique_${supplierName.toLowerCase().replace(/\s+/g, '_')}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  UI.toast("Historique CSV exporté", "success");
+};
+
+window.exportSupplierHistoryPDF = function() {
+  const operations = window._historyFilteredOps || [];
+  if (operations.length === 0) return UI.toast("Aucune donnée à exporter", "warning");
+
+  if (!window.PDFExport) return UI.toast("Module PDF non chargé", "error");
+
+  const userMap = {};
+  (window._historyUsers || []).forEach(u => { userMap[u.id] = u.name || u.username; });
+
+  const data = operations.map(op => [
+    new Date(op.date).toLocaleDateString('fr-FR'),
+    op.type,
+    op.ref,
+    UI.formatCurrency(op.amount),
+    op.status,
+    userMap[op.createdBy] || 'Inconnu'
+  ]);
+
+  const headers = ["Date", "Type", "Référence", "Montant", "Statut", "Auteur"];
+  const supplierName = window._historySupplier?.name || 'Fournisseur';
+
+  // Calculer les statistiques actuelles pour le bloc de résumé
+  const validatedInvoices = (window._historyInvoices || []).filter(i => i.status === 'validated');
+  const totalSpent = validatedInvoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+  const invoicesCount = validatedInvoices.length;
+  const avgInvoice = invoicesCount > 0 ? Math.round(totalSpent / invoicesCount) : 0;
+
+  window.PDFExport.generate(
+    `Historique Commercial — ${supplierName}`,
+    headers,
+    data,
+    {
+      subHeader: [
+        `Fournisseur : ${supplierName}`,
+        `Généré le ${new Date().toLocaleDateString('fr-FR')}`
+      ],
+      summaryBlocks: [
+        { label: "Nombre de factures validées", value: `${invoicesCount}` },
+        { label: "Montant total acheté", value: `${UI.formatCurrency(totalSpent)}` },
+        { label: "Montant moyen par facture", value: `${UI.formatCurrency(avgInvoice)}` }
+      ]
+    }
+  );
+};
+
+// ===== PURCHASE ORDERS =====
+async function renderPurchaseOrders(container) {
+  UI.loading(container, 'Chargement des commandes...');
+  const [orders, suppliers, products] = await Promise.all([
+    DB.dbGetAll('purchaseOrders'),
+    DB.dbGetAll('suppliers'),
+    DB.dbGetAll('products'),
+  ]);
+
+  const supplierMap = {};
+  suppliers.forEach(s => { supplierMap[s.id] = s; });
+
+  const sorted = orders.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const pending = orders.filter(o => ['pending', 'sent'].includes(o.status));
+  const received = orders.filter(o => o.status === 'received');
+
+  container.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Bons de Commande</h1>
+        <p class="page-subtitle">${orders.length} commandes — ${pending.length} en attente de réception</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="Router.navigate('suppliers')"><i data-lucide="factory"></i> Fournisseurs</button>
+        ${Auth.can('suppliers_view') ? `
+          <button class="btn btn-secondary" onclick="exportOrdersPDF()"><i data-lucide="printer"></i> PDF</button>
+          <button class="btn btn-secondary" onclick="exportAllOrders()"><i data-lucide="download"></i> Exporter CSV</button>
+          <label class="btn btn-secondary" style="cursor:pointer"><i data-lucide="upload"></i> Importer<input type="file" accept=".json,.csv" style="display:none" onchange="importOrdersFile(this.files[0])"></label>
+        ` : ''}
+        ${Auth.can('po_create') ? `<button class="btn btn-primary" onclick="showNewOrderForm()"><i data-lucide="plus"></i> Nouvelle Commande</button>` : ''}
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-chip stat-orange"><span class="stat-val">${pending.length}</span><span class="stat-label">En attente</span></div>
+      <div class="stat-chip stat-green"><span class="stat-val">${received.length}</span><span class="stat-label">Reçues</span></div>
+      <div class="stat-chip stat-blue"><span class="stat-val">${UI.formatCurrency(pending.reduce((a, o) => a + (o.totalAmount || 0), 0))}</span><span class="stat-label">Valeur en attente</span></div>
+    </div>
+
+    <div class="filter-bar">
+      <select id="po-status" class="filter-select" onchange="filterOrders()">
+        <option value="">Tous statuts</option>
+        <option value="pending">En attente</option>
+        <option value="sent">Envoyée</option>
+        <option value="partial">Partielle</option>
+        <option value="received">Reçue</option>
+        <option value="cancelled">Annulée</option>
+      </select>
+      <select id="po-supplier" class="filter-select" onchange="filterOrders()">
+        <option value="">Tous fournisseurs</option>
+        ${suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+      </select>
+    </div>
+
+    <div id="po-table-container"></div>
+  `;
+
+  window._ordersData = sorted;
+  window._ordersSupplierMap = supplierMap;
+  filterOrders();
+
+  if (window._pendingOrderData) {
+    const pending = window._pendingOrderData;
+    window._pendingOrderData = null;
+    setTimeout(function() {
+      showNewOrder(pending.supplierId, null, pending.items);
+      // Remplir également la note si fournie
+      setTimeout(function() {
+        var noteInput = document.querySelector('textarea[name="note"]');
+        if (noteInput && pending.note) {
+          noteInput.value = pending.note;
+        }
+      }, 200);
+    }, 150);
+  }
+}
+
+function filterOrders() {
+  const status = document.getElementById('po-status')?.value || '';
+  const supId = document.getElementById('po-supplier')?.value;
+  let data = window._ordersData || [];
+  if (status) data = data.filter(o => o.status === status);
+  if (supId) data = data.filter(o => o.supplierId === parseInt(supId));
+
+  const container = document.getElementById('po-table-container');
+  if (!container) return;
+
+  const statusConfig = {
+    pending: { label: 'Brouillon', cls: 'badge-neutral' },
+    sent: { label: 'Envoyée', cls: 'badge-info' },
+    partial: { label: 'Partielle', cls: 'badge-warning' },
+    received: { label: 'Reçue', cls: 'badge-success' },
+    cancelled: { label: 'Annulée', cls: 'badge-danger' },
+  };
+
+  UI.table(container, [
+    { label: 'N° BC', render: r => `<code class="code-tag">${r.orderNumber || 'BC-' + String(r.id).padStart(5, '0')}</code>` },
+    { label: 'Date', render: r => UI.formatDate(r.date) },
+    {
+      label: 'Fournisseur', render: r => {
+        const s = window._ordersSupplierMap?.[r.supplierId];
+        return s ? `<strong>${s.name}</strong>` : '—';
+      }
+    },
+    { label: 'Articles', render: r => `${(r.items || []).length} référence(s)` },
+    { label: 'Montant Total', render: r => `<strong>${UI.formatCurrency(r.totalAmount || 0)}</strong>` },
+    { label: 'Date livraison prévue', render: r => r.expectedDate ? UI.formatDate(r.expectedDate) : '—' },
+    {
+      label: 'Statut', render: r => {
+        const s = statusConfig[r.status] || { label: r.status, cls: 'badge-neutral' };
+        return `<span class="badge ${s.cls}">${s.label}</span>`;
+      }
+    },
+    {
+      label: 'Actions', render: r => `
+      <div class="actions-cell">
+        <button class="btn btn-xs btn-primary" onclick="viewOrder(${r.id})"><i data-lucide="eye"></i> Voir</button>
+        ${r.status === 'pending' && Auth.can('po_send') ? `<button class="btn btn-xs btn-secondary" onclick="sendOrder(${r.id})"><i data-lucide="send"></i> Envoyer</button>` : ''}
+        ${['sent', 'partial'].includes(r.status) && Auth.can('po_receive') ? `<button class="btn btn-xs btn-success" onclick="receiveOrder(${r.id})"><i data-lucide="package"></i> Réceptionner</button>` : ''}
+        ${['pending', 'sent'].includes(r.status) && Auth.can('po_cancel') ? `<button class="btn btn-xs btn-danger" onclick="cancelOrder(${r.id})" title="Annuler cette commande"><i data-lucide="x-circle"></i> Annuler</button>` : ''}
+      </div>` },
+  ], data, { emptyMessage: 'Aucune commande', emptyIcon: 'file-text', pageSize: 100 });
+  if (window.lucide) lucide.createIcons();
+}
+
+async function showNewOrder(supplierId, supplierName, preselectedProductId) {
+  const products = window._allProducts || await DB.dbGetAll('products');
+  const suppliers = await DB.dbGetAll('suppliers');
+
+  UI.modal('<i data-lucide="file-text" class="modal-icon-inline"></i> Nouvelle Commande', `
+    <form id="order-form" class="form-grid">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fournisseur *</label>
+          <select name="supplierId" id="order-supplier" class="form-control" required>
+            <option value="">Sélectionner...</option>
+            ${suppliers.map(s => `<option value="${s.id}" ${s.id === supplierId ? 'selected' : ''}>${s.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date de livraison prévue</label>
+          <input type="date" name="expectedDate" class="form-control" value="${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Note / Urgence</label>
+        <textarea name="note" class="form-control" rows="2" placeholder="Commande urgente, spécifications spéciales..."></textarea>
+      </div>
+    </form>
+
+    <div class="rx-section" style="margin-top:16px">
+      <div class="rx-section-header">
+        <h4 class="rx-section-title"><i data-lucide="package"></i> Articles à Commander</h4>
+        <button type="button" class="btn btn-sm btn-primary" onclick="addOrderItem()"><i data-lucide="plus"></i> Ajouter article</button>
+      </div>
+      <div id="order-items-list">
+        <div class="rx-empty-items">Ajoutez les produits à commander</div>
+      </div>
+      <div class="order-total-bar" id="order-total-bar" style="display:none">
+        <strong>Total estimé : <span id="order-total-display">0 GNF</span></strong>
+      </div>
+    </div>
+  `, {
+    size: 'large',
+    footer: `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+      <button class="btn btn-warning" onclick="submitOrder('pending')"><i data-lucide="save"></i> Brouillon</button>
+      <button class="btn btn-primary" onclick="submitOrder('sent')"><i data-lucide="send"></i> Créer & Envoyer</button>
+    `
+  });
+  if (window.lucide) lucide.createIcons();
+  window._orderItemCounter = 0;
+  window._allProducts = products;
+
+  // Auto-ajouter le produit pré-sélectionné s'il est fourni (ou liste de produits)
+  if (preselectedProductId) {
+    if (Array.isArray(preselectedProductId)) {
+      preselectedProductId.forEach(item => {
+        addOrderItem({
+          productId: item.id || item.productId,
+          productName: item.name || item.productName,
+          quantity: item.qty || item.quantity || 1,
+          unitPrice: item.price || item.purchasePrice || 0
+        });
+      });
+      updateOrderTotal();
+    } else {
+      var preProduct = (typeof preselectedProductId === 'object') ? preselectedProductId : null;
+      var pid = preProduct ? preProduct.id : parseInt(preselectedProductId);
+
+      addOrderItem();
+
+      setTimeout(function() {
+        var searchInput = document.getElementById('order-search-0');
+        var hiddenInput = document.getElementById('order-prod-0');
+        var priceInput = document.getElementById('order-price-0');
+
+        if (!preProduct && window._allProducts) {
+          preProduct = window._allProducts.find(function(p) { return p.id === pid; });
+        }
+
+        if (preProduct && searchInput) {
+          searchInput.value = preProduct.name || '';
+          if (hiddenInput) {
+            hiddenInput.value = pid;
+            hiddenInput.dataset.name = preProduct.name || '';
+            hiddenInput.dataset.price = preProduct.purchasePrice || 0;
+          }
+          if (priceInput && preProduct.purchasePrice) {
+            priceInput.value = preProduct.purchasePrice;
+          }
+          updateOrderTotal();
+        }
+      }, 150);
+    }
+  } else {
+    addOrderItem();
+  }
+}
+
+function showNewOrderForm() {
+  showNewOrder(null, null);
+}
+
+function addOrderItem(item = null) {
+  const listEl = document.getElementById('order-items-list');
+  if (!listEl) return;
+  listEl.querySelector('.rx-empty-items')?.remove();
+  document.getElementById('order-total-bar')?.style.setProperty('display', 'block');
+
+  const idx = window._orderItemCounter++;
+  const div = document.createElement('div');
+  div.className = 'rx-item-row';
+  div.id = `order-item-${idx}`;
+  
+  const pId = item ? item.productId : '';
+  const pName = item ? item.productName : '';
+  const qty = item ? item.quantity : 1;
+  const price = item ? item.unitPrice : '';
+
+  div.innerHTML = `
+    <div class="rx-item-fields">
+      <div class="form-group flex-grow" style="position:relative">
+        <input type="text" class="form-control" id="order-search-${idx}" placeholder="Rechercher un produit..." autocomplete="off" oninput="orderProductSearch(${idx})" value="${pName}">
+        <input type="hidden" id="order-prod-${idx}" value="${pId}" data-name="${pName}" data-price="${price || 0}">
+        <div id="order-dropdown-${idx}" class="order-product-dropdown" style="display:none"></div>
+      </div>
+      <div class="form-group" style="width:100px">
+        <input type="number" class="form-control" id="order-qty-${idx}" placeholder="Qté" min="1" value="${qty}" oninput="updateOrderTotal()">
+      </div>
+      <div class="form-group" style="width:140px">
+        <input type="number" class="form-control" id="order-price-${idx}" placeholder="Prix unit." min="0" value="${price}" oninput="updateOrderTotal()">
+      </div>
+      <button type="button" class="btn btn-xs btn-danger" onclick="removeOrderItem(${idx})"><i data-lucide="trash-2"></i></button>
+    </div>`;
+  listEl.appendChild(div);
+  if (window.lucide) lucide.createIcons();
+}
+
+// Recherche autocomplete de produits pour les commandes fournisseurs
+function orderProductSearch(idx) {
+  const input = document.getElementById(`order-search-${idx}`);
+  const dropdown = document.getElementById(`order-dropdown-${idx}`);
+  const hidden = document.getElementById(`order-prod-${idx}`);
+  if (!input || !dropdown) return;
+
+  const q = input.value.trim().toLowerCase();
+  if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+  const products = window._allProducts || [];
+  const matches = products.filter(p =>
+    (p.name || '').toLowerCase().includes(q) ||
+    (p.code || '').toLowerCase().includes(q) ||
+    (p.dci || '').toLowerCase().includes(q)
+  ).slice(0, 15);
+
+  if (!matches.length) {
+    dropdown.innerHTML = '<div class="order-dd-empty">Aucun produit trouvé</div>';
+    dropdown.style.display = 'block';
+    return;
+  }
+
+  dropdown.innerHTML = matches.map(p => `
+    <div class="order-dd-item" onclick="selectOrderProduct(${idx}, ${p.id}, '${(p.name || '').replace(/'/g, "\\'")}', ${p.purchasePrice || 0})">
+      <strong>${p.name}</strong> <span style="color:var(--text-muted);font-size:11px">(${p.code})</span>
+      ${p.purchasePrice ? `<span style="float:right;color:var(--primary);font-weight:700">${UI.formatCurrency(p.purchasePrice)}</span>` : ''}
+    </div>
+  `).join('');
+  dropdown.style.display = 'block';
+}
+
+function selectOrderProduct(idx, productId, productName, purchasePrice) {
+  const input = document.getElementById(`order-search-${idx}`);
+  const hidden = document.getElementById(`order-prod-${idx}`);
+  const dropdown = document.getElementById(`order-dropdown-${idx}`);
+  const priceInput = document.getElementById(`order-price-${idx}`);
+
+  if (input) input.value = productName;
+  if (hidden) { hidden.value = productId; hidden.dataset.name = productName; hidden.dataset.price = purchasePrice; }
+  if (priceInput) priceInput.value = purchasePrice || '';
+  if (dropdown) dropdown.style.display = 'none';
+  updateOrderTotal();
+}
+
+// Fermer les dropdowns au clic ailleurs
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.order-product-dropdown') && !e.target.matches('[id^="order-search-"]')) {
+    document.querySelectorAll('.order-product-dropdown').forEach(d => d.style.display = 'none');
+  }
+});
+
+function removeOrderItem(idx) {
+  document.getElementById(`order-item-${idx}`)?.remove();
+  updateOrderTotal();
+}
+
+function updateOrderTotal() {
+  let total = 0;
+  document.querySelectorAll('.rx-item-row[id^="order-item-"]').forEach(row => {
+    const idx = row.id.replace('order-item-', '');
+    const qty = parseFloat(document.getElementById(`order-qty-${idx}`)?.value || 0);
+    const hidden = document.getElementById(`order-prod-${idx}`);
+    let price = parseFloat(document.getElementById(`order-price-${idx}`)?.value || 0);
+    if (!price && hidden?.value) {
+      price = parseFloat(hidden.dataset.price || 0);
+      const priceInput = document.getElementById(`order-price-${idx}`);
+      if (priceInput && !priceInput.value) priceInput.placeholder = price.toString();
+    }
+    total += qty * price;
+  });
+  const el = document.getElementById('order-total-display');
+  if (el) el.textContent = UI.formatCurrency(total);
+  return total;
+}
+
+async function submitOrder(status) {
+  if (window._orderEnCours) { UI.toast('Enregistrement en cours...', 'warning', 2000); return; }
+  window._orderEnCours = true;
+  const form = document.getElementById('order-form');
+  const supplierId = parseInt(document.getElementById('order-supplier')?.value);
+  if (!supplierId) { window._orderEnCours = false; UI.toast('Selectionnez un fournisseur', 'error'); return; }
+
+  const items = [];
+  document.querySelectorAll('.rx-item-row[id^="order-item-"]').forEach(row => {
+    const idx = row.id.replace('order-item-', '');
+    const hidden = document.getElementById(`order-prod-${idx}`);
+    const qty = parseInt(document.getElementById(`order-qty-${idx}`)?.value || 0);
+    const price = parseFloat(document.getElementById(`order-price-${idx}`)?.value || 0);
+    if (hidden?.value && qty > 0) {
+      items.push({ productId: parseInt(hidden.value), productName: hidden.dataset?.name || '', quantity: qty, unitPrice: price, receivedQty: 0 });
+    }
+  });
+
+  if (!items.length) { window._orderEnCours = false; UI.toast('Ajoutez au moins un article', 'warning'); return; }
+
+  const formData = form ? Object.fromEntries(new FormData(form)) : {};
+  const totalAmount = items.reduce((a, i) => a + i.quantity * i.unitPrice, 0);
+  const orderId = await DB.dbAdd('purchaseOrders', {
+    supplierId,
+    orderNumber: `BC-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
+    date: new Date().toISOString().split('T')[0],
+    expectedDate: formData.expectedDate || '',
+    items,
+    totalAmount,
+    status,
+    note: formData.note || '',
+    createdBy: DB.AppState.currentUser?.id,
+  });
+
+  await DB.writeAudit('CREATE_ORDER', 'purchaseOrders', orderId, { supplierId, itemCount: items.length, totalAmount });
+  window._orderEnCours = false;
+  UI.closeModal();
+  UI.toast(`Commande cree — ${UI.formatCurrency(totalAmount)}`, 'success');
+  Router.navigate('purchase-orders');
+}
+
+async function sendOrder(orderId) {
+  const order = await DB.dbGet('purchaseOrders', orderId);
+  if (!order) return;
+  await DB.dbPut('purchaseOrders', { ...order, status: 'sent', sentAt: Date.now() });
+  await DB.writeAudit('SEND_ORDER', 'purchaseOrders', orderId, {});
+  UI.toast('Commande marquée comme envoyée', 'success');
+  Router.navigate('purchase-orders');
+}
+
+async function cancelOrder(orderId) {
+  const order = await DB.dbGet('purchaseOrders', orderId);
+  if (!order) return;
+  
+  const confirm = await UI.confirm(`Voulez-vous vraiment annuler la commande ${order.orderNumber || 'BC-'+orderId} ?`);
+  if (!confirm) return;
+
+  await DB.dbPut('purchaseOrders', { ...order, status: 'cancelled', cancelledAt: Date.now() });
+  await DB.writeAudit('CANCEL_ORDER', 'purchaseOrders', orderId, { status: 'cancelled' });
+  UI.toast('Commande annulée avec succès', 'success');
+  Router.navigate('purchase-orders');
+}
+
+async function receiveOrder(orderId) {
+  const [order, products] = await Promise.all([
+    DB.dbGet('purchaseOrders', orderId),
+    DB.dbGetAll('products'),
+  ]);
+  if (!order) return;
+
+  window._currentReceiveOrder = JSON.parse(JSON.stringify(order));
+  (window._currentReceiveOrder.items || []).forEach((item, idx) => {
+    const prod = products.find(p => Number(p.id) === Number(item.productId));
+    const remaining = Math.max(0, Number(item.quantity) - (Number(item.receivedQty) || 0));
+    item._recvQty = remaining;
+    item._recvLot = `LOT-AUTO-${Date.now()}-${idx}`;
+    item._recvExpiry = prod && prod.expiryDate ? prod.expiryDate : '';
+    item._recvPrice = item.unitPrice || (prod ? prod.purchasePrice : 0);
+    item._recvSalePrice = prod ? prod.salePrice : 0;
+    item._recvConform = '1';
+  });
+  window._recvOrderPage = 1;
+
+  UI.modal('<i data-lucide="package" class="modal-icon-inline"></i> Réception de Commande', `
+    <div class="receive-form">
+      <div class="receive-header">
+        <code class="code-tag">${order.orderNumber}</code>
+        <span>Date de réception : <strong>${new Date().toLocaleDateString('fr-FR')}</strong></span>
+      </div>
+      <div id="receive-items-container"></div>
+      <div class="form-group" style="margin-top:16px">
+        <label>Observations</label>
+        <textarea id="recv-note" class="form-control" rows="2" placeholder="Dommages, manquants, non-conformités..."></textarea>
+      </div>
+      
+      <div style="margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 16px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:700; color:var(--primary);">
+          <input type="checkbox" id="recv-create-invoice" onchange="document.getElementById('recv-invoice-fields').style.display = this.checked ? 'block' : 'none'">
+          Générer la facture fournisseur correspondante
+        </label>
+        <div id="recv-invoice-fields" style="display:none; margin-top:12px; background:var(--bg-card); padding:16px; border-radius:8px; border:1px solid var(--border);">
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div class="form-group">
+              <label>Numéro de facture *</label>
+              <input type="text" id="recv-invoice-num" class="form-control" placeholder="FAC-XXXX">
+            </div>
+            <div class="form-group">
+              <label>Date de facture</label>
+              <input type="date" id="recv-invoice-date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Mode de paiement</label>
+            <select id="recv-invoice-payment" class="form-control">
+              <option value="especes">Espèces</option>
+              <option value="mobile_money">Mobile Money</option>
+              <option value="credit">Crédit</option>
+              <option value="virement">Virement</option>
+              <option value="cheque">Chèque</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  `, {
+    size: 'large',
+    footer: `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmReceiveOrder(${orderId})"><i data-lucide="check"></i> Confirmer la réception</button>
+    `
+  });
+  if (window.lucide) lucide.createIcons();
+  
+  setTimeout(() => renderReceivePagination(), 100);
+}
+
+function renderReceivePagination(page) {
+  if (page !== undefined) window._recvOrderPage = page;
+  const p = window._recvOrderPage || 1;
+  const PAGE_SIZE = 100;
+  const items = window._currentReceiveOrder?.items || [];
+  const totalPages = Math.ceil(items.length / PAGE_SIZE) || 1;
+  const start = (p - 1) * PAGE_SIZE;
+  const pageItems = items.slice(start, start + PAGE_SIZE);
+
+  const itemsHTML = pageItems.map((item, localIdx) => {
+    const idx = start + localIdx;
+    return `
+    <div class="receive-item-row">
+      <div class="receive-item-info">
+        <strong>${item.productName}</strong>
+        <span class="text-muted text-sm">Commandé : ${item.quantity}</span>
+      </div>
+      <div class="receive-item-fields" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;">
+        <div class="form-group">
+          <label>Qté reçue</label>
+          <input type="number" class="form-control" value="${item._recvQty}" min="0" max="${item.quantity}" onchange="window._currentReceiveOrder.items[${idx}]._recvQty = parseInt(this.value)||0">
+        </div>
+        <div class="form-group">
+          <label>Prix achat (est.)</label>
+          <input type="number" class="form-control" value="${item._recvPrice || 0}" min="0" onchange="window._currentReceiveOrder.items[${idx}]._recvPrice = parseFloat(this.value)||0">
+        </div>
+        <div class="form-group">
+          <label>Prix vente</label>
+          <input type="number" class="form-control" value="${item._recvSalePrice || 0}" min="0" onchange="window._currentReceiveOrder.items[${idx}]._recvSalePrice = parseFloat(this.value)||0">
+        </div>
+        <div class="form-group">
+          <label>N° de Lot</label>
+          <input type="text" class="form-control" value="${item._recvLot}" placeholder="LOT-XXXX" onchange="window._currentReceiveOrder.items[${idx}]._recvLot = this.value">
+        </div>
+        <div class="form-group">
+          <label>Date expiration</label>
+          <input type="date" class="form-control" value="${item._recvExpiry}" onchange="window._currentReceiveOrder.items[${idx}]._recvExpiry = this.value">
+        </div>
+        <div class="form-group">
+          <label>Conforme ?</label>
+          <select class="form-control" onchange="window._currentReceiveOrder.items[${idx}]._recvConform = this.value">
+            <option value="1" ${item._recvConform === '1' ? 'selected' : ''}>Conforme</option>
+            <option value="0" ${item._recvConform === '0' ? 'selected' : ''}>Non conforme</option>
+          </select>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  let navHTML = '';
+  if (totalPages > 1) {
+    navHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:16px; border-top:1px solid var(--border)">
+        <span class="text-muted text-sm">Page ${p} / ${totalPages} (${items.length} articles)</span>
+        <div style="display:flex; gap:8px">
+          <button class="btn btn-sm btn-secondary" onclick="renderReceivePagination(${p - 1})" ${p <= 1 ? 'disabled' : ''}>◀ Précédent</button>
+          <button class="btn btn-sm btn-secondary" onclick="renderReceivePagination(${p + 1})" ${p >= totalPages ? 'disabled' : ''}>Suivant ▶</button>
+        </div>
+      </div>
+    `;
+  }
+
+  const container = document.getElementById('receive-items-container');
+  if (container) container.innerHTML = itemsHTML + navHTML;
+}
+
+async function confirmReceiveOrder(orderId) {
+  const order = window._currentReceiveOrder;
+  if (!order) return;
+
+  const createInvoice = document.getElementById('recv-create-invoice')?.checked;
+  const invoiceNum = document.getElementById('recv-invoice-num')?.value?.trim();
+  const invoiceDate = document.getElementById('recv-invoice-date')?.value;
+  const invoicePayment = document.getElementById('recv-invoice-payment')?.value || '';
+
+  if (createInvoice && !invoiceNum) {
+    UI.toast('Le numéro de facture est obligatoire pour générer la facture.', 'error');
+    return;
+  }
+
+  let hasNonConformity = false;
+  const updatedItems = [];
+  const invoiceItems = [];
+  let invoiceTotal = 0;
+
+  // Récupérer le fournisseur pour son nom exact
+  const suppliers = await DB.dbGetAll('suppliers');
+  const sup = suppliers.find(s => s.id === order.supplierId);
+  const supplierName = sup ? sup.name : 'Inconnu';
+
+  // 1. Génération de la facture fournisseur (si coché)
+  let invoiceId = null;
+  const gs = (key) => (window._appSettings || {})[key];
+  if (createInvoice) {
+    let validationError = null;
+    for (let idx = 0; idx < (order.items || []).length; idx++) {
+      const item = order.items[idx];
+      const qtyReceived = parseInt(item._recvQty) || 0;
+      const conform = item._recvConform === '1';
+      const lotNumber = (item._recvLot || '').trim();
+      const expiryDate = item._recvExpiry || '';
+      const recvSalePrice = parseFloat(item._recvSalePrice || 0);
+
+      if (qtyReceived > 0 && conform) {
+        if (gs('purchase_expiry_required') !== 'false' && !expiryDate) {
+          validationError = `La date d'expiration est requise pour « ${item.productName} » (paramètre Achats activé).`;
+          break;
+        }
+        if (gs('purchase_lot_required') === 'true' && !lotNumber) {
+          validationError = `Le N° de lot est requis pour « ${item.productName} » (paramètre Achats activé).`;
+          break;
+        }
+        if (gs('purchase_saleprice_required') === 'true' && (!recvSalePrice || recvSalePrice <= 0)) {
+          validationError = `Le prix de vente est requis pour « ${item.productName} » (paramètre Achats activé).`;
+          break;
+        }
+      }
+    }
+    if (validationError) {
+      UI.toast(validationError, 'error');
+      return;
+    }
+
+    for (let idx = 0; idx < (order.items || []).length; idx++) {
+      const item = order.items[idx];
+      const qtyReceived = parseInt(item._recvQty) || 0;
+      const conform = item._recvConform === '1';
+      const recvPrice = parseFloat(item._recvPrice || item.unitPrice || 0);
+      const recvSalePrice = parseFloat(item._recvSalePrice || 0);
+      
+      if (qtyReceived > 0 && conform) {
+        invoiceItems.push({
+          productId: item.productId,
+          productName: item.productName,
+          quantity: qtyReceived,
+          unitPrice: recvPrice,
+          salePrice: recvSalePrice,
+          total: qtyReceived * recvPrice,
+          lotNumber: item._recvLot || '',
+          expiryDate: item._recvExpiry || '',
+        });
+        invoiceTotal += qtyReceived * recvPrice;
+      }
+    }
+
+    if (invoiceItems.length === 0) {
+      UI.toast('Aucun article conforme reçu. Impossible de générer une facture vide.', 'warning');
+      return;
+    }
+
+    invoiceId = await DB.dbAdd('invoices', {
+      invoiceNumber: invoiceNum,
+      supplierId: order.supplierId,
+      supplierName: supplierName,
+      date: invoiceDate || new Date().toISOString().split('T')[0],
+      totalAmount: invoiceTotal,
+      items: invoiceItems,
+      status: 'validated',
+      paymentMethod: invoicePayment,
+      note: `Facture générée automatiquement à la réception du Bon de Commande N° ${order.orderNumber}.`,
+      createdBy: DB.AppState.currentUser?.id,
+    });
+    
+    await DB.writeAudit('VALIDATE_INVOICE', 'invoices', invoiceId, { invoiceNumber: invoiceNum, totalAmount: invoiceTotal });
+  }
+
+  // 2. Traitement des lots, du stock et des prix du catalogue produits
+  for (let idx = 0; idx < (order.items || []).length; idx++) {
+    const item = order.items[idx];
+    const qtyReceived = parseInt(item._recvQty) || 0;
+    const lotNumber = item._recvLot || '';
+    const expiryDate = item._recvExpiry || '';
+    const conform = item._recvConform === '1';
+    const recvPrice = parseFloat(item._recvPrice || item.unitPrice || 0);
+    const recvSalePrice = parseFloat(item._recvSalePrice || 0);
+
+    if (!conform) hasNonConformity = true;
+
+    const previouslyReceived = Number(item.receivedQty) || 0;
+
+    updatedItems.push({ 
+      productId: item.productId, 
+      productName: item.productName, 
+      quantity: item.quantity, 
+      unitPrice: recvPrice, 
+      salePrice: recvSalePrice, 
+      receivedQty: previouslyReceived + qtyReceived, 
+      lotNumber, 
+      expiryDate, 
+      conform 
+    });
+
+    if (qtyReceived > 0 && conform) {
+      // Add to stock
+      await DB.dbAdd('lots', {
+        productId: item.productId,
+        lotNumber,
+        expiryDate,
+        quantity: qtyReceived,
+        initialQuantity: qtyReceived,
+        receiptDate: new Date().toISOString().split('T')[0],
+        supplierId: order.supplierId,
+        status: 'active',
+        invoiceId: invoiceId,
+        invoiceRef: createInvoice ? invoiceNum : null,
+      });
+
+      const stockAll = await DB.dbGetAll('stock');
+      const existing = stockAll.find(s => Number(s.productId) === Number(item.productId));
+      if (existing) {
+        await DB.dbPut('stock', { ...existing, quantity: (existing.quantity || 0) + qtyReceived });
+      } else {
+        await DB.dbAdd('stock', { productId: Number(item.productId), quantity: qtyReceived, reservedQuantity: 0 });
+      }
+
+      await DB.dbAdd('movements', {
+        productId: Number(item.productId), type: 'ENTRY', subType: 'PURCHASE',
+        quantity: qtyReceived, lotNumber, date: new Date().toISOString(),
+        userId: DB.AppState.currentUser?.id, reference: order.orderNumber,
+        invoiceRef: createInvoice ? invoiceNum : null,
+      });
+
+      // Mise à jour des prix et de la date dans le catalogue produits
+      try {
+        const productsAll = await DB.dbGetAll('products');
+        const existingProd = productsAll.find(p => Number(p.id) === Number(item.productId));
+        if (existingProd) {
+          let updatedProd = false;
+          if (recvPrice && existingProd.purchasePrice !== recvPrice) {
+            existingProd.purchasePrice = recvPrice;
+            updatedProd = true;
+          }
+          if (recvSalePrice && existingProd.salePrice !== recvSalePrice) {
+            existingProd.salePrice = recvSalePrice;
+            updatedProd = true;
+          }
+          if (expiryDate && existingProd.expiryDate !== expiryDate) {
+            existingProd.expiryDate = expiryDate;
+            updatedProd = true;
+          }
+          if (updatedProd) {
+            existingProd.updatedAt = Date.now();
+            await DB.dbPut('products', existingProd);
+            window._allProducts = null; // force reload
+            window._invoicesProducts = null; // force reload
+
+            // Propagation en cascade vers tous les lots actifs de ce produit
+            try {
+              const allLots = await DB.dbGetAll('lots');
+              const productLots = allLots.filter(l => Number(l.productId) === Number(item.productId) && l.status === 'active');
+              for (const lot of productLots) {
+                const lotUpdate = { ...lot, updatedAt: Date.now() };
+                if (recvPrice) lotUpdate.purchasePrice = recvPrice;
+                if (recvSalePrice) lotUpdate.salePrice = recvSalePrice;
+                if (expiryDate) lotUpdate.expiryDate = expiryDate;
+                await DB.dbPut('lots', lotUpdate);
+              }
+            } catch (cascadeErr) {
+              console.warn('[Receipt Sync] Erreur cascade lots:', cascadeErr);
+            }
+          }
+        }
+      } catch (prodErr) {
+        console.warn('[Receipt] Erreur mise à jour prix/date produit:', prodErr);
+      }
+    }
+  }
+
+  const note = document.getElementById('recv-note')?.value || '';
+  const allReceived = updatedItems.every(i => i.receivedQty >= i.quantity);
+
+  await DB.dbPut('purchaseOrders', {
+    ...order,
+    items: updatedItems,
+    status: hasNonConformity ? 'partial' : (allReceived ? 'received' : 'partial'),
+    receivedAt: Date.now(),
+    receiveNote: note,
+    hasNonConformity,
+    invoiceId: invoiceId,
+    invoiceRef: createInvoice ? invoiceNum : null,
+  });
+
+  await DB.writeAudit('RECEIVE_ORDER', 'purchaseOrders', orderId, { hasNonConformity, invoiceCreated: createInvoice });
+
+  if (hasNonConformity) {
+    await DB.dbAdd('alerts', {
+      type: 'NON_CONFORMITY',
+      message: `Non-conformité détectée à la réception — ${order.orderNumber}`,
+      status: 'unread', date: Date.now(), priority: 'high',
+    });
+  }
+
+  UI.closeModal();
+  let statusText = hasNonConformity ? 'Réception avec non-conformités enregistrée' : 'Réception confirmée — Stock mis à jour';
+  if (createInvoice) statusText += ' & Facture fournisseur validée';
+  UI.toast(statusText, hasNonConformity ? 'warning' : 'success', 4000);
+  Router.navigate('purchase-orders');
+}
+
+async function viewOrder(orderId) {
+  const [order, suppliers] = await Promise.all([
+    DB.dbGet('purchaseOrders', orderId),
+    DB.dbGetAll('suppliers'),
+  ]);
+  if (!order) return;
+  const sup = suppliers.find(s => s.id === order.supplierId);
+
+  UI.modal('<i data-lucide="file-text" class="modal-icon-inline"></i> ' + order.orderNumber, `
+    <div class="detail-row"><span>Fournisseur</span><span><strong>${sup?.name || '—'}</strong></span></div>
+    <div class="detail-row"><span>Date</span><span>${UI.formatDate(order.date)}</span></div>
+    <div class="detail-row"><span>Livraison prévue</span><span>${order.expectedDate ? UI.formatDate(order.expectedDate) : '—'}</span></div>
+    <div class="detail-row"><span>Statut</span><span><span class="badge badge-${order.status === 'received' ? 'success' : order.status === 'sent' ? 'info' : order.status === 'cancelled' ? 'danger' : order.status === 'partial' ? 'warning' : 'neutral'}">${({pending:'Brouillon',sent:'Envoyée',partial:'Partielle',received:'Reçue',cancelled:'Annulée'})[order.status] || order.status}</span></span></div>
+    <h4 style="margin:16px 0 8px">Articles (Total: <strong>${UI.formatCurrency(order.totalAmount || 0)}</strong>)</h4>
+    <div id="view-order-items-table"></div>
+    ${order.receiveNote ? `<p class="text-muted" style="margin-top:12px">Note réception : ${order.receiveNote}</p>` : ''}
+    <div style="margin-top:16px;text-align:right;display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-sm btn-primary" onclick="window.printPurchaseOrder(${orderId})"><i data-lucide="printer"></i> Imprimer en PDF</button>
+      <button class="btn btn-sm btn-secondary" onclick="exportSingleOrder(${orderId})"><i data-lucide="download"></i> Exporter cette commande</button>
+    </div>
+  `, { size: 'large' });
+  if (window.lucide) lucide.createIcons();
+
+  const container = document.getElementById('view-order-items-table');
+  if (container) {
+    UI.table(container, [
+      { label: 'Produit', render: r => r.productName },
+      { label: 'Qté commandée', render: r => r.quantity },
+      { label: 'Prix unit.', render: r => UI.formatCurrency(r.unitPrice || 0) },
+      { label: 'Total', render: r => UI.formatCurrency((r.unitPrice || 0) * r.quantity) },
+      { label: 'Lot reçu', render: r => r.lotNumber ? `<code class="code-tag">${r.lotNumber}</code>` : '—' }
+    ], order.items || [], { emptyMessage: 'Aucun article', pageSize: 100 });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RÉCLAMATIONS FOURNISSEUR
+// ═══════════════════════════════════════════════════════════════
+function showAddComplaint(supId) {
+  UI.modal('<i data-lucide="alert-circle" class="modal-icon-inline"></i> Nouvelle Réclamation', `
+    <form id="complaint-form" class="form-grid">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type de réclamation *</label>
+          <select name="type" class="form-control" required>
+            <option value="delivery">Erreur de livraison</option>
+            <option value="quality">Problème de qualité</option>
+            <option value="missing">Produit manquant</option>
+            <option value="other">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Réf. commande (optionnel)</label>
+          <input type="text" name="orderRef" class="form-control" placeholder="BC-2026-XXXXX">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description détaillée *</label>
+        <textarea name="description" class="form-control" rows="3" required placeholder="Décrivez le problème rencontré..."></textarea>
+      </div>
+    </form>
+  `, {
+    footer: `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+      <button class="btn btn-danger" onclick="submitComplaint(${supId})"><i data-lucide="alert-circle"></i> Enregistrer</button>
+    `
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+async function submitComplaint(supId) {
+  const form = document.getElementById('complaint-form');
+  if (!form?.checkValidity()) { form?.reportValidity(); return; }
+  const data = Object.fromEntries(new FormData(form));
+  const sup = await DB.dbGet('suppliers', supId);
+  if (!sup) return;
+
+  const complaint = {
+    type: data.type,
+    description: data.description,
+    orderRef: data.orderRef || null,
+    date: new Date().toISOString().split('T')[0],
+    status: 'open',
+    resolution: null,
+    createdBy: DB.AppState.currentUser?.name || 'Inconnu',
+  };
+
+  const complaints = sup.complaints || [];
+  complaints.push(complaint);
+  await DB.dbPut('suppliers', { ...sup, complaints });
+  await DB.writeAudit('ADD_COMPLAINT', 'suppliers', supId, { type: complaint.type, description: complaint.description });
+  UI.closeModal();
+  UI.toast('Réclamation enregistrée', 'success');
+  viewSupplierDetail(supId);
+}
+
+async function resolveComplaint(supId, complaintIdx) {
+  const resolution = prompt('Comment ce problème a-t-il été résolu ?');
+  if (resolution === null) return;
+  const sup = await DB.dbGet('suppliers', supId);
+  if (!sup || !sup.complaints?.[complaintIdx]) return;
+
+  sup.complaints[complaintIdx].status = 'resolved';
+  sup.complaints[complaintIdx].resolution = resolution || 'Résolu sans commentaire';
+  sup.complaints[complaintIdx].resolvedAt = new Date().toISOString();
+  sup.complaints[complaintIdx].resolvedBy = DB.AppState.currentUser?.name || 'Inconnu';
+
+  await DB.dbPut('suppliers', sup);
+  await DB.writeAudit('RESOLVE_COMPLAINT', 'suppliers', supId, { idx: complaintIdx });
+  UI.toast('Réclamation marquée comme résolue', 'success');
+  viewSupplierDetail(supId);
+}
+
+window.showAddSupplier = showAddSupplier;
+window.submitSupplier = submitSupplier;
+window.showEditSupplier = showEditSupplier;
+window.submitEditSupplier = submitEditSupplier;
+window.viewSupplierDetail = viewSupplierDetail;
+window.showNewOrder = showNewOrder;
+window.showNewOrderForm = showNewOrderForm;
+window.addOrderItem = addOrderItem;
+window.removeOrderItem = removeOrderItem;
+window.updateOrderTotal = updateOrderTotal;
+window.submitOrder = submitOrder;
+window.filterOrders = filterOrders;
+window.sendOrder = sendOrder;
+window.cancelOrder = cancelOrder;
+window.receiveOrder = receiveOrder;
+window.renderReceivePagination = renderReceivePagination;
+window.confirmReceiveOrder = confirmReceiveOrder;
+window.viewOrder = viewOrder;
+window.showAddComplaint = showAddComplaint;
+window.submitComplaint = submitComplaint;
+window.resolveComplaint = resolveComplaint;
+window.orderProductSearch = orderProductSearch;
+window.selectOrderProduct = selectOrderProduct;
+window.goSuppliersPage = goSuppliersPage;
+window.renderSuppliersPage = renderSuppliersPage;
+window.exportAllOrders = exportAllOrders;
+window.exportSingleOrder = exportSingleOrder;
+window.importOrdersFile = importOrdersFile;
+
+Router.register('suppliers', renderSuppliers);
+Router.register('purchase-orders', renderPurchaseOrders);
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT / IMPORT DE COMMANDES — FORMAT CSV
+// Gestion complète des erreurs pour robustesse production
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Helper: escape CSV value
+ */
+function _csvEscape(val) {
+  if (val === null || val === undefined) return '';
+  var s = String(val);
+  if (s.indexOf(';') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+/**
+ * Helper: generate CSV content from an order
+ */
+function _orderToCSVRows(order, supplierName) {
+  var rows = [];
+  (order.items || []).forEach(function(item) {
+    rows.push([
+      _csvEscape(order.orderNumber || ''),
+      _csvEscape(order.date || ''),
+      _csvEscape(supplierName || ''),
+      _csvEscape(order.status || 'pending'),
+      _csvEscape(order.expectedDate || ''),
+      _csvEscape(item.productName || ''),
+      item.quantity || 0,
+      item.unitPrice || 0,
+      item.receivedQty || 0,
+      _csvEscape(item.lotNumber || ''),
+      _csvEscape(item.expiryDate || ''),
+      _csvEscape(order.note || '')
+    ].join(';'));
+  });
+  return rows;
+}
+
+var CSV_HEADER = 'N_BC;Date;Fournisseur;Statut;Date_Livraison;Produit;Quantite;Prix_Unitaire;Qte_Recue;Lot;Peremption;Note';
+
+/**
+ * Exporte TOUTES les commandes en CSV
+ */
+async function exportAllOrders() {
+  try {
+    var orders = await DB.dbGetAll('purchaseOrders');
+    var suppliers = await DB.dbGetAll('suppliers');
+    if (!orders || orders.length === 0) { UI.toast('Aucune commande à exporter', 'warning'); return; }
+    var supMap = {};
+    (suppliers || []).forEach(function(s) { supMap[s.id] = s.name; });
+    var lines = [CSV_HEADER];
+    orders.forEach(function(o) {
+      var rows = _orderToCSVRows(o, supMap[o.supplierId] || 'Inconnu');
+      rows.forEach(function(r) { lines.push(r); });
+    });
+    var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'OrdiveX_Commandes_' + new Date().toISOString().split('T')[0] + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    UI.toast(orders.length + ' commande(s) exportée(s) en CSV', 'success');
+  } catch (err) {
+    console.warn('[Export] Erreur:', err);
+    UI.toast('Erreur export : ' + (err.message || err), 'error');
+  }
+}
+
+/**
+ * Exporte UNE commande spécifique en CSV
+ */
+async function exportSingleOrder(orderId) {
+  try {
+    var order = await DB.dbGet('purchaseOrders', orderId);
+    if (!order) { UI.toast('Commande introuvable', 'error'); return; }
+    var suppliers = await DB.dbGetAll('suppliers');
+    var sup = suppliers.find(function(s) { return s.id === order.supplierId; });
+    var lines = [CSV_HEADER];
+    _orderToCSVRows(order, sup ? sup.name : 'Inconnu').forEach(function(r) { lines.push(r); });
+    var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (order.orderNumber || 'BC') + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    UI.toast('Commande ' + order.orderNumber + ' exportée en CSV', 'success');
+  } catch (err) {
+    console.warn('[Export] Erreur:', err);
+    UI.toast('Erreur export : ' + (err.message || err), 'error');
+  }
+}
+
+/**
+ * Importe des commandes depuis un fichier CSV
+ * Si statut = received/reçue → stock mis à jour automatiquement
+ */
+async function importOrdersFile(file) {
+  if (!file) return;
+  try {
+    if (file.size > 50 * 1024 * 1024) { UI.toast('Fichier trop volumineux (max 50 MB)', 'error'); return; }
+    if (file.size === 0) { UI.toast('Le fichier est vide', 'error'); return; }
+    var text = await file.text();
+    if (!text || !text.trim()) { UI.toast('Le fichier ne contient aucune donnée', 'error'); return; }
+
+    // Detect format
+    var ordersToImport = [];
+    if (file.name.endsWith('.json')) {
+      ordersToImport = _parseImportJSON(text);
+    } else {
+      ordersToImport = _parseImportCSV(text);
+    }
+    if (!ordersToImport || ordersToImport.length === 0) { UI.toast('Aucune commande valide trouvée', 'warning'); return; }
+
+    var hasReceived = ordersToImport.some(function(o) { return o.status === 'received'; });
+    var msg = 'Importer ' + ordersToImport.length + ' commande(s) ?';
+    if (hasReceived) msg += '\n⚠️ Les commandes "Reçues" mettront à jour le stock automatiquement.';
+    var confirmed = await UI.confirm(msg);
+    if (!confirmed) return;
+
+    var products = await DB.dbGetAll('products');
+    var suppliers = await DB.dbGetAll('suppliers');
+    var existingOrders = await DB.dbGetAll('purchaseOrders');
+    var productMap = {};
+    products.forEach(function(p) {
+      productMap[(p.name || '').toLowerCase().trim()] = p;
+      if (p.code) productMap[p.code.toLowerCase().trim()] = p;
+    });
+    var supplierMap = {};
+    suppliers.forEach(function(s) { supplierMap[(s.name || '').toLowerCase().trim()] = s; });
+    var existingNumbers = new Set(existingOrders.map(function(o) { return o.orderNumber; }));
+
+    var imported = 0, skipped = 0, stockUpdated = 0, errors = [];
+
+    for (var oi = 0; oi < ordersToImport.length; oi++) {
+      var orderData = ordersToImport[oi];
+      try {
+        if (orderData.orderNumber && existingNumbers.has(orderData.orderNumber)) { skipped++; continue; }
+
+        // Resolve supplier
+        var supplierId = null;
+        if (orderData.supplierName) {
+          var foundSup = supplierMap[orderData.supplierName.toLowerCase().trim()];
+          if (foundSup) { supplierId = foundSup.id; }
+          else {
+            supplierId = await DB.dbAdd('suppliers', { name: orderData.supplierName, status: 'active', paymentTerms: 30 });
+            supplierMap[orderData.supplierName.toLowerCase().trim()] = { id: supplierId };
+          }
+        }
+
+        // Resolve items
+        var resolvedItems = [];
+        for (var ii = 0; ii < (orderData.items || []).length; ii++) {
+          var item = orderData.items[ii];
+          if (!item.productName && !item.productId) continue;
+          var product = item.productName ? productMap[item.productName.toLowerCase().trim()] : null;
+          if (!product && item.productId) product = products.find(function(p) { return p.id === item.productId; });
+          var qty = Math.max(0, parseInt(item.quantity) || 0);
+          if (qty <= 0) continue;
+          resolvedItems.push({
+            productId: product ? product.id : null,
+            productName: item.productName || (product ? product.name : 'Inconnu'),
+            quantity: qty,
+            unitPrice: Math.max(0, parseFloat(item.unitPrice) || (product ? product.purchasePrice : 0) || 0),
+            receivedQty: Math.max(0, parseInt(item.receivedQty) || 0),
+            lotNumber: item.lotNumber || '',
+            expiryDate: item.expiryDate || ''
+          });
+        }
+        if (resolvedItems.length === 0) { errors.push('BC ' + (orderData.orderNumber || '?') + ': aucun article valide'); skipped++; continue; }
+
+        var totalAmount = resolvedItems.reduce(function(a, i) { return a + i.quantity * i.unitPrice; }, 0);
+        var newOrder = {
+          orderNumber: orderData.orderNumber || ('BC-IMP-' + Date.now() + '-' + imported),
+          date: orderData.date || new Date().toISOString().split('T')[0],
+          expectedDate: orderData.expectedDate || '',
+          supplierId: supplierId,
+          items: resolvedItems,
+          totalAmount: totalAmount,
+          status: orderData.status || 'pending',
+          note: (orderData.note || '') + ' [Importé CSV]',
+          createdBy: DB.AppState.currentUser ? DB.AppState.currentUser.id : null,
+          importedAt: new Date().toISOString()
+        };
+
+        var orderId = await DB.dbAdd('purchaseOrders', newOrder);
+        existingNumbers.add(newOrder.orderNumber);
+
+        // Auto stock for received orders
+        if (newOrder.status === 'received') {
+          for (var si = 0; si < resolvedItems.length; si++) {
+            var ri = resolvedItems[si];
+            var qtyR = ri.receivedQty || ri.quantity;
+            if (qtyR > 0 && ri.productId) {
+              try {
+                var lotNum = ri.lotNumber || '';
+                await DB.dbAdd('lots', { productId: ri.productId, lotNumber: lotNum, expiryDate: ri.expiryDate || '', quantity: qtyR, initialQuantity: qtyR, receiptDate: new Date().toISOString().split('T')[0], supplierId: supplierId, status: 'active' });
+                var stockAll = await DB.dbGetAll('stock');
+                var existing = stockAll.find(function(s) { return s.productId === ri.productId; });
+                if (existing) { await DB.dbPut('stock', Object.assign({}, existing, { quantity: existing.quantity + qtyR })); }
+                else { await DB.dbAdd('stock', { productId: ri.productId, quantity: qtyR, reservedQuantity: 0 }); }
+                await DB.dbAdd('movements', { productId: ri.productId, type: 'ENTRY', subType: 'PURCHASE_IMPORT', quantity: qtyR, lotNumber: lotNum, date: new Date().toISOString(), userId: DB.AppState.currentUser ? DB.AppState.currentUser.id : null, reference: newOrder.orderNumber + ' (Import)' });
+                stockUpdated++;
+              } catch (se) { errors.push('Stock ' + ri.productName + ': ' + (se.message || se)); }
+            }
+          }
+          var saved = await DB.dbGet('purchaseOrders', orderId);
+          if (saved) await DB.dbPut('purchaseOrders', Object.assign({}, saved, { receivedAt: Date.now() }));
+        }
+
+        await DB.writeAudit('IMPORT_ORDER', 'purchaseOrders', orderId, { orderNumber: newOrder.orderNumber, itemCount: resolvedItems.length, totalAmount: totalAmount });
+        imported++;
+      } catch (oe) { errors.push('BC ' + (orderData.orderNumber || '?') + ': ' + (oe.message || oe)); skipped++; }
+    }
+
+    var result = imported + ' commande(s) importée(s)';
+    if (stockUpdated > 0) result += ', ' + stockUpdated + ' entrée(s) de stock';
+    if (skipped > 0) result += ', ' + skipped + ' ignorée(s)';
+    UI.toast(result, imported > 0 ? 'success' : 'warning', 5000);
+    if (errors.length > 0) console.warn('[Import] Erreurs:', errors);
+    Router.navigate('purchase-orders');
+  } catch (err) {
+    console.warn('[Import] Erreur générale:', err);
+    UI.toast('Erreur import : ' + (err.message || err), 'error');
+  }
+  try { document.querySelectorAll('input[type="file"]').forEach(function(inp) { inp.value = ''; }); } catch(e) {}
+}
+
+function _parseImportJSON(text) {
+  try {
+    var data = JSON.parse(text);
+    if (data._format === 'OrdiveX_PurchaseOrders' && Array.isArray(data.orders)) return data.orders;
+    if (Array.isArray(data)) return data.filter(function(o) { return o && (o.items || o.orderNumber); });
+    if (data.orderNumber || data.items) return [data];
+    UI.toast('Format JSON non reconnu', 'error'); return [];
+  } catch (e) { UI.toast('JSON mal formé : ' + e.message, 'error'); return []; }
+}
+
+function _parseImportCSV(text) {
+  try {
+    var lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
+    if (lines.length < 2) { UI.toast('Le CSV doit contenir un en-tête et au moins une ligne', 'error'); return []; }
+    var firstLine = lines[0];
+    var sep = ';';
+    if (firstLine.split(',').length > firstLine.split(';').length) sep = ',';
+    if (firstLine.split('\t').length > firstLine.split(sep).length) sep = '\t';
+    var headers = lines[0].split(sep).map(function(h) { return h.trim().toLowerCase().replace(/['"﻿]/g, ''); });
+    var orderMap = {};
+    for (var i = 1; i < lines.length; i++) {
+      var cols = lines[i].split(sep).map(function(c) { return c.trim().replace(/^["']|["']$/g, ''); });
+      if (cols.length < 3) continue;
+      var row = {};
+      headers.forEach(function(h, idx) { row[h] = cols[idx] || ''; });
+      var orderNum = row.n_bc || row.ordernumber || row.order_number || row.bc || ('CSV-IMP-' + Date.now() + '-' + i);
+      var supplierName = row.fournisseur || row.suppliername || row.supplier || '';
+      var productName = row.produit || row.productname || row.product || '';
+      var quantity = Math.max(0, parseInt(row.quantite || row.quantity || row.qte || row.qty || 0));
+      var unitPrice = Math.max(0, parseFloat(row.prix_unitaire || row.unitprice || row.prix || row.price || 0));
+      var qteRecue = Math.max(0, parseInt(row.qte_recue || row.receivedqty || row.qte_reçue || row.received || 0));
+      var lotNumber = row.lot || row.lotnumber || '';
+      var expiryDate = row.peremption || row.expirydate || row.expiration || '';
+      var status = row.statut || row.status || 'pending';
+      var dateLivraison = row.date_livraison || row.expecteddate || '';
+      var date = row.date || new Date().toISOString().split('T')[0];
+      var note = row.note || '';
+      if (!productName || quantity <= 0) continue;
+      var isReceived = status.toLowerCase() === 'received' || status.toLowerCase() === 'reçue' || status.toLowerCase() === 'recue';
+      if (!orderMap[orderNum]) {
+        orderMap[orderNum] = { orderNumber: orderNum, supplierName: supplierName, date: date, expectedDate: dateLivraison, status: isReceived ? 'received' : 'pending', note: note, items: [] };
+      }
+      orderMap[orderNum].items.push({ productName: productName, quantity: quantity, unitPrice: unitPrice, receivedQty: isReceived ? (qteRecue || quantity) : qteRecue, lotNumber: lotNumber, expiryDate: expiryDate });
+    }
+    return Object.values(orderMap);
+  } catch (e) { UI.toast('Erreur lecture CSV : ' + e.message, 'error'); return []; }
+}
+
+window.exportSuppliersPDF = function() {
+  if (!window.PDFExport) return UI.toast("Module PDF non chargé", "error");
+  const data = (window._suppliersData || []).map(s => [
+    s.name || '',
+    s.contact || s.contactName || '',
+    s.phone || s.contactPhone || '',
+    s.email || '',
+    s.address || ''
+  ]);
+  const headers = ["Fournisseur", "Contact", "Téléphone", "Email", "Adresse"];
+  const subHeader = [`Total Fournisseurs : ${data.length}`];
+  window.PDFExport.generate("Liste des Fournisseurs", headers, data, { subHeader });
+};
+
+window.exportOrdersPDF = function() {
+  if (!window.PDFExport) return UI.toast("Module PDF non chargé", "error");
+  const data = (window._ordersData || []).map(o => [
+    o.orderNumber || '',
+    new Date(o.date).toLocaleDateString('fr-FR'),
+    o.supplierName || 'Inconnu',
+    o.status,
+    UI.formatCurrency(o.totalAmount || 0)
+  ]);
+  const headers = ["N° Commande", "Date", "Fournisseur", "Statut", "Montant Total"];
+  window.PDFExport.generate("Bons de Commande", headers, data);
+};
+
+

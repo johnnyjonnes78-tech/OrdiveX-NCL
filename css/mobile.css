@@ -1,0 +1,2160 @@
+/* ═══════════════════════════════════════════════════════════════
+   OrdiveX — mobile.css  v4.0.0
+   Couche responsive mobile-first — additive sur main.css
+   Ne jamais modifier main.css directement pour le responsive.
+   ═══════════════════════════════════════════════════════════════
+
+   PLAN DU FICHIER
+   ──────────────
+   §0  Base & Reset mobile universel
+   §1  Breakpoint Mobile Principal  ≤ 767px
+       1.1  Variables CSS mobiles
+       1.2  Layout (sidebar / topbar / content)
+       1.3  Topbar compacte
+       1.4  Navigation / sidebar
+       1.5  Page headers
+       1.6  KPI Grid
+       1.7  → Fusionné dans §1.15
+       1.8  Tableaux → Card-view
+       1.9  Boutons & zones tactiles
+       1.10 Formulaires anti-zoom iOS
+       1.11 Modaux
+       1.12 POS Ultra Pro Mobile (vente complète)
+       1.13 Paramètres & Settings
+       1.14 Caisse Journalière
+       1.15 Graphiques / Charts
+       1.16 Reçu / Facture Mobile
+       1.17 Toasts
+       1.18 Composants Divers (grilles, panels, etc.)
+   §2  Micro-mobile  ≤ 374px
+   §3  Tablette  768px – 1023px
+   §4  PWA Standalone (safe-area)
+   §5  Utilitaires mobiles globaux
+   ═══════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────
+   §0  BASE UNIVERSELLE — s'applique à tous les écrans
+   ─────────────────────────────────────────────────────────────── */
+
+/* Empêche le scroll horizontal global */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Améliore le scroll sur iOS */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Règle safe-area universelle pour les table-wrappers */
+.table-wrapper {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* Empêche les images et médias de déborder */
+img, canvas, video, iframe {
+  max-width: 100%;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   §1  BREAKPOINT MOBILE PRINCIPAL — max-width: 767px
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.1  VARIABLES CSS MOBILES
+     ───────────────────────────────────────────────────────────── */
+  :root {
+    --topbar-h: 56px;
+    --content-padding: 14px;
+    --content-padding-top: 72px;
+    --tap-min: 44px;
+    --tap-comfortable: 48px;
+    --gap-mobile: 12px;
+    --gap-mobile-sm: 8px;
+    --font-size-page-title: 18px;
+    --font-size-kpi-value: 20px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.2  LAYOUT PRINCIPAL — Reset desktop, 0 margin-left
+     ───────────────────────────────────────────────────────────── */
+
+  /* Le contenu occupe tout l'écran */
+  #app-content {
+    margin-left: 0 !important;
+    padding: var(--content-padding-top) var(--content-padding) calc(24px + var(--safe-bottom)) !important;
+    overflow-x: hidden;
+    min-width: 0;
+  }
+
+  /* La topbar part du bord gauche */
+  #app-topbar {
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0 12px !important;
+    height: var(--topbar-h) !important;
+    gap: 8px;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.3  TOPBAR — compacte et ergonomique
+     ───────────────────────────────────────────────────────────── */
+
+  /* Bouton hamburger → toujours visible */
+  .topbar-menu-btn {
+    display: flex !important;
+    width: var(--tap-min) !important;
+    height: var(--tap-min) !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    touch-action: manipulation;
+    border-radius: var(--radius-sm);
+  }
+
+  .topbar-menu-btn:active {
+    background: var(--bg);
+  }
+
+  /* Titre topbar — tronqué proprement */
+  .topbar-title {
+    font-size: 15px !important;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Topbar actions — icônes réduites, uniquement les essentielles */
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Boutons topbar — taille tactile correcte */
+  .topbar-btn {
+    width: var(--tap-min) !important;
+    height: var(--tap-min) !important;
+    border-radius: var(--radius-sm) !important;
+    flex-shrink: 0;
+    touch-action: manipulation;
+  }
+
+  /* Masquer certains boutons topbar non-essentiels sur mobile
+     (réapprovisionnement, impression, sauvegarde) pour éviter l'overflow.
+     On garde : alertes, thème, settings (admin), PWA install */
+  #app-topbar > .topbar-actions > button:nth-child(2), /* refresh-cw */
+  #app-topbar > .topbar-actions > button:nth-child(3), /* printer */
+  #app-topbar > .topbar-actions > button:nth-child(5) { /* save */
+    display: none !important;
+  }
+
+  /* Barre de recherche topbar — masquée sur mobile (dans les pages) */
+  .topbar-search {
+    display: none !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.4  SIDEBAR — Drawer off-canvas amélioré
+     (La logique de base est déjà dans main.css §8842)
+     On ajoute les améliorations manquantes.
+     ───────────────────────────────────────────────────────────── */
+
+  /* Sidebar plus large sur les grands mobiles */
+  #app-sidebar {
+    width: min(280px, 85vw) !important;
+  }
+
+  /* Items nav — plus grands pour les doigts */
+  #app-sidebar .nav-item {
+    min-height: var(--tap-comfortable) !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+    touch-action: manipulation;
+  }
+
+  /* Sections de navigation */
+  #app-sidebar .nav-section {
+    padding: 20px 20px 6px !important;
+    font-size: 10px;
+  }
+
+  /* Safe area sur le footer sidebar et styling de la déconnexion */
+  #app-sidebar .sidebar-footer {
+    padding-bottom: calc(16px + var(--safe-bottom)) !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: relative !important;
+    z-index: 10 !important;
+  }
+
+  /* Force la visibilité du badge TrillionX sur mobile */
+  #app-sidebar .premium-badge {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Zone utilisateur statique */
+  #app-sidebar .sidebar-user {
+    padding: 12px 14px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    margin-top: 10px !important;
+    display: flex !important;
+  }
+
+  /* Rendre le bouton de déconnexion gros et rouge sur mobile */
+  #app-sidebar .sidebar-logout {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 44px !important;
+    height: 44px !important;
+    background: rgba(231, 76, 60, 0.15) !important;
+    color: var(--danger) !important;
+    border-radius: 10px !important;
+    flex-shrink: 0 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  #app-sidebar .sidebar-logout i,
+  #app-sidebar .sidebar-logout svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* Overlay — empêche interaction avec l'arrière-plan */
+  #sidebar-overlay {
+    display: block !important;
+    touch-action: none;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.5  PAGE HEADERS — Stack vertical sur mobile
+     ───────────────────────────────────────────────────────────── */
+
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .page-title {
+    font-size: var(--font-size-page-title) !important;
+    line-height: 1.3;
+  }
+
+  .page-subtitle {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  /* Actions du header — prennent toute la largeur */
+  .header-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  /* Boutons d'action dans le header — s'étirent sur mobile */
+  .header-actions .btn {
+    flex: 1;
+    justify-content: center;
+    min-height: var(--tap-min);
+  }
+
+  /* S'il y a plus de 2 boutons, on laisse le wrap naturel */
+  .header-actions.no-stretch .btn {
+    flex: none;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.6  KPI GRID — 2 colonnes sur mobile
+     ───────────────────────────────────────────────────────────── */
+
+  .kpi-grid,
+  .kpi-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--gap-mobile) !important;
+    margin-bottom: 16px !important;
+  }
+
+  .kpi-card {
+    padding: 14px 12px !important;
+    gap: 10px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .kpi-icon {
+    font-size: 24px !important;
+  }
+
+  .kpi-value {
+    font-size: var(--font-size-kpi-value) !important;
+    letter-spacing: -0.3px;
+  }
+
+  .kpi-label {
+    font-size: 11px !important;
+  }
+
+
+  /* §1.7 Charts → Déplacé vers §1.15 (Graphiques — Responsive charts) */
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.8  TABLEAUX → CARD VIEW sur mobile
+     Utilise data-label=" " injecté par ui.js
+     ───────────────────────────────────────────────────────────── */
+
+  /* On cache l'en-tête du tableau */
+  .data-table thead {
+    display: none !important;
+  }
+
+  /* Le tableau devient un bloc */
+  .data-table {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .data-table tbody {
+    display: block !important;
+  }
+
+  /* Chaque ligne TR devient une carte */
+  .data-table tbody tr {
+    display: block !important;
+    background: var(--surface) !important;
+    border-radius: var(--radius) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow) !important;
+    margin-bottom: 10px !important;
+    padding: 4px 12px !important;
+    transition: box-shadow var(--transition);
+  }
+
+  .data-table tbody tr:hover {
+    box-shadow: var(--shadow-md) !important;
+    background: var(--surface) !important;
+  }
+
+  .data-table tbody tr:last-child {
+    border-bottom: 1px solid var(--border) !important;
+    margin-bottom: 0;
+  }
+
+  /* Chaque TD devient une ligne label : valeur */
+  .data-table tbody td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid var(--border) !important;
+    font-size: 13px !important;
+    min-height: 36px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .data-table tbody td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Label via data-label */
+  .data-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    flex-shrink: 0;
+    min-width: 80px;
+  }
+
+  /* Si data-label vide → TD s'affiche normalement (ex: boutons actions) */
+  .data-table tbody td[data-label=""]::before,
+  .data-table tbody td:not([data-label])::before {
+    display: none !important;
+  }
+
+  .data-table tbody td[data-label=""] {
+    justify-content: flex-end !important;
+    padding-top: 8px !important;
+    gap: 6px;
+  }
+
+  /* Wrapper du tableau — scroll horizontal désactivé en card mode */
+  .table-wrapper {
+    overflow-x: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Pied de tableau */
+  .data-table tfoot {
+    display: block !important;
+  }
+
+  .data-table tfoot tr {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding: 10px 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .data-table tfoot td {
+    border-bottom: none !important;
+    font-weight: 700;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.9  BOUTONS & ZONES TACTILES
+     Apple HIG : minimum 44×44px
+     ───────────────────────────────────────────────────────────── */
+
+  /* Boutons standards — hauteur minimum */
+  .btn {
+    min-height: var(--tap-min) !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  /* Bouton large */
+  .btn-lg, .btn-xl {
+    min-height: var(--tap-comfortable) !important;
+    padding: 12px 20px !important;
+  }
+
+  /* Bouton petit — reste lisible mais zone tactile agrandie */
+  .btn-sm {
+    min-height: 36px !important;
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* Bouton extra-petit — zone tactile agrandie via padding/margin */
+  .btn-xs {
+    min-height: 32px !important;
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+  }
+
+  /* Bouton icône */
+  .btn-icon {
+    width: var(--tap-min) !important;
+    height: var(--tap-min) !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  /* Feedback tactile sur tous les boutons */
+  .btn:active {
+    transform: scale(0.97);
+    transition: transform 0.08s ease;
+  }
+
+  /* Tous les éléments interactifs */
+  button, a, input[type="button"], input[type="submit"], label[for] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.10  FORMULAIRES — Anti-zoom iOS, ergonomie tactile
+     iOS zoome automatiquement sur les inputs < 16px font-size
+     ───────────────────────────────────────────────────────────── */
+
+  /* RÈGLE CRITIQUE : font-size ≥ 16px empêche l'auto-zoom iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+    border-radius: var(--radius-sm) !important;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+  }
+
+  /* Hauteur minimale tactile */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select {
+    min-height: var(--tap-min) !important;
+    padding: 10px 12px !important;
+  }
+
+  /* Textarea */
+  textarea {
+    min-height: 88px;
+    resize: vertical;
+    padding: 12px !important;
+  }
+
+  /* Labels au-dessus des inputs */
+  .form-group label,
+  label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* Grille de formulaires → 1 colonne */
+  .form-grid {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .form-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  /* Checkboxes et radios — zone tactile */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 20px !important;
+    height: 20px !important;
+    margin-right: 8px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  /* Select natif — flèche visible */
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px !important;
+  }
+
+  /* Date/time inputs */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    min-height: var(--tap-min) !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.11  MODAUX — Plein écran sur mobile
+     ───────────────────────────────────────────────────────────── */
+
+  .modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important; /* Sheet du bas */
+  }
+
+  .modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(95px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Indicateur de glissement (sheet handle) */
+  .modal-box::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--border-dark);
+    border-radius: 2px;
+    margin: 12px auto 0;
+  }
+
+  .modal-header {
+    padding: 16px 20px 12px !important;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-title {
+    font-size: 16px !important;
+  }
+
+  .modal-body {
+    padding: 16px 20px !important;
+  }
+
+  .modal-footer {
+    padding: 12px 20px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Modal grande taille → quasi plein écran */
+  .modal-large {
+    max-height: 95vh !important;
+  }
+
+  /* Confirm dialog centré */
+  .confirm-box {
+    border-radius: var(--radius) !important;
+    margin: auto 20px !important;
+    width: calc(100% - 40px) !important;
+  }
+
+  /* Le overlay confirm centre verticalement */
+  .modal-overlay:has(.confirm-box) {
+    align-items: center !important;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse !important;
+    gap: 8px !important;
+  }
+
+  .modal-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.12  POS — Point de Vente Mobile PRO (3 vues + Tab Bar)
+     Architecture mobile :
+       Tab Bar fixe en bas → Produits | Panier(N) | Menu
+       Vue Produits : grille 2 cols, recherche sticky
+       Vue Panier : plein écran, validation touch
+       Vue Menu : ouvre la sidebar drawer existante
+     ───────────────────────────────────────────────────────────── */
+
+  /* ── BOTTOM TAB BAR ── */
+  .mobile-tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    /* display controlled by JS only — ne pas mettre display ici */
+    justify-content: space-around;
+    align-items: center;
+    background: #FFFFFF;
+    border-top: 1px solid #E2E8F0;
+    box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-tabbar .tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    color: #94A3B8;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 8px 0;
+    position: relative;
+    transition: color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .mobile-tabbar .tab-btn.active {
+    color: #1E40AF;
+  }
+
+  .mobile-tabbar .tab-btn.active svg {
+    stroke: #1E40AF;
+  }
+
+  .mobile-tabbar .tab-btn svg {
+    stroke: #94A3B8;
+    transition: stroke 0.2s ease;
+  }
+
+  /* Badge panier */
+  .tab-badge {
+    position: absolute;
+    top: 2px;
+    right: calc(50% - 22px);
+    background: #EF4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
+    box-shadow: 0 1px 4px rgba(239,68,68,0.4);
+  }
+
+  /* ── LAYOUT POS — 3 vues empilées ── */
+  .pos-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    gap: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* VUE PRODUITS */
+  .pos-left {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0px 12px 10px 12px !important;
+    box-sizing: border-box !important;
+    max-height: none !important;
+    overflow: visible !important;
+    min-height: auto !important;
+    border-radius: 0 !important;
+    background: var(--bg, #F1F5F9) !important;
+  }
+
+  /* Nouveau Header 100% sûr qui ne masque jamais les filtres */
+  .pos-main-header {
+    position: sticky !important;
+    top: 56px !important;
+    z-index: 50 !important;
+    background: var(--bg, #F1F5F9) !important;
+    padding-top: 10px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* Recherche — design normal, c'est le parent qui est sticky */
+  .pos-searchbar {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 6px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .pos-searchfield {
+    flex: 1 !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .pos-searchinput {
+    font-size: 16px !important;
+    min-height: 46px !important;
+    width: 100% !important;
+    padding: 10px 0 !important;
+  }
+
+  .pos-searchbar > .btn {
+    flex-shrink: 0 !important;
+    width: 46px !important;
+    height: 46px !important;
+    padding: 0 !important;
+  }
+
+  /* Filtres catégories — scroll horizontal */
+  .pos-catbar {
+    display: flex !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 6px !important;
+    padding: 4px 0 8px !important;
+    /* Laissons la barre prendre la largeur disponible mais avec block au lieu de flex:1 */
+    width: 100% !important;
+  }
+  
+  .pos-catbar::-webkit-scrollbar { display: none; }
+
+  /* Le parent de catbar et sort doit bien se comporter */
+  .pos-filter-bar {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+    width: 100% !important;
+    flex-shrink: 0 !important;
+  }
+
+  .pos-sort-select {
+    padding: 8px 10px !important;
+    font-size: 12px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+  }
+  .cat-pill {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 7px 14px !important;
+    min-height: 36px;
+  }
+
+  /* Grille produits — 2 colonnes */
+  .pos-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding-bottom: 16px !important;
+    scroll-padding-top: 120px;
+  }
+
+  /* Cartes produits — compactes */
+  .prod-card {
+    min-height: auto !important;
+    padding: 10px !important;
+    border-radius: 10px !important;
+  }
+
+  .prod-card:active {
+    transform: scale(0.97);
+    transition: transform 0.08s ease;
+  }
+
+  /* Bouton + ajout produit — gros touch target */
+  .prod-card .prod-add,
+  .prod-card button,
+  .prod-card .btn-add {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .prod-name {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  .prod-price {
+    font-size: 13px !important;
+  }
+
+  .prod-stock {
+    font-size: 10px !important;
+  }
+
+  /* VUE PANIER */
+  .pos-right {
+    max-height: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+
+  .pos-cart-panel {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    z-index: auto !important;
+    background: var(--surface) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    transform: none !important;
+    transition: none !important;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Désactiver le handle de glissement en mode tab */
+  .pos-cart-header::before {
+    display: none !important;
+  }
+
+  /* Masquer complètement l'en-tête "Votre Panier" sur mobile car il y a déjà l'onglet */
+  .pos-cart-header {
+    display: none !important;
+  }
+
+  /* Items du panier */
+  .cart-line {
+    padding: 10px 14px !important;
+    font-size: 13px;
+  }
+
+  .cart-line-name {
+    font-size: 13px !important;
+  }
+
+  /* Boutons +/- du panier — gros */
+  .qty-ctrl {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    font-size: 18px !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Bloc totaux du panier */
+  .pos-totals-block {
+    padding: 12px 14px !important;
+  }
+
+  /* Zone paiement */
+  .payment-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    gap: 6px !important;
+    padding-bottom: 4px;
+  }
+
+  .payment-tabs::-webkit-scrollbar { display: none; }
+
+  .pay-tab {
+    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    padding: 8px 12px !important;
+    min-height: 40px !important;
+    white-space: nowrap;
+  }
+
+  .pay-tab.active {
+    color: white !important;
+  }
+
+  /* Détails paiement dans le POS */
+  .pay-detail-row {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .pay-input {
+    font-size: 16px !important;
+    min-height: 44px !important;
+  }
+
+  /* Bouton Valider la Vente — GROS */
+  .pos-actions-bar {
+    padding: 12px !important;
+  }
+
+  .pos-validate-btn,
+  .pos-btn-validate,
+  .btn-validate-sale {
+    min-height: 56px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    border-radius: 14px !important;
+    width: 100% !important;
+  }
+
+  /* Cash shortcuts */
+  .cash-shortcuts, .cash-quick {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .cash-shortcuts .btn, .cash-pill {
+    flex: 1 !important;
+    min-width: 60px !important;
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+  }
+
+  /* Client badge / barre patient */
+  .client-badge-card {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    min-width: 0 !important;
+  }
+
+  .client-badge-card .badge-info {
+    min-width: 0 !important;
+    flex: 1 !important;
+  }
+
+  .client-badge-card strong {
+    font-size: 14px !important;
+    white-space: normal !important;
+    word-break: break-all;
+  }
+
+  .client-badge {
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Garantir la visibilité des boutons d'en-tête (ex: Nouveau Client) */
+  .pos-section-header .btn {
+    flex-shrink: 0 !important;
+    padding: 6px 12px !important;
+    height: auto !important;
+    min-height: 36px !important;
+    font-size: 12px !important;
+  }
+
+  /* Boutons paiement POS — grille 3 colonnes pour économiser l'espace */
+  .pay-methods {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .pay-btn {
+    padding: 8px 4px !important;
+    font-size: 10px !important;
+    min-height: 50px !important;
+  }
+
+  .pay-btn i, .pay-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Historique récent */
+  .pos-recent-section {
+    margin-top: 8px !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.13  PARAMÈTRES — Page Settings responsive
+     ───────────────────────────────────────────────────────────── */
+
+  .settings-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .settings-card {
+    padding: 14px !important;
+    border-radius: 12px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    word-break: break-word !important;
+  }
+
+  .settings-card-title {
+    font-size: 14px !important;
+    gap: 8px !important;
+    flex-wrap: wrap;
+  }
+
+  .settings-card-title svg,
+  .settings-card-title i {
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .settings-card-wide {
+    grid-column: 1 !important;
+  }
+
+  /* Formulaires dans les paramètres — pleine largeur */
+  .settings-card .form-row,
+  .settings-card .form-grid {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .settings-card .form-group {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .settings-card .form-group input,
+  .settings-card .form-group select,
+  .settings-card .form-group textarea {
+    width: 100% !important;
+    font-size: 16px !important; /* Empêche le zoom auto iOS */
+    box-sizing: border-box !important;
+  }
+
+  .settings-card label {
+    font-size: 13px !important;
+  }
+
+  /* Boutons dans settings — pleine largeur */
+  .settings-card .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+  }
+
+  .settings-card .btn-sm,
+  .settings-card .btn-xs {
+    width: auto !important;
+  }
+
+  /* Panel header dans settings — stack sur mobile */
+  .settings-card .panel-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .settings-card .panel-header .btn {
+    width: 100% !important;
+  }
+
+  /* Sync panel — boutons stack vertical */
+  .settings-card .sync-actions,
+  .settings-card .sync-repair-zone div[style*="flex-direction"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .settings-card .sync-actions .btn,
+  .settings-card .sync-repair-zone .btn {
+    width: 100% !important;
+    font-size: 12px !important;
+  }
+
+  .sync-status-row {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    font-size: 13px !important;
+  }
+
+  /* User cards inline — stack vertical */
+  .settings-card .user-item-card,
+  .settings-card div[style*="display:flex"][style*="align-items:center"][style*="gap:12px"] {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+
+  .settings-card .user-info {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .settings-card .user-name {
+    font-size: 13px !important;
+  }
+
+  .settings-card .user-meta code {
+    font-size: 10px !important;
+  }
+
+  /* Toggle switches */
+  .setting-toggle,
+  .toggle-switch {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+  }
+
+  /* Utilisateurs — card responsive */
+  .user-item,
+  .user-item-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .user-item-card .user-info {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .user-item-card .user-meta {
+    flex-wrap: wrap !important;
+  }
+
+  .user-item-card .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .user-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 15px !important;
+  }
+
+  /* Sync panel — responsive */
+  .sync-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sync-status-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+  }
+
+  .sync-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .sync-actions .btn {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  .sync-repair-zone {
+    flex-direction: column !important;
+  }
+
+  .sync-repair-zone .btn {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  /* Logo upload dans settings */
+  .settings-logo-container {
+    text-align: center;
+  }
+
+  .settings-logo-container img {
+    max-height: 60px !important;
+    margin: 0 auto 8px !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.14  CAISSE JOURNALIÈRE — Responsive complet
+     ───────────────────────────────────────────────────────────── */
+
+  /* Recap cards caisse — 1 colonne */
+  .caisse-recap {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .caisse-total-card {
+    padding: 16px !important;
+  }
+
+  .caisse-total-val {
+    font-size: 22px !important;
+  }
+
+  .caisse-total-label {
+    font-size: 12px !important;
+  }
+
+  /* Breakdown paiements — 2 colonnes */
+  .payment-breakdown-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .pay-breakdown-card {
+    padding: 12px 10px !important;
+    flex-direction: column !important;
+    text-align: center;
+    gap: 6px !important;
+  }
+
+  .pay-bd-val {
+    font-size: 16px !important;
+  }
+
+  .pay-bd-label {
+    font-size: 11px !important;
+  }
+
+  /* Détail calcul — grilles internes 1 colonne */
+  #tab-caisse-detail > .dash-panel > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Tabs caisse — scroll horizontal */
+  .tabs-bar {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 4px !important;
+  }
+
+  .tabs-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 8px 14px !important;
+    min-height: 40px;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.15  GRAPHIQUES — Responsive charts
+     ───────────────────────────────────────────────────────────── */
+
+  .charts-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .chart-wide,
+  .chart-narrow {
+    grid-column: 1 !important;
+  }
+
+  .chart-card {
+    padding: 14px !important;
+    overflow: hidden;
+  }
+
+  .chart-card canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 200px;
+  }
+
+  .chart-title {
+    font-size: 14px !important;
+  }
+
+  /* Metrics page — force 1 colonne */
+  .metrics-grid,
+  [class*="metrics"] > div[style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Metrics — En-tête BI + filtres dates responsive */
+  .bi-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .bi-header-actions {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 6px !important;
+    justify-content: flex-start !important;
+  }
+
+  .bi-header-actions input[type="date"] {
+    flex: 1 !important;
+    min-width: 110px !important;
+    max-width: 150px !important;
+    font-size: 12px !important;
+    padding: 0 4px !important;
+  }
+
+  .bi-header-actions .btn {
+    flex-grow: 1 !important;
+    min-width: 100% !important;
+    margin-top: 4px !important;
+    justify-content: center !important;
+  }
+
+  /* Metrics BI title */
+  .bi-title {
+    font-size: 18px !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.16  REÇU / FACTURE — Adapté mobile
+     ───────────────────────────────────────────────────────────── */
+
+  .recu-pro {
+    padding: 14px !important;
+    font-size: 12px !important;
+  }
+
+  .recu-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center;
+  }
+
+  .recu-orgname {
+    font-size: 16px !important;
+  }
+
+  .recu-docblock {
+    text-align: center;
+  }
+
+  .recu-transaction-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .recu-table {
+    font-size: 11px !important;
+  }
+
+  .recu-table th,
+  .recu-table td {
+    padding: 6px 4px !important;
+    font-size: 11px !important;
+  }
+
+  .recu-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .recu-actions .btn {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  /* Encart assurance/patient sur facture — stack vertical */
+  .recu-pro > div[style*="justify-content:space-between"][style*="margin-bottom:15px"] {
+    flex-direction: column !important;
+    gap: 12px;
+  }
+
+  .recu-pro > div[style*="justify-content:space-between"][style*="margin-bottom:15px"] > div[style*="text-align:right"] {
+    text-align: left !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.17  TOASTS — Repositionnement mobile
+     ───────────────────────────────────────────────────────────── */
+
+  #toast-container {
+    bottom: calc(70px + var(--safe-bottom)) !important;
+    top: auto !important;
+    left: var(--content-padding) !important;
+    right: var(--content-padding) !important;
+    max-width: 100% !important;
+  }
+
+  .toast {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--radius) !important;
+    padding: 14px 16px !important;
+    font-size: 14px !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.18  COMPOSANTS DIVERS — Mobile
+     ───────────────────────────────────────────────────────────── */
+
+  /* Cartes génériques */
+  .card-body {
+    padding: 14px !important;
+  }
+
+  /* Tabs / onglets */
+  .tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 4px;
+    padding-bottom: 2px;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: var(--tap-min);
+    padding: 8px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Filtres / Barre de recherche dans les pages */
+  .filter-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .filter-bar input,
+  .filter-bar select {
+    width: 100% !important;
+  }
+
+  /* Panels dashboard */
+  .dash-panel {
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .panel-header {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: flex-start !important;
+  }
+
+  .panel-title {
+    font-size: 13px !important;
+  }
+
+  /* =============== TOP PRODUITS =============== */
+  .top-item {
+    gap: 8px !important;
+    padding: 6px 0 !important;
+  }
+  .top-rank {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 10px !important;
+    min-width: 20px !important;
+  }
+  .top-name {
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .top-revenue {
+    font-size: 11px !important;
+  }
+  
+  /* =============== ALERTES RÉCENTES =============== */
+  .alert-item {
+    padding: 8px !important;
+    gap: 8px !important;
+    align-items: flex-start !important;
+  }
+  .alert-type {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-bottom: 2px !important;
+  }
+  .alert-type svg, .alert-type i {
+    width: 12px !important;
+    height: 12px !important;
+  }
+  .alert-msg {
+    font-size: 11px !important;
+    white-space: normal !important; /* Force le retour à la ligne propre */
+    line-height: 1.3 !important;
+    color: var(--text) !important;
+  }
+  .alert-item button.btn-xs {
+    padding: 4px !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-height: auto !important;
+  }
+  
+  /* =============== STOCKS BAS =============== */
+  .stock-alert-item {
+    padding: 4px 0 !important;
+  }
+  .stock-name {
+    font-size: 11px !important;
+    max-width: 65% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .stock-qty {
+    font-size: 11px !important;
+  }
+
+  /* Stat/info boxes */
+  .info-grid,
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--gap-mobile) !important;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    font-size: 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Textes longs — évite les débordements */
+  p, li, td, th {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Spinners / loading */
+  .loading-state {
+    padding: 40px 20px !important;
+  }
+
+  /* Empty states */
+  .empty-state {
+    padding: 40px 20px !important;
+  }
+
+  /* Page sections — espacement réduit */
+  .section-header {
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  /* Grilles diverses */
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr !important;
+    gap: var(--gap-mobile) !important;
+  }
+
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Toutes les grilles inline avec minmax > 250px — 1 colonne auto */
+  div[style*="grid-template-columns"][style*="minmax(250px"],
+  div[style*="grid-template-columns"][style*="minmax(300px"],
+  div[style*="grid-template-columns"][style*="minmax(380px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Metrics page — grilles 4 colonnes → 2 colonnes mobile */
+  div[style*="grid-template-columns: repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Metrics page — grilles 2 colonnes asymétriques → stack */
+  div[style*="grid-template-columns:1.5fr"],
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Metrics hero banner — stack vertical */
+  div[style*="grid-template-columns:1fr auto"][style*="color:white"] {
+    grid-template-columns: 1fr !important;
+    padding: 20px 16px !important;
+  }
+
+  /* PWA Install Banner — repositionné */
+  #pwa-install-banner {
+    bottom: calc(12px + var(--safe-bottom)) !important;
+    left: var(--content-padding) !important;
+    right: var(--content-padding) !important;
+    max-width: 100% !important;
+    transform: none !important;
+    border-radius: var(--radius) !important;
+    padding: 12px 14px !important;
+  }
+
+  /* Sale detail in modal */
+  .sale-detail .detail-meta {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  /* Reports bottom */
+  .reports-bottom {
+    flex-direction: column !important;
+  }
+
+  /* Prescriptions grid */
+  .rx-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Patients table detail */
+  .patient-detail {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.19  AUDIT REPORT — Responsive mobile
+     ───────────────────────────────────────────────────────────── */
+
+  .audit-report-summary {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .audit-report-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center;
+  }
+
+  .audit-report-header > div:last-child {
+    text-align: center;
+  }
+
+  .audit-report-logo {
+    justify-content: center;
+  }
+
+  .audit-report-breakdown-label {
+    min-width: 100px !important;
+    font-size: 11px !important;
+  }
+
+  .compliance-card-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .compliance-score {
+    flex-direction: row !important;
+    gap: 12px !important;
+  }
+
+  .planning-card-header {
+    flex-direction: column !important;
+  }
+
+  .audit-report-config {
+    flex-direction: column !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.20  ALERTES PAGE — Responsive mobile
+     ───────────────────────────────────────────────────────────── */
+
+  .alerts-stats-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .alerts-filters-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .alerts-filter-group {
+    width: 100% !important;
+  }
+
+  .alerts-filter-input,
+  .alerts-filter-select {
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .alerts-clear-btn {
+    margin-left: 0 !important;
+  }
+
+  .alerts-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.21  FAB CHAT — Repositionnement mobile
+     ───────────────────────────────────────────────────────────── */
+
+  #support-chat-fab {
+    bottom: 80px !important;
+    right: 16px !important;
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  #support-chat-fab svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  #support-chat-fab .fab-label {
+    display: none !important;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     §1.22  SURCHARGES D'INTERFACE MOBILES — PERMISSIONS, RH & STOCK
+     ───────────────────────────────────────────────────────────── */
+
+  /* Grille des permissions réactive et tactile */
+  .perm-cat-header {
+    background: var(--bg) !important;
+    transition: background .15s;
+  }
+  .perm-cat-header:active {
+    background: var(--border) !important; /* Retour haptique visuel au clic */
+  }
+
+  .perm-row-label {
+    min-height: 48px !important; /* Zone de tap recommandée */
+    padding: 12px 16px 12px 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+  }
+  .perm-row-label:active {
+    background: rgba(99, 102, 241, 0.12) !important; /* Retour visuel tactile */
+  }
+  .perm-row-label input[type="checkbox"] {
+    width: 22px !important;
+    height: 22px !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+  }
+  .perm-row-label span {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Onglets Ressources Humaines — défilement horizontal fluide */
+  .hr-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    padding: 6px !important;
+    gap: 6px !important;
+    background: var(--surface-alt, #f0f4f8) !important;
+    border-radius: 12px !important;
+    margin-bottom: 18px !important;
+    scrollbar-width: none; /* Masquer la scrollbar standard Firefox */
+  }
+  .hr-tabs::-webkit-scrollbar {
+    display: none; /* Masquer la scrollbar standard Chrome/Safari */
+  }
+  .hr-tab-btn {
+    flex: 0 0 auto !important;
+    min-width: auto !important;
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Grille Assurance & Tiers Payant — passage à 1 colonne sur mobile */
+  .insurances-layout-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .insurances-layout-grid .card {
+    position: static !important; /* Enlever le sticky sur mobile */
+  }
+
+  /* Actions de header multiples — flex wrap intelligent pour éviter le chevauchement */
+  .header-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .header-actions .btn {
+    flex: 1 1 calc(50% - 4px) !important; /* 2 boutons par ligne sur mobile */
+    min-width: 120px !important;
+    justify-content: center !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    min-height: 40px !important;
+  }
+
+} /* fin @media (max-width: 767px) */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   §2  MICRO-MOBILE — max-width: 374px (iPhone SE, très petits Android)
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 374px) {
+
+  :root {
+    --content-padding: 10px;
+  }
+
+  /* KPI → 1 colonne sur très petits écrans */
+  .kpi-grid,
+  .kpi-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .kpi-card {
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 12px !important;
+  }
+
+  .page-title {
+    font-size: 16px !important;
+  }
+
+  /* POS grid supprimé pour hériter du comportement desktop naturel */
+
+  /* Topbar — encore moins d'espace */
+  .topbar-btn {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .topbar-title {
+    font-size: 14px !important;
+  }
+
+  /* Boutons — légèrement plus petits */
+  .btn {
+    font-size: 13px !important;
+    padding: 9px 12px !important;
+  }
+
+  /* Infos/stats en 1 colonne */
+  .info-grid,
+  .stats-grid,
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+} /* fin @media (max-width: 374px) */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   §2b  MICRO-MOBILE ALERTES — max-width: 480px
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .alerts-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .alerts-stat-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .alerts-stat-value {
+    font-size: 22px !important;
+  }
+
+  .page-header {
+    flex-direction: column !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   §3  TABLETTE — 768px – 1023px
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+
+  :root {
+    --sidebar-w: 220px;
+  }
+
+  /* Content padding légèrement réduit */
+  #app-content {
+    padding: calc(var(--topbar-h) + 20px) 20px 20px !important;
+    margin-left: var(--sidebar-w) !important;
+  }
+
+  #app-topbar {
+    left: var(--sidebar-w) !important;
+    padding: 0 20px !important;
+  }
+
+  /* KPI → 2 ou 3 colonnes selon espace */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .kpi-grid-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* Charts → stack vertical */
+  .charts-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .chart-wide,
+  .chart-narrow {
+    grid-column: 1 !important;
+  }
+
+  /* Boutons — légèrement plus grands que desktop */
+  .btn {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+
+  /* Sidebar — légèrement compactée un peu */
+  #app-sidebar {
+    width: var(--sidebar-w) !important;
+  }
+
+  .nav-item {
+    padding: 9px 16px !important;
+    font-size: 13px !important;
+  }
+
+  /* Tableaux — conservent le format table (pas card) */
+  /* Mais on ajoute un scroll contrôlé */
+  .table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Formulaires → 2 colonnes */
+  .form-grid {
+    flex-wrap: wrap !important;
+  }
+
+} /* fin @media tablette */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   §4  PWA STANDALONE — Safe Area & Status Bar
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (display-mode: standalone) {
+
+  /* Topbar compensée pour la status bar système */
+  #app-topbar {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  /* Content compensé */
+  #app-content {
+    padding-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px) + 16px) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-left: calc(var(--content-padding, 24px) + env(safe-area-inset-left, 0px)) !important;
+    padding-right: calc(var(--content-padding, 24px) + env(safe-area-inset-right, 0px)) !important;
+  }
+
+  /* Sidebar safe area */
+  #app-sidebar {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* Footer sidebar */
+  #app-sidebar .sidebar-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* POS Cart panel */
+  .pos-cart-panel {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Toast container */
+  #toast-container {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* PWA Banner */
+  #pwa-install-banner {
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+} /* fin @media standalone */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   §5  UTILITAIRES MOBILES GLOBAUX
+   (Pas dans media query — classes utilitaires toujours disponibles)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Classe helper pour masquer sur mobile */
+.hide-mobile {
+  display: initial;
+}
+
+.show-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: initial !important; }
+  .hide-tablet-down { display: none !important; }
+}
+
+@media (min-width: 768px) {
+  .hide-desktop { display: none !important; }
+}
+
+/* Texte tronqué sur mobile */
+.mobile-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+@media (max-width: 767px) {
+  .mobile-truncate { max-width: 120px; }
+}
+
+/* Scroll horizontal contrôlé pour tableaux qui DOIVENT rester en table */
+.table-scroll-mobile {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+
+/* Indicateur visuel de scroll possible */
+.table-scroll-mobile::after {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
+  border-radius: 2px;
+  opacity: 0.3;
+  margin-top: 4px;
+}
