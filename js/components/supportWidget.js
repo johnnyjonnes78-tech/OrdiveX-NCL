@@ -471,8 +471,9 @@ function initSupportWidget() {
  </div>
  <div class="support-body" id="support-chat-body">
  <div class="chat-bubble chat-bot">
- Bonjour <strong>${firstName}</strong>. Je suis <strong>Naomie</strong>, l'intelligence artificielle dédiée d'OrdiveX. 
+ Bonjour <strong>${firstName}</strong>. Je suis <strong>Naomie</strong>, l'intelligence artificielle dédiée d'OrdiveX.
  <br><br>Comment puis-je optimiser la gestion de votre officine aujourd'hui ?
+ <br><br>🧭 Astuce : dites-moi par exemple <em>« Ouvre le stock »</em> ou <em>« Montre les péremptions »</em>, je vous y emmène directement.
  </div>
  </div>
  <div class="support-footer">
@@ -1273,6 +1274,70 @@ const CONVERSATIONS = [
 
 
 
+// ═══════════════════════════════════════════════════════════════════
+// NAVIGATION INTELLIGENTE — Naomie pilote l'application (Phase 1)
+// "Ouvre les ventes", "Va au stock", "Montre les péremptions"...
+// ═══════════════════════════════════════════════════════════════════
+const NAV_VERBS = [
+ 'ouvre', 'ouvrir', 'va ', 'aller ', 'montre', 'affiche', 'afficher',
+ 'emmene', 'amene', 'accede', 'acceder', 'direction ', 'passe a', 'passe-moi', 'passe moi',
+];
+
+const NAV_TARGETS = [
+ { page: 'dashboard', label: 'Tableau de Bord', keywords: ['tableau de bord', 'dashboard', 'accueil'] },
+ { page: 'pos', label: 'Point de Vente', keywords: ['point de vente', 'nouvelle vente', ' pos '] },
+ { page: 'caisse', label: 'Caisse Journalière', keywords: ['caisse journaliere', 'caisse du jour', 'caisse'] },
+ { page: 'products', label: 'Catalogue Médicaments', keywords: ['catalogue', 'produits', 'medicaments', 'liste des produits'] },
+ { page: 'stock', label: 'Gestion des Stocks', keywords: ['gestion des stocks', 'stocks', 'stock'] },
+ { page: 'inventory', label: 'Inventaires Physiques', keywords: ['inventaires', 'inventaire'] },
+ { page: 'reorder', label: 'Réapprovisionnement', keywords: ['reapprovisionnement', 'reappro'] },
+ { page: 'prescriptions', label: 'Ordonnances', keywords: ['ordonnances', 'ordonnance', 'prescriptions'] },
+ { page: 'patients', label: 'Dossiers Patients', keywords: ['dossiers patients', 'dossier patient', 'patients'] },
+ { page: 'insurances', label: 'Assurances & Tiers Payant', keywords: ['tiers payant', 'assurances', 'assurance'] },
+ { page: 'suppliers', label: 'Fournisseurs', keywords: ['fournisseurs', 'fournisseur'] },
+ { page: 'purchase-orders', label: 'Bons de Commande', keywords: ['bons de commande', 'bon de commande'] },
+ { page: 'invoices', label: 'Factures Fournisseurs', keywords: ['factures fournisseurs', 'facture fournisseur', 'factures'] },
+ { page: 'traceability', label: 'Traçabilité & Pharmacovigilance', keywords: ['tracabilite', 'pharmacovigilance'] },
+ { page: 'management-control', label: 'Pilotage & Contrôle de Gestion', keywords: ['pilotage', 'controle de gestion'] },
+ { page: 'accounting', label: 'Comptabilité Générale', keywords: ['comptabilite generale', 'comptabilite', 'compta'] },
+ { page: 'sales', label: 'Historique des Ventes', keywords: ['historique des ventes', 'historique ventes', 'ventes', 'vente'] },
+ { page: 'returns', label: 'Retours de Médicaments', keywords: ['retours de medicaments', 'retours', 'retour'] },
+ { page: 'stock-exits', label: 'Mouvements Manuels', keywords: ['mouvements manuels', 'sorties de stock', 'mouvement de stock'] },
+ { page: 'metrics', label: 'Métriques Business', keywords: ['metriques', ' kpis ', ' kpi ', 'indicateurs'] },
+ { page: 'hr', label: 'Ressources Humaines', keywords: ['ressources humaines', 'employes', 'personnel', ' rh '] },
+ { page: 'print', label: "Centre d'Impression", keywords: ["centre d impression", 'impression'] },
+ { page: 'alerts', label: 'Alertes Système', keywords: ['peremptions', 'produits perimes', 'expirations', 'alertes', 'alerte'] },
+ { page: 'shifts', label: 'Équipes Matin / Soir', keywords: ['equipes', 'shifts', 'equipe matin', 'equipe soir'] },
+ { page: 'settings', label: 'Paramètres & Administration', keywords: ['parametres', 'administration', 'reglages'] },
+];
+
+function matchNavigationIntent(input) {
+ const q = ' ' + input.toLowerCase().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').replace(/['']/g, ' ') + ' ';
+
+ if (!NAV_VERBS.some(v => q.includes(v))) return null;
+
+ let best = null, bestLen = 0;
+ for (const target of NAV_TARGETS) {
+  for (const kw of target.keywords) {
+   if (q.includes(kw) && kw.trim().length > bestLen) {
+    bestLen = kw.trim().length;
+    best = target;
+   }
+  }
+ }
+ return best;
+}
+
+// Reprend la même règle de permission que navigatePage() / Router.navigate()
+function canNaomieNavigateTo(page) {
+ if (typeof NAV_ITEMS === 'undefined') return true;
+ const item = NAV_ITEMS.find(i => i.page === page);
+ if (!item || !item.permission) return true;
+ if (DB.AppState.currentUser && DB.AppState.currentUser.role === 'admin') return true;
+ if (typeof Auth === 'undefined' || typeof Auth.can !== 'function') return true;
+ return Auth.can(item.permission);
+}
+
 function matchConversation(input) {
  const q = input.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['']/g, ' ');
  let bestMatch = null;
@@ -1314,6 +1379,32 @@ window.submitFreeQuestion = function() {
  oldActs.forEach(e => e.remove());
  body.innerHTML += `<div class="chat-bubble chat-user">${safeText}</div>`;
  body.scrollTop = body.scrollHeight;
+
+ // 0. Intention de navigation — priorité absolue : Naomie pilote l'application
+ const navTarget = matchNavigationIntent(rawText);
+ if (navTarget) {
+ const navTypingId = 'typing-' + Date.now();
+ setTimeout(() => {
+ body.innerHTML += `<div id="${navTypingId}" class="chat-bubble chat-bot"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+ body.scrollTop = body.scrollHeight;
+ setTimeout(() => {
+ const t = document.getElementById(navTypingId);
+ if (t) t.remove();
+ if (!canNaomieNavigateTo(navTarget.page)) {
+ body.innerHTML += `<div class="chat-bubble chat-bot">⛔ Vous n'avez pas les droits nécessaires pour accéder à <strong>${navTarget.label}</strong>.</div>`;
+ } else {
+ if (typeof window.navigatePage === 'function') {
+ window.navigatePage(navTarget.page);
+ } else if (window.Router && typeof window.Router.navigate === 'function') {
+ window.Router.navigate(navTarget.page);
+ }
+ body.innerHTML += `<div class="chat-bubble chat-bot">🧭 J'ouvre <strong>${navTarget.label}</strong>...</div>`;
+ }
+ body.scrollTop = body.scrollHeight;
+ }, 500 + Math.random() * 300);
+ }, 50);
+ return;
+ }
 
  // 1. Chercher d'abord dans la conversation naturelle (Intents précis et CFO)
  const convReply = matchConversation(rawText);
