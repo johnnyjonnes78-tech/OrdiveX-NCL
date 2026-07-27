@@ -4546,21 +4546,11 @@ input[type="checkbox"]:checked~.switch-track .switch-thumb {
   box-shadow: none;
 }
 
-/* Grand ecran: mettre tout sur une ligne */
-@media (min-width: 900px) {
-  .pos-actions-bar {
-    flex-direction: row;
-    align-items: stretch;
-  }
-  .pos-actions-row-1 {
-    flex: 0 0 auto;
-  }
-  .pos-btn-validate {
-    flex: 1;
-    width: auto;
-    min-height: 42px;
-  }
-}
+/* Le panier POS est une colonne étroite (~380-450px) quelle que soit la largeur
+   de la fenêtre — mettre la rangée de boutons et "Valider" côte à côte (ancien
+   comportement ≥900px de largeur d'ÉCRAN) les faisait se chevaucher/écraser,
+   car cette largeur n'a jamais reflété celle du panier lui-même.
+   "Valider" reste donc toujours empilé sous la rangée de boutons, pleine largeur. */
 
 /* â”€â”€ REÃ‡U PROFESSIONNEL â”€â”€ */
 .recu-pro {
