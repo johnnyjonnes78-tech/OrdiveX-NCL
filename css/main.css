@@ -7845,45 +7845,183 @@ kbd {
 }
 
 /* ===== ONBOARDING WIZARD ===== */
-.onboarding-layout {
+/* ═══════════════════════════════════════════════════════════════════
+   ONBOARDING — Écran divisé premium (panneau de marque + formulaire)
+   ═══════════════════════════════════════════════════════════════════ */
+.onboarding-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background: var(--bg);
+  overflow: hidden;
+  z-index: 500;
+}
+
+/* ── Panneau de marque (desktop) ── */
+.onboarding-brand-panel {
+  flex: 0 0 40%;
+  max-width: 480px;
+  min-width: 340px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 40px;
+  color: #fff;
+  background: linear-gradient(160deg, #0F4C75 0%, #1B6FAE 55%, #2E86C1 100%);
+  overflow: hidden;
+}
+
+.onboarding-brand-panel::before,
+.onboarding-brand-panel::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+  background: #fff;
+  pointer-events: none;
+  animation: onboardingBlobFloat 14s ease-in-out infinite;
+}
+.onboarding-brand-panel::before { width: 280px; height: 280px; top: -80px; left: -80px; }
+.onboarding-brand-panel::after { width: 220px; height: 220px; bottom: -60px; right: -40px; animation-delay: -7s; }
+
+@keyframes onboardingBlobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 20px) scale(1.15); }
+}
+
+.onboarding-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 100px);
-  padding: 20px;
+  flex-shrink: 0;
+}
+
+.onboarding-brand-name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.onboarding-brand-tagline {
+  position: relative;
+  z-index: 1;
+  margin: 32px 0;
+}
+
+.onboarding-brand-tagline h1 {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+
+.onboarding-brand-tagline p {
+  font-size: 14px;
+  opacity: 0.85;
+  line-height: 1.5;
+  max-width: 340px;
+}
+
+.onboarding-step-tracker {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+}
+
+.onboarding-step-tracker .step-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 28px;
+}
+.onboarding-step-tracker .step-item:last-child { padding-bottom: 0; }
+
+.onboarding-step-tracker .step-item::before {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: 40px;
+  bottom: -4px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.onboarding-step-tracker .step-item:last-child::before { display: none; }
+.onboarding-step-tracker .step-item.done::before { background: rgba(255, 255, 255, 0.6); }
+
+.step-item .step-dot {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.35s ease;
+}
+.step-item.current .step-dot {
+  background: #fff;
+  color: #145B8F;
+  border-color: #fff;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.18);
+}
+.step-item.done .step-dot { background: rgba(255, 255, 255, 0.9); color: #145B8F; border-color: #fff; }
+.step-item .step-label { font-size: 13px; font-weight: 600; opacity: 0.7; }
+.step-item.current .step-label,
+.step-item.done .step-label { opacity: 1; }
+
+/* ── Panneau formulaire ── */
+.onboarding-form-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.onboarding-mobile-header { display: none; }
+
+.onboarding-form-scroll {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
 }
 
 .onboarding-card {
   width: 100%;
-  max-width: 600px;
-  padding: 40px;
+  max-width: 520px;
+  padding: 44px;
   background: var(--surface);
   border-radius: 24px;
   box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
 }
 
-.onboarding-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.onboarding-logo {
-  width: 48px;
-  height: 48px;
-  background: var(--gradient-primary);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.onboarding-progress {
-  flex: 1;
+.onboarding-step-content { animation: onboardingStepIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes onboardingStepIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .progress-text {
@@ -7910,7 +8048,7 @@ kbd {
 }
 
 .onboarding-title {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 800;
   margin-bottom: 8px;
   color: var(--text);
@@ -7926,9 +8064,60 @@ kbd {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid var(--border);
+}
+
+.onboarding-footer .btn {
+  padding: 12px 24px;
+  font-weight: 700;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.onboarding-footer .btn-primary { box-shadow: 0 6px 20px rgba(27, 111, 174, 0.35); }
+.onboarding-footer .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(27, 111, 174, 0.45); }
+.onboarding-footer .btn-ghost:hover { transform: translateY(-1px); }
+
+@media (max-width: 968px) {
+  .onboarding-shell { flex-direction: column; overflow-y: auto; }
+  .onboarding-brand-panel { display: none; }
+
+  .onboarding-mobile-header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 20px 16px;
+    color: #fff;
+    background: linear-gradient(135deg, #0F4C75 0%, #1B6FAE 100%);
+    flex-shrink: 0;
+  }
+  .onboarding-mobile-header-top { display: flex; align-items: center; gap: 10px; }
+  .onboarding-mobile-logo {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .onboarding-mobile-title { font-size: 14px; font-weight: 700; }
+  .onboarding-mobile-progress-bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+  .onboarding-mobile-progress-fill { height: 100%; background: #fff; border-radius: 3px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+  .onboarding-mobile-progress-text { font-size: 11px; opacity: 0.85; font-weight: 600; }
+
+  .onboarding-form-panel { overflow-y: visible; }
+  .onboarding-form-scroll { padding: 24px 16px 96px; align-items: flex-start; }
+  .onboarding-card { padding: 28px 20px; border-radius: 18px; }
+
+  .onboarding-footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--surface);
+    padding: 14px 20px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+    z-index: 10;
+  }
 }
 
 .logo-onboarding-preview {
@@ -8266,13 +8455,13 @@ kbd {
 }
 
 .onboarding-brand-badge.premium-style {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: var(--text);
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.9);
   padding: 8px 16px;
   border-radius: 50px;
   font-size: 11px;
@@ -8281,18 +8470,7 @@ kbd {
   gap: 6px;
 }
 
-[data-theme="dark"] .onboarding-brand-badge.premium-style {
-  background: rgba(15, 23, 42, 0.6);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.onboarding-brand-badge.premium-style strong {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
+.onboarding-brand-badge.premium-style strong { color: #fff; }
 
 /* ===== MODULE RETOURS DE MEDICAMENTS v3.2 ===== */
 

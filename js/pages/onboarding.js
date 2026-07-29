@@ -3,6 +3,16 @@
  * Comprehensive pharmacy setup wizard
  */
 
+// Métadonnées d'affichage par étape — utilisées par le panneau de marque
+// (desktop) et l'en-tête compact (mobile). Le contenu du formulaire lui-même
+// (titres, champs, validations) reste entièrement dans renderStep(), inchangé.
+const ONBOARDING_STEP_META = [
+  { icon: 'building-2', label: 'Identité', title: 'Configurons votre officine', subtitle: "Ces informations apparaîtront sur vos factures et rapports." },
+  { icon: 'phone-call', label: 'Contact', title: 'Vos coordonnées professionnelles', subtitle: "Indispensable pour la conformité DNPM." },
+  { icon: 'sliders-horizontal', label: 'Configuration', title: 'Paramètres de gestion', subtitle: "Réglages par défaut, modifiables à tout moment." },
+  { icon: 'lock', label: 'Sécurité', title: 'Sécurisez votre accès', subtitle: "Dernière étape avant de démarrer." },
+];
+
 const Onboarding = {
   step: 1,
   totalSteps: 4,
@@ -25,35 +35,69 @@ const Onboarding = {
     this.render();
   },
 
-  render: function () {
-    this.container.innerHTML = `
-      <div class="onboarding-layout">
-        <div class="onboarding-brand-badge premium-style no-print">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary)"><path d="m7 8-4 4 4 4"/><path d="m17 8 4 4-4 4"/><path d="m14 4-4 16"/></svg>
-          <span>Par <strong>TrillionX</strong></span>
+  // Tracker d'étapes vertical (panneau de marque desktop) : 4 cercles reliés
+  // par une ligne, avec icône, libellé, et état rempli/actif/à venir.
+  _renderStepTracker: function () {
+    return ONBOARDING_STEP_META.map((meta, idx) => {
+      const stepNum = idx + 1;
+      const state = stepNum < this.step ? 'done' : (stepNum === this.step ? 'current' : '');
+      return `
+        <div class="step-item ${state}">
+          <div class="step-dot">${state === 'done' ? '<i data-lucide="check"></i>' : `<i data-lucide="${meta.icon}"></i>`}</div>
+          <div class="step-label">${meta.label}</div>
         </div>
-        <div class="onboarding-card elite-card">
-          <div class="onboarding-header">
-            <div class="onboarding-logo">
-              <i data-lucide="activity"></i>
+      `;
+    }).join('');
+  },
+
+  render: function () {
+    const meta = ONBOARDING_STEP_META[this.step - 1];
+    const progressPct = (this.step / this.totalSteps) * 100;
+    this.container.innerHTML = `
+      <div class="onboarding-shell">
+        <div class="onboarding-brand-panel no-print">
+          <div class="onboarding-brand-header">
+            <div class="onboarding-brand-logo"><i data-lucide="activity"></i></div>
+            <div class="onboarding-brand-name">OrdiveX</div>
+          </div>
+          <div class="onboarding-brand-tagline">
+            <h1>${meta.title}</h1>
+            <p>${meta.subtitle}</p>
+          </div>
+          <div class="onboarding-step-tracker">
+            ${this._renderStepTracker()}
+          </div>
+          <div class="onboarding-brand-badge premium-style">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m7 8-4 4 4 4"/><path d="m17 8 4 4-4 4"/><path d="m14 4-4 16"/></svg>
+            <span>Par <strong>TrillionX</strong></span>
+          </div>
+        </div>
+
+        <div class="onboarding-form-panel">
+          <div class="onboarding-mobile-header no-print">
+            <div class="onboarding-mobile-header-top">
+              <div class="onboarding-mobile-logo"><i data-lucide="activity"></i></div>
+              <div class="onboarding-mobile-title">${meta.title}</div>
             </div>
-            <div class="onboarding-progress">
-              <div class="progress-text">Étape ${this.step} sur ${this.totalSteps}</div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: ${(this.step / this.totalSteps) * 100}%"></div>
+            <div class="onboarding-mobile-progress-bar">
+              <div class="onboarding-mobile-progress-fill" style="width: ${progressPct}%"></div>
+            </div>
+            <div class="onboarding-mobile-progress-text">Étape ${this.step} sur ${this.totalSteps}</div>
+          </div>
+
+          <div class="onboarding-form-scroll">
+            <div class="onboarding-card">
+              <div class="onboarding-step-content" key="${this.step}">
+                ${this.renderStep()}
+              </div>
+
+              <div class="onboarding-footer">
+                ${this.step > 1 ? `<button class="btn btn-ghost" onclick="Onboarding.prev()"><i data-lucide="arrow-left"></i> Retour</button>` : '<div></div>'}
+                <button class="btn btn-primary" onclick="Onboarding.next()">
+                  ${this.step === this.totalSteps ? 'Terminer la configuration' : 'Suivant'} <i data-lucide="${this.step === this.totalSteps ? 'check' : 'arrow-right'}"></i>
+                </button>
               </div>
             </div>
-          </div>
-
-          <div class="onboarding-body">
-            ${this.renderStep()}
-          </div>
-
-          <div class="onboarding-footer">
-            ${this.step > 1 ? `<button class="btn btn-ghost" onclick="Onboarding.prev()"><i data-lucide="arrow-left"></i> Retour</button>` : '<div></div>'}
-            <button class="btn btn-primary" onclick="Onboarding.next()">
-              ${this.step === this.totalSteps ? 'Terminer la configuration' : 'Suivant'} <i data-lucide="${this.step === this.totalSteps ? 'check' : 'arrow-right'}"></i>
-            </button>
           </div>
         </div>
       </div>
@@ -172,6 +216,10 @@ const Onboarding = {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (re) => {
+      // Capturer les valeurs déjà saisies dans les autres champs de l'étape
+      // AVANT le re-rendu, sinon render() reconstruit le formulaire à partir
+      // de this.data et efface tout ce qui n'a pas encore été validé par "Suivant".
+      this.saveCurrentStep();
       this.data.pharmacy_logo = re.target.result;
       this.render();
     };
@@ -242,12 +290,22 @@ const Onboarding = {
         active: true
       };
 
-      if (admin) {
-        await DB.dbPut('users', { ...admin, ...adminData });
-
-      } else {
-        await DB.dbAdd('users', adminData);
-
+      // Bascule temporaire : à ce stade de l'onboarding personne n'est encore
+      // connecté, donc Auth.can() renvoie toujours false et bloquerait cette
+      // écriture sur 'users' (garde de permission _checkWritePermission).
+      // C'est une opération système légitime (création/mise à jour du compte
+      // admin lors de la première configuration), même pattern que
+      // migrateInsurances() dans db.js.
+      const _prevSysOp = DB._isSystemOp;
+      DB._isSystemOp = true;
+      try {
+        if (admin) {
+          await DB.dbPut('users', { ...admin, ...adminData });
+        } else {
+          await DB.dbAdd('users', adminData);
+        }
+      } finally {
+        DB._isSystemOp = _prevSysOp;
       }
 
       // 2. Save all pharmacy settings

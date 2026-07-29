@@ -652,11 +652,6 @@ async function renderSettings(container) {
                 <span id="coeff-generic-display" style="font-size:16px;font-weight:800;color:var(--primary);white-space:nowrap;min-width:60px">× ${parseFloat(gs('pricing_coeff_generic') || '1.12').toFixed(2)}</span>
               </div>
             </div>
-            <div class="form-group" style="grid-column: span 2; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 16px;">
-              <label style="font-weight: 700;">Configuration de la TVA (%) ou Formule de calcul</label>
-              <input type="text" name="pharmacy_tva" id="pharmacy-tva" class="form-control" placeholder="Ex: 18 pour 18%, ou formule libre comme: subtotal * 0.18" value="${gs('pharmacy_tva') || '0'}">
-              <small style="color:var(--text-muted); display: block; margin-top: 4px;">Entrez un nombre simple (ex: 18) pour un pourcentage de 18% appliqué sur le total net de la facture. Pour une formule personnalisée, utilisez les variables : <code>subtotal</code> et <code>discount</code>.</small>
-            </div>
             <div style="background:var(--bg-secondary);border-radius:10px;padding:14px;font-size:13px;border-left:4px solid var(--primary); grid-column: span 2;">
               <strong>Comment ça marche :</strong><br>
               Saisissez le <strong>Prix d'achat</strong> lors de la création d'un produit. Le <strong>Prix de vente</strong> est calculé automatiquement selon le type. Vous pouvez toujours l'ajuster manuellement.
