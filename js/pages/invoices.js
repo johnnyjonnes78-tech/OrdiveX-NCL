@@ -214,8 +214,8 @@ async function showNewInvoiceForm(invoiceId = null) {
     size: 'large',
     footer: `
       <button class="btn btn-secondary" onclick="UI.closeModal(); window._editingInvoiceId = null;">Annuler</button>
-      <button class="btn btn-warning" onclick="submitInvoice('draft')"><i data-lucide="save"></i> Enregistrer Brouillon</button>
-      <button class="btn btn-success" onclick="submitInvoice('validated')"><i data-lucide="check-circle"></i> Valider (Mettre à jour stocks)</button>
+      <button class="btn btn-warning" onclick="submitInvoice('draft', this)"><i data-lucide="save"></i> Enregistrer Brouillon</button>
+      <button class="btn btn-success" onclick="submitInvoice('validated', this)"><i data-lucide="check-circle"></i> Valider (Mettre à jour stocks)</button>
     `
   });
   if (window.lucide) lucide.createIcons();
@@ -448,7 +448,12 @@ function updateInvoiceTotal() {
   return total;
 }
 
-async function submitInvoice(status) {
+async function submitInvoice(status, btn) {
+  const guardKey = 'submit-invoice-' + (window._editingInvoiceId || 'new');
+  return ActionGuard.run(guardKey, () => _submitInvoiceImpl(status), btn, 'Enregistrement...');
+}
+
+async function _submitInvoiceImpl(status) {
   const form = document.getElementById('invoice-form');
   if (!form || !form.checkValidity()) {
     if (form) form.reportValidity();
@@ -536,9 +541,20 @@ async function submitInvoice(status) {
 
   try {
     if (status === 'validated') {
+      // Revérifier l'état actuel depuis la base — empêche de valider deux
+      // fois la même facture (double-clic, ou réouverture d'un formulaire
+      // obsolète) et donc de doubler l'entrée en stock qui en découle.
+      if (isEdit) {
+        const freshInvoice = await DB.dbGet('invoices', window._editingInvoiceId);
+        if (freshInvoice && freshInvoice.status === 'validated') {
+          UI.toast('Cette facture a déjà été validée — le stock a déjà été mis à jour.', 'warning');
+          return;
+        }
+      }
+
       const confirm = await UI.confirm(`Confirmer la validation de la facture ?\n\nCela va générer les entrées en stock (Lots et Mouvements) de manière définitive.`);
       if (!confirm) return;
-      
+
       let invoiceId;
       if (isEdit) {
         invoiceId = window._editingInvoiceId;
@@ -547,44 +563,75 @@ async function submitInvoice(status) {
       } else {
         invoiceId = await DB.dbAdd('invoices', invoiceData);
       }
-      
-      // Process stock entry
+
+      // Process stock entry — lots/stock/mouvements regroupés dans UNE SEULE
+      // transaction IndexedDB (tout s'applique ou rien), pour éviter un
+      // stock incohérent en cas de plantage/fermeture en cours de traitement.
+      const stockAll = await DB.dbGetAll('stock');
+      const stockByProduct = new Map(stockAll.map(s => [s.productId, s]));
+      const stockOpByProduct = new Map();
+      const txOps = [];
+
       for (const item of items) {
-        // Create lot
-        const lotData = {
-          productId: item.productId,
-          lotNumber: item.lotNumber,
-          expiryDate: item.expiryDate,
-          quantity: item.quantity,
-          initialQuantity: item.quantity,
-          supplierId: supplierId,
-          receiptDate: formData.date,
-          status: 'active',
-          invoiceId: invoiceId,
-          invoiceRef: formData.invoiceNumber
-        };
-        const lotId = await DB.dbAdd('lots', lotData);
-        
-        // Update global stock
-        let stock = null;
-        try {
-          const stocks = await DB.dbGetAll('stock');
-          stock = stocks.find(s => s.productId === item.productId);
-        } catch(e) {}
-        
-        if (stock) {
-          stock.quantity += item.quantity;
-          stock.lastUpdated = Date.now();
-          await DB.dbPut('stock', stock);
-        } else {
-          await DB.dbAdd('stock', {
+        txOps.push({
+          store: 'lots',
+          type: 'add',
+          data: {
             productId: item.productId,
+            lotNumber: item.lotNumber,
+            expiryDate: item.expiryDate,
             quantity: item.quantity,
-            reservedQuantity: 0,
-            lastUpdated: Date.now()
-          });
+            initialQuantity: item.quantity,
+            supplierId: supplierId,
+            receiptDate: formData.date,
+            status: 'active',
+            invoiceId: invoiceId,
+            invoiceRef: formData.invoiceNumber
+          }
+        });
+
+        let stockOp = stockOpByProduct.get(item.productId);
+        if (stockOp) {
+          stockOp.data.quantity += item.quantity;
+        } else {
+          const existing = stockByProduct.get(item.productId);
+          stockOp = existing
+            ? { store: 'stock', type: 'put', data: { ...existing, quantity: (existing.quantity || 0) + item.quantity, lastUpdated: Date.now() } }
+            : { store: 'stock', type: 'add', data: { productId: item.productId, quantity: item.quantity, reservedQuantity: 0, lastUpdated: Date.now() } };
+          stockOpByProduct.set(item.productId, stockOp);
+          txOps.push(stockOp);
         }
-        
+
+        txOps.push({
+          store: 'movements',
+          type: 'add',
+          data: {
+            productId: item.productId,
+            type: 'ENTRY',
+            subType: 'PURCHASE',
+            quantity: item.quantity,
+            lotNumber: item.lotNumber,
+            date: formData.date,
+            userId: DB.AppState.currentUser?.id,
+            note: `Facture N° ${formData.invoiceNumber}`,
+            reference: formData.invoiceNumber,
+            invoiceRef: formData.invoiceNumber
+          }
+        });
+      }
+
+      if (txOps.length > 0) {
+        try {
+          await DB.dbTransactionBulk(txOps);
+        } catch (txErr) {
+          console.error('[Invoice] Échec de la transaction stock:', txErr);
+          UI.toast('Erreur lors de la mise à jour du stock — aucune donnée n\'a été modifiée. Réessayez.', 'error', 6000);
+          return;
+        }
+      }
+
+      // Cascade prix/date catalogue produits — best-effort, non bloquant
+      for (const item of items) {
         try {
           const productsAll = await DB.dbGetAll('products');
           const existingProd = productsAll.find(p => Number(p.id) === Number(item.productId));
@@ -624,22 +671,8 @@ async function submitInvoice(status) {
             }
           }
         } catch(e) {}
-        
-        // Create movement
-        await DB.dbAdd('movements', {
-          productId: item.productId,
-          type: 'ENTRY',
-          subType: 'PURCHASE',
-          quantity: item.quantity,
-          lotNumber: item.lotNumber,
-          date: formData.date,
-          userId: DB.AppState.currentUser?.id,
-          note: `Facture N° ${formData.invoiceNumber}`,
-          reference: formData.invoiceNumber,
-          invoiceRef: formData.invoiceNumber
-        });
       }
-      
+
       await DB.writeAudit('VALIDATE_INVOICE', 'invoices', invoiceId, { invoiceNumber: formData.invoiceNumber, totalAmount });
       UI.toast(`Facture validée et stocks mis à jour`, 'success');
       

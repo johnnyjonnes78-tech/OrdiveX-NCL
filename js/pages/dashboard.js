@@ -50,7 +50,9 @@ async function _refreshDashboard(container) {
     if (productCount > 50000) {
       products = stockAll.map(s => ({ id: s.productId, name: 'Produit', minStock: 10 }));
     } else {
-      products = await DB.dbGetAll('products');
+      // Exclure les médicaments désactivés des indicateurs de stock du tableau
+      // de bord (un produit supprimé du catalogue ne doit plus fausser les KPI).
+      products = (await DB.dbGetAll('products')).filter(p => p.status !== 'inactive');
     }
 
     // Compute KPIs

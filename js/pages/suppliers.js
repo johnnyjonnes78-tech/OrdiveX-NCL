@@ -944,7 +944,9 @@ function filterOrders() {
 }
 
 async function showNewOrder(supplierId, supplierName, preselectedProductId) {
-  const products = window._allProducts || await DB.dbGetAll('products');
+  // Exclure les médicaments désactivés (status:'inactive') — un produit supprimé
+  // du catalogue ne doit plus pouvoir être sélectionné dans une nouvelle commande.
+  const products = window._allProducts || (await DB.dbGetAll('products')).filter(p => p.status !== 'inactive');
   const suppliers = await DB.dbGetAll('suppliers');
 
   UI.modal('<i data-lucide="file-text" class="modal-icon-inline"></i> Nouvelle Commande', `
@@ -1281,7 +1283,7 @@ async function receiveOrder(orderId) {
     size: 'large',
     footer: `
       <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-      <button class="btn btn-primary" onclick="confirmReceiveOrder(${orderId})"><i data-lucide="check"></i> Confirmer la réception</button>
+      <button class="btn btn-primary" onclick="confirmReceiveOrder(${orderId}, this)"><i data-lucide="check"></i> Confirmer la réception</button>
     `
   });
   if (window.lucide) lucide.createIcons();
@@ -1355,9 +1357,24 @@ function renderReceivePagination(page) {
   if (container) container.innerHTML = itemsHTML + navHTML;
 }
 
-async function confirmReceiveOrder(orderId) {
+async function confirmReceiveOrder(orderId, btn) {
+  return ActionGuard.run('receive-order-' + orderId, () => _confirmReceiveOrderImpl(orderId), btn, 'Traitement...');
+}
+
+async function _confirmReceiveOrderImpl(orderId) {
   const order = window._currentReceiveOrder;
   if (!order) return;
+
+  // Revérifier l'état actuel depuis la base — protège contre une réception
+  // déjà finalisée entre-temps (double-clic, autre onglet/appareil, ou
+  // re-render basé sur un instantané obsolète de la commande).
+  const freshOrder = await DB.dbGet('purchaseOrders', orderId);
+  if (!freshOrder || freshOrder.status === 'received' || freshOrder.status === 'cancelled') {
+    UI.toast('Cette commande a déjà été traitée ou annulée.', 'warning');
+    UI.closeModal();
+    Router.navigate('purchase-orders');
+    return;
+  }
 
   const createInvoice = document.getElementById('recv-create-invoice')?.checked;
   const invoiceNum = document.getElementById('recv-invoice-num')?.value?.trim();
@@ -1455,7 +1472,15 @@ async function confirmReceiveOrder(orderId) {
     await DB.writeAudit('VALIDATE_INVOICE', 'invoices', invoiceId, { invoiceNumber: invoiceNum, totalAmount: invoiceTotal });
   }
 
-  // 2. Traitement des lots, du stock et des prix du catalogue produits
+  // 2. Traitement des lots, du stock et des mouvements — regroupés dans UNE
+  // SEULE transaction IndexedDB (dbTransactionBulk) : soit tout s'applique,
+  // soit rien, même en cas de plantage/fermeture en cours de traitement.
+  const stockAll = await DB.dbGetAll('stock');
+  const stockByProduct = new Map(stockAll.map(s => [Number(s.productId), s]));
+  const stockOpByProduct = new Map(); // productId -> op déjà poussée dans txOps (fusion si 2 lignes du même produit)
+  const txOps = [];
+  const priceCascadeItems = [];
+
   for (let idx = 0; idx < (order.items || []).length; idx++) {
     const item = order.items[idx];
     const qtyReceived = parseInt(item._recvQty) || 0;
@@ -1469,91 +1494,119 @@ async function confirmReceiveOrder(orderId) {
 
     const previouslyReceived = Number(item.receivedQty) || 0;
 
-    updatedItems.push({ 
-      productId: item.productId, 
-      productName: item.productName, 
-      quantity: item.quantity, 
-      unitPrice: recvPrice, 
-      salePrice: recvSalePrice, 
-      receivedQty: previouslyReceived + qtyReceived, 
-      lotNumber, 
-      expiryDate, 
-      conform 
+    updatedItems.push({
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: recvPrice,
+      salePrice: recvSalePrice,
+      receivedQty: previouslyReceived + qtyReceived,
+      lotNumber,
+      expiryDate,
+      conform
     });
 
     if (qtyReceived > 0 && conform) {
-      // Add to stock
-      await DB.dbAdd('lots', {
-        productId: item.productId,
-        lotNumber,
-        expiryDate,
-        quantity: qtyReceived,
-        initialQuantity: qtyReceived,
-        receiptDate: new Date().toISOString().split('T')[0],
-        supplierId: order.supplierId,
-        status: 'active',
-        invoiceId: invoiceId,
-        invoiceRef: createInvoice ? invoiceNum : null,
+      const pid = Number(item.productId);
+
+      txOps.push({
+        store: 'lots',
+        type: 'add',
+        data: {
+          productId: item.productId,
+          lotNumber,
+          expiryDate,
+          quantity: qtyReceived,
+          initialQuantity: qtyReceived,
+          receiptDate: new Date().toISOString().split('T')[0],
+          supplierId: order.supplierId,
+          status: 'active',
+          invoiceId: invoiceId,
+          invoiceRef: createInvoice ? invoiceNum : null,
+        }
       });
 
-      const stockAll = await DB.dbGetAll('stock');
-      const existing = stockAll.find(s => Number(s.productId) === Number(item.productId));
-      if (existing) {
-        await DB.dbPut('stock', { ...existing, quantity: (existing.quantity || 0) + qtyReceived });
+      let stockOp = stockOpByProduct.get(pid);
+      if (stockOp) {
+        stockOp.data.quantity += qtyReceived;
       } else {
-        await DB.dbAdd('stock', { productId: Number(item.productId), quantity: qtyReceived, reservedQuantity: 0 });
+        const existing = stockByProduct.get(pid);
+        stockOp = existing
+          ? { store: 'stock', type: 'put', data: { ...existing, quantity: (existing.quantity || 0) + qtyReceived } }
+          : { store: 'stock', type: 'add', data: { productId: pid, quantity: qtyReceived, reservedQuantity: 0 } };
+        stockOpByProduct.set(pid, stockOp);
+        txOps.push(stockOp);
       }
 
-      await DB.dbAdd('movements', {
-        productId: Number(item.productId), type: 'ENTRY', subType: 'PURCHASE',
-        quantity: qtyReceived, lotNumber, date: new Date().toISOString(),
-        userId: DB.AppState.currentUser?.id, reference: order.orderNumber,
-        invoiceRef: createInvoice ? invoiceNum : null,
+      txOps.push({
+        store: 'movements',
+        type: 'add',
+        data: {
+          productId: pid, type: 'ENTRY', subType: 'PURCHASE',
+          quantity: qtyReceived, lotNumber, date: new Date().toISOString(),
+          userId: DB.AppState.currentUser?.id, reference: order.orderNumber,
+          invoiceRef: createInvoice ? invoiceNum : null,
+        }
       });
 
-      // Mise à jour des prix et de la date dans le catalogue produits
-      try {
-        const productsAll = await DB.dbGetAll('products');
-        const existingProd = productsAll.find(p => Number(p.id) === Number(item.productId));
-        if (existingProd) {
-          let updatedProd = false;
-          if (recvPrice && existingProd.purchasePrice !== recvPrice) {
-            existingProd.purchasePrice = recvPrice;
-            updatedProd = true;
-          }
-          if (recvSalePrice && existingProd.salePrice !== recvSalePrice) {
-            existingProd.salePrice = recvSalePrice;
-            updatedProd = true;
-          }
-          if (expiryDate && existingProd.expiryDate !== expiryDate) {
-            existingProd.expiryDate = expiryDate;
-            updatedProd = true;
-          }
-          if (updatedProd) {
-            existingProd.updatedAt = Date.now();
-            await DB.dbPut('products', existingProd);
-            window._allProducts = null; // force reload
-            window._invoicesProducts = null; // force reload
+      priceCascadeItems.push({ productId: item.productId, recvPrice, recvSalePrice, expiryDate });
+    }
+  }
 
-            // Propagation en cascade vers tous les lots actifs de ce produit
-            try {
-              const allLots = await DB.dbGetAll('lots');
-              const productLots = allLots.filter(l => Number(l.productId) === Number(item.productId) && l.status === 'active');
-              for (const lot of productLots) {
-                const lotUpdate = { ...lot, updatedAt: Date.now() };
-                if (recvPrice) lotUpdate.purchasePrice = recvPrice;
-                if (recvSalePrice) lotUpdate.salePrice = recvSalePrice;
-                if (expiryDate) lotUpdate.expiryDate = expiryDate;
-                await DB.dbPut('lots', lotUpdate);
-              }
-            } catch (cascadeErr) {
-              console.warn('[Receipt Sync] Erreur cascade lots:', cascadeErr);
+  if (txOps.length > 0) {
+    try {
+      await DB.dbTransactionBulk(txOps);
+    } catch (txErr) {
+      console.error('[Receipt] Échec de la transaction stock:', txErr);
+      UI.toast('Erreur lors de la mise à jour du stock — aucune donnée n\'a été modifiée. Réessayez.', 'error', 6000);
+      return;
+    }
+  }
+
+  // Mise à jour des prix/date catalogue produits — best-effort, non bloquant
+  // (n'affecte pas la cohérence du stock, qui est déjà garantie ci-dessus)
+  for (const pc of priceCascadeItems) {
+    try {
+      const productsAll = await DB.dbGetAll('products');
+      const existingProd = productsAll.find(p => Number(p.id) === Number(pc.productId));
+      if (existingProd) {
+        let updatedProd = false;
+        if (pc.recvPrice && existingProd.purchasePrice !== pc.recvPrice) {
+          existingProd.purchasePrice = pc.recvPrice;
+          updatedProd = true;
+        }
+        if (pc.recvSalePrice && existingProd.salePrice !== pc.recvSalePrice) {
+          existingProd.salePrice = pc.recvSalePrice;
+          updatedProd = true;
+        }
+        if (pc.expiryDate && existingProd.expiryDate !== pc.expiryDate) {
+          existingProd.expiryDate = pc.expiryDate;
+          updatedProd = true;
+        }
+        if (updatedProd) {
+          existingProd.updatedAt = Date.now();
+          await DB.dbPut('products', existingProd);
+          window._allProducts = null; // force reload
+          window._invoicesProducts = null; // force reload
+
+          // Propagation en cascade vers tous les lots actifs de ce produit
+          try {
+            const allLots = await DB.dbGetAll('lots');
+            const productLots = allLots.filter(l => Number(l.productId) === Number(pc.productId) && l.status === 'active');
+            for (const lot of productLots) {
+              const lotUpdate = { ...lot, updatedAt: Date.now() };
+              if (pc.recvPrice) lotUpdate.purchasePrice = pc.recvPrice;
+              if (pc.recvSalePrice) lotUpdate.salePrice = pc.recvSalePrice;
+              if (pc.expiryDate) lotUpdate.expiryDate = pc.expiryDate;
+              await DB.dbPut('lots', lotUpdate);
             }
+          } catch (cascadeErr) {
+            console.warn('[Receipt Sync] Erreur cascade lots:', cascadeErr);
           }
         }
-      } catch (prodErr) {
-        console.warn('[Receipt] Erreur mise à jour prix/date produit:', prodErr);
       }
+    } catch (prodErr) {
+      console.warn('[Receipt] Erreur mise à jour prix/date produit:', prodErr);
     }
   }
 
@@ -1857,7 +1910,9 @@ async function importOrdersFile(file) {
     var confirmed = await UI.confirm(msg);
     if (!confirmed) return;
 
-    var products = await DB.dbGetAll('products');
+    // Exclure les médicaments désactivés : un import ne doit pas pouvoir
+    // rattacher une ligne de commande à un produit supprimé du catalogue.
+    var products = (await DB.dbGetAll('products')).filter(function(p) { return p.status !== 'inactive'; });
     var suppliers = await DB.dbGetAll('suppliers');
     var existingOrders = await DB.dbGetAll('purchaseOrders');
     var productMap = {};

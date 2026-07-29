@@ -3,6 +3,21 @@
  * Journal caisse, clôture, réconciliation, Mobile Money
  */
 
+// Part en espèces réellement encaissée pour une vente donnée : le total
+// complet pour un paiement 'cash', uniquement la part espèces pour un
+// paiement 'combined' (mixte espèces + mobile money/autre), 0 sinon.
+// Sans ceci, la part espèces d'un règlement mixte n'apparaissait jamais
+// dans les totaux caisse (sous-évaluation systématique).
+function _saleCashAmount(s) {
+  if (!s.paymentMethod || s.paymentMethod === 'cash') return s.total || 0;
+  if (s.paymentMethod === 'combined' && Array.isArray(s.paymentDetails)) {
+    return s.paymentDetails
+      .filter(d => d && d.method === 'cash')
+      .reduce((a, d) => a + (d.amount || 0), 0);
+  }
+  return 0;
+}
+
 async function renderCaisse(container) {
   UI.loading(container, 'Chargement de la caisse...');
 
@@ -576,7 +591,7 @@ async function submitCashEntry() {
         DB.dbGetAll('cashRegister'),
       ]);
 
-      const cashSales = sales.filter(s => s.date?.startsWith(today) && (s.paymentMethod || 'cash') === 'cash' && s.status === 'completed').reduce((a, s) => a + s.total, 0);
+      const cashSales = sales.filter(s => s.date?.startsWith(today) && s.status === 'completed').reduce((a, s) => a + _saleCashAmount(s), 0);
       const manualIn = cashRegister.filter(c => c.date === today && c.type === 'manual_in').reduce((a, c) => a + c.amount, 0);
       const manualOut = cashRegister.filter(c => c.date === today && c.type === 'manual_out').reduce((a, c) => a + c.amount, 0);
       const currentBalance = cashSales + manualIn - manualOut;
@@ -654,7 +669,7 @@ function openCaisseClose() {
 async function calcExpectedCash() {
   const today = new Date().toISOString().split('T')[0];
   const sales = await DB.dbGetAll('sales');
-  const todayCash = sales.filter(s => s.date?.startsWith(today) && s.paymentMethod === 'cash' && s.status === 'completed').reduce((a, s) => a + s.total, 0);
+  const todayCash = sales.filter(s => s.date?.startsWith(today) && s.status === 'completed').reduce((a, s) => a + _saleCashAmount(s), 0);
   const manualIn = (await DB.dbGetAll('cashRegister')).filter(c => c.date === today && c.type === 'manual_in').reduce((a, c) => a + c.amount, 0);
   const manualOut = (await DB.dbGetAll('cashRegister')).filter(c => c.date === today && c.type === 'manual_out').reduce((a, c) => a + c.amount, 0);
   const returnOut = (await DB.dbGetAll('cashRegister')).filter(c => c.date === today && c.type === 'return_out').reduce((a, c) => a + c.amount, 0);

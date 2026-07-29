@@ -669,14 +669,14 @@ window.settleAllPatientDebts = async function(patientId) {
   `, {
     footer: `
       <button class="btn btn-secondary" onclick="window.viewPatient(${patientId})">Annuler</button>
-      <button class="btn btn-success" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="window.confirmSettleAllDebts(${patientId})"><i data-lucide="check-circle"></i> Solder tout (${UI.formatCurrency(totalAmount)})</button>
+      <button class="btn btn-success" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="window.confirmSettleAllDebts(${patientId}, this)"><i data-lucide="check-circle"></i> Solder tout (${UI.formatCurrency(totalAmount)})</button>
     `
   });
 
   if (window.lucide) lucide.createIcons();
 };
 
-window.confirmSettleAllDebts = async function(patientId) {
+window.confirmSettleAllDebts = async function(patientId, btn) {
   if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Action non autorisée.', 'error', 4000);
     return;
@@ -688,6 +688,10 @@ window.confirmSettleAllDebts = async function(patientId) {
   const ok = await UI.confirm('Confirmer l\'encaissement et le règlement complet de toutes les dettes de ce patient ?');
   if (!ok) return;
 
+  return ActionGuard.run('settle-all-debts-' + patientId, () => _confirmSettleAllDebtsImpl(patientId, paymentMethod, reference), btn, 'Encaissement...');
+};
+
+async function _confirmSettleAllDebtsImpl(patientId, paymentMethod, reference) {
   try {
     const allSales = await DB.dbGetAll('sales');
     const patient = await DB.dbGet('patients', patientId);
@@ -734,7 +738,7 @@ window.confirmSettleAllDebts = async function(patientId) {
     console.error(err);
     UI.toast('Erreur : ' + err.message, 'error');
   }
-};
+}
 
 async function showAddPatient() {
   if (window.Auth && !Auth.can('patients_create') && DB.AppState.currentUser?.role !== 'admin') {

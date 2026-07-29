@@ -223,7 +223,7 @@
       var currentVersion = window.APP_VERSION || '0.0.0';
       if (remote.version && remote.version !== currentVersion) {
         var dismissed = localStorage.getItem(_versionDismissedKey);
-        if (dismissed === remote.version && silent) return remote; // Deja vu, ne pas re-notifier
+        if (dismissed === remote.version && silent) return null; // Deja vu, ne pas re-notifier
 
         return remote;
       }

@@ -486,6 +486,7 @@ async function bulkDeleteProducts() {
   }
   await DB.writeAudit('BULK_DEACTIVATE', 'products', null, { ids, count: done });
   window._selectedProductIds = new Set();
+  window._allProducts = null; // invalider le cache du sélecteur produit (bons de commande)
   UI.toast(`✅ ${done} produit${done > 1 ? 's' : ''} désactivé${done > 1 ? 's' : ''}.`, 'success');
   Router.navigate('products');
 }
@@ -507,6 +508,7 @@ async function bulkReactivateProducts() {
     }
   }
   window._selectedProductIds = new Set();
+  window._allProducts = null; // invalider le cache du sélecteur produit (bons de commande)
   UI.toast(`✅ ${done} produit${done > 1 ? 's' : ''} réactivé${done > 1 ? 's' : ''}.`, 'success');
   Router.navigate('products');
 }
@@ -1538,6 +1540,7 @@ async function deleteProduct(id) {
   if (!ok) return;
   await DB.dbPut('products', { ...p, status: 'inactive' });
   await DB.writeAudit('DEACTIVATE_PRODUCT', 'products', id, { name: p.name });
+  window._allProducts = null; // invalider le cache du sélecteur produit (bons de commande)
   UI.toast('Produit désactivé', 'success');
   Router.navigate('products');
 }

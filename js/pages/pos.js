@@ -2196,7 +2196,7 @@ async function voirFilePreparation() {
         '<div style="font-size:11px;color:var(--text-muted)">Préparé par ' + (t.preparerName || '?') + '</div>' +
         claimedTag +
       '</div>' +
-      '<button class="btn btn-xs btn-primary" onclick="prendreEnChargeTransfert(' + t.id + ')"><i data-lucide="log-in"></i> Encaisser</button>' +
+      '<button class="btn btn-xs btn-primary" onclick="prendreEnChargeTransfert(' + t.id + ', this)"><i data-lucide="log-in"></i> Encaisser</button>' +
     '</div>';
   }).join('');
 
@@ -2204,15 +2204,27 @@ async function voirFilePreparation() {
   if (window.lucide) lucide.createIcons();
 }
 
-async function prendreEnChargeTransfert(transferId) {
+async function prendreEnChargeTransfert(transferId, btn) {
   if (posCart.length) {
     UI.toast('Videz ou mettez en attente le panier actuel avant de prendre en charge un transfert.', 'warning', 5000);
     return;
   }
+  return ActionGuard.run('claim-transfer-' + transferId, () => _prendreEnChargeTransfertImpl(transferId), btn, 'Prise en charge...');
+}
+
+async function _prendreEnChargeTransfertImpl(transferId) {
   try {
     var t = await DB.dbGet('prep_transfers', transferId);
     if (!t) { UI.toast('Transfert introuvable', 'error'); return; }
     if (t.status === 'completed') { UI.toast('Cette vente a déjà été encaissée', 'warning'); return; }
+    var currentUserId = DB.AppState.currentUser?.id || null;
+    // Bloque un second poste/caissier de prendre en charge un transfert déjà
+    // réclamé par quelqu'un d'autre (seul le titulaire peut le reprendre,
+    // ex: après un rechargement de page ayant vidé son panier local).
+    if (t.status === 'claimed' && t.claimedBy !== currentUserId) {
+      UI.toast('Ce transfert est déjà pris en charge par ' + (t.claimedByName || 'un autre poste') + '.', 'warning', 5000);
+      return;
+    }
 
     t.status = 'claimed';
     t.claimedBy = DB.AppState.currentUser?.id || null;
@@ -2604,8 +2616,16 @@ async function _validerVenteLogic() {
     const stockMap = new Map();
     stockAll.forEach(s => stockMap.set(s.productId, s));
 
-    // Traiter tous les articles en parallèle
-    const itemPromises = posCart.map(async (item) => {
+    // Construire toutes les écritures (lots FEFO, saleItems, stock, movements)
+    // pour TOUS les articles du panier, puis les appliquer en UNE SEULE
+    // transaction IndexedDB (dbTransactionBulk) : soit le stock de tous les
+    // articles est mis à jour, soit rien ne l'est — plus de risque de vente
+    // enregistrée avec un stock partiellement décrémenté en cas de
+    // plantage/fermeture en cours de traitement.
+    const txOps = [];
+    const stockOpIdxByProduct = new Map(); // productId -> index dans txOps (fusion si 2 lignes du même produit)
+
+    for (const item of posCart) {
       const p = posProductsCache.get(item.productId) || posProducts.find(x => x.id === item.productId);
       const isBox = (item.saleMode === 'box');
       const isSub = (item.saleMode === 'subunit');
@@ -2628,34 +2648,61 @@ async function _validerVenteLogic() {
           lot.quantity -= take;
           remainingQty -= take;
           assignedLotNumber = assignedLotNumber || lot.lotNumber;
-          await DB.dbPut('lots', lot);
+          txOps.push({ store: 'lots', type: 'put', data: lot });
         }
       } catch (e) { console.warn('[FEFO] Erreur décrément lot:', e); }
 
-      await DB.dbAdd('saleItems', {
-        saleId, productId: item.productId, productName: item.name,
-        quantity: item.qty, unitPrice: item.unitPrice,
-        purchasePrice: item.purchasePrice, total: item.total,
-        lotNumber: assignedLotNumber, saleMode: item.saleMode || 'box'
+      txOps.push({
+        store: 'saleItems',
+        type: 'add',
+        data: {
+          saleId, productId: item.productId, productName: item.name,
+          quantity: item.qty, unitPrice: item.unitPrice,
+          purchasePrice: item.purchasePrice, total: item.total,
+          lotNumber: assignedLotNumber, saleMode: item.saleMode || 'box'
+        }
       });
 
-      // Lookup stock direct via Map O(1) au lieu de dbGetAll
-      const se = stockMap.get(item.productId);
-      if (se) {
-        const nq = Math.max(0, se.quantity - deductQty);
-        await DB.dbPut('stock', { ...se, quantity: nq });
+      // Lookup stock direct via Map O(1) au lieu de dbGetAll — fusionne les
+      // lignes de panier référençant le même produit en une seule écriture.
+      const existingOpIdx = stockOpIdxByProduct.get(item.productId);
+      if (existingOpIdx !== undefined) {
+        const prevData = txOps[existingOpIdx].data;
+        const nq = Math.max(0, prevData.quantity - deductQty);
+        txOps[existingOpIdx] = { store: 'stock', type: 'put', data: { ...prevData, quantity: nq } };
         posStock[item.productId] = nq;
+      } else {
+        const se = stockMap.get(item.productId);
+        if (se) {
+          const nq = Math.max(0, se.quantity - deductQty);
+          stockOpIdxByProduct.set(item.productId, txOps.length);
+          txOps.push({ store: 'stock', type: 'put', data: { ...se, quantity: nq } });
+          posStock[item.productId] = nq;
+        }
       }
-      await DB.dbAdd('movements', {
-        productId: item.productId, type: 'EXIT', subType: 'SALE',
-        quantity: -deductQty, date: new Date().toISOString(),
-        userId: DB.AppState.currentUser?.id,
-        reference: `SALE-${saleId}`,
-        lotNumber: assignedLotNumber,
-        note: posCurrentPatient ? `Patient: ${posCurrentPatient.name}` : 'Vente comptoir',
+
+      txOps.push({
+        store: 'movements',
+        type: 'add',
+        data: {
+          productId: item.productId, type: 'EXIT', subType: 'SALE',
+          quantity: -deductQty, date: new Date().toISOString(),
+          userId: DB.AppState.currentUser?.id,
+          reference: `SALE-${saleId}`,
+          lotNumber: assignedLotNumber,
+          note: posCurrentPatient ? `Patient: ${posCurrentPatient.name}` : 'Vente comptoir',
+        }
       });
-    });
-    await Promise.all(itemPromises);
+    }
+
+    if (txOps.length > 0) {
+      try {
+        await DB.dbTransactionBulk(txOps);
+      } catch (txErr) {
+        console.error('[POS] Échec de la transaction stock:', txErr);
+        UI.toast('Vente enregistrée, mais la mise à jour du stock a échoué — signalez ce ticket pour vérification manuelle.', 'error', 8000);
+      }
+    }
 
     if (posCurrentRx?.id) {
       const rx = await DB.dbGet('prescriptions', posCurrentRx.id);

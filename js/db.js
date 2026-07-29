@@ -288,6 +288,20 @@ setInterval(() => {
   }
 }, 30000);
 
+// Nettoyage périodique des tombstones de suppression déjà confirmées côté
+// Supabase (> 24h) — évite que syncQueue grossisse indéfiniment.
+setInterval(async () => {
+  try {
+    const queue = await dbGetAll('syncQueue');
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    for (const t of queue) {
+      if (t && t.type === 'delete' && t.status === 'synced' && (t.syncedAt || 0) < cutoff) {
+        await dbDelete('syncQueue', t.id);
+      }
+    }
+  } catch (e) { /* silencieux */ }
+}, 60 * 60 * 1000);
+
 const _pageStoreMap = {
   dashboard: ['sales', 'saleItems', 'stock', 'products', 'alerts', 'movements', 'returns'],
   pos: ['products', 'stock', 'lots'],  // Soft refresh POS (sans toucher le panier)
@@ -491,10 +505,22 @@ function _setupRealtime(sbClient) {
         if (_wasRecentlySynced(storeName, _itemId)) return;
 
         if (eventType === 'DELETE' && payload.old?.id) {
-          await dbDelete(storeName, payload.old.id);
+          // Suppression confirmée côté serveur : appliquer localement en tant
+          // qu'opération système (pas de nouvelle tombstone) et lever le
+          // verrou anti-résurrection puisque la suppression distante est actée.
+          const _prevSysOp = _isSystemOp;
+          _isSystemOp = true;
+          try { await dbDelete(storeName, payload.old.id); }
+          finally { _isSystemOp = _prevSysOp; }
+          _clearPendingDelete(storeName, payload.old.id);
           _notifyUIChange(storeName);
         } else if ((eventType === 'INSERT' || eventType === 'UPDATE') && payload.new) {
           const item = { ...payload.new, _synced: true, _updatedAt: Date.now() };
+
+          // Ne jamais ressusciter un enregistrement supprimé localement dont
+          // la suppression distante n'est pas encore confirmée.
+          const _itemKeyField = storeName === 'settings' ? 'key' : 'id';
+          if (_isPendingDelete(storeName, item[_itemKeyField])) return;
 
           const mustBeString = ['username', 'password', 'code', 'lotNumber', 'phone', 'dnpm',
             'pharmacy_phone', 'pharmacy_dnpm', 'pharmacy_name', 'key', 'value'];
@@ -648,6 +674,11 @@ async function initDB() {
         await migrateInsurances();
       } catch (err) {
         console.error('[DB] Migration assurances échouée:', err);
+      }
+      try {
+        await _loadPendingDeletes();
+      } catch (err) {
+        console.error('[DB] Chargement des tombstones de suppression échoué:', err);
       }
       // Hook onclose : si le SW force la fermeture (cache update), réinitialiser db
       db.onclose = () => {
@@ -1448,6 +1479,46 @@ async function dbCountProducts() {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// TOMBSTONES DE SUPPRESSION — empêche la résurrection d'un enregistrement
+// supprimé localement lorsque le prochain pull (ou un événement realtime)
+// re-télécharge la version encore présente côté Supabase.
+// ═══════════════════════════════════════════════════════════════════
+const _SYNCED_STORES = new Set([
+  'users', 'settings', 'products', 'lots', 'stock', 'movements', 'suppliers',
+  'purchaseOrders', 'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
+  'cashRegister', 'returns', 'invoices', 'shifts', 'prep_transfers',
+  'insurances', 'insurancePayments'
+]);
+// storeName -> Set(id) des enregistrements supprimés localement dont la
+// suppression distante n'est pas encore confirmée. Reconstruite au démarrage
+// depuis les tombstones 'pending' persistés dans le store syncQueue.
+const _pendingDeletes = new Map();
+function _addPendingDelete(storeName, id) {
+  if (id == null) return;
+  if (!_pendingDeletes.has(storeName)) _pendingDeletes.set(storeName, new Set());
+  _pendingDeletes.get(storeName).add(id);
+}
+function _clearPendingDelete(storeName, id) {
+  const s = _pendingDeletes.get(storeName);
+  if (s) s.delete(id);
+}
+function _isPendingDelete(storeName, id) {
+  const s = _pendingDeletes.get(storeName);
+  return !!s && s.has(id);
+}
+
+async function _loadPendingDeletes() {
+  try {
+    const queue = await dbGetAll('syncQueue');
+    for (const t of queue) {
+      if (t && t.type === 'delete' && t.status === 'pending') {
+        _addPendingDelete(t.storeName, t.recordId);
+      }
+    }
+  } catch (e) { /* silencieux */ }
+}
+
 async function dbDelete(storeName, id) {
   if (!db) await initDB();
   _checkWritePermission(storeName, 'delete');
@@ -1458,6 +1529,28 @@ async function dbDelete(storeName, id) {
       const store = tx.objectStore(storeName);
       const req = store.delete(id);
       req.onsuccess = () => {
+        // Enregistrer une tombstone pour propager la suppression vers Supabase
+        // et bloquer toute résurrection par pull/realtime tant qu'elle n'est
+        // pas confirmée distante. On saute cette étape pour les suppressions
+        // système (ex: écho d'un DELETE realtime déjà confirmé côté serveur).
+        if (_SYNCED_STORES.has(storeName) && !_isSystemOp) {
+          const keyField = storeName === 'settings' ? 'key' : 'id';
+          _addPendingDelete(storeName, id);
+          dbPut('syncQueue', {
+            id: 'del_' + storeName + '_' + id,
+            type: 'delete',
+            storeName,
+            recordId: id,
+            keyField,
+            status: 'pending',
+            createdAt: Date.now()
+          }).catch(() => {});
+          if (window.NM && typeof window.NM.notifyMutation === 'function') {
+            window.NM.notifyMutation('syncQueue');
+          } else if (navigator.onLine) {
+            _scheduleSyncToSupabase();
+          }
+        }
         _notifyUIChange(storeName);
         resolve(true);
       };
@@ -1559,6 +1652,61 @@ async function dbBulkPut(storeName, dataArray) {
     tx.onabort = () => {
       console.error(`[DB] BulkPut transaction annulée:`, tx.error);
       reject(tx.error);
+    };
+  });
+}
+
+/**
+ * Exécute plusieurs écritures (add/put) sur un ou plusieurs stores dans
+ * UNE SEULE transaction IndexedDB partagée : soit toutes les écritures
+ * s'appliquent, soit aucune (IndexedDB annule automatiquement toute la
+ * transaction si une seule requête échoue sans que son erreur soit
+ * interceptée) — contrairement à des appels dbAdd/dbPut séparés dans une
+ * boucle, qui laissent un état partiellement appliqué en cas d'échec/crash
+ * au milieu du traitement.
+ * @param {Array<{store:string, type:'add'|'put', data:object}>} operations
+ * @returns {Promise<Array>} - clé générée pour chaque opération, dans l'ordre
+ */
+async function dbTransactionBulk(operations) {
+  if (!db) await initDB();
+  if (!operations || operations.length === 0) return [];
+  const storeNames = [...new Set(operations.map(o => o.store))];
+  for (const s of storeNames) {
+    const op = operations.find(o => o.store === s);
+    _checkWritePermission(s, op.type === 'add' ? 'add' : 'put');
+  }
+  storeNames.forEach(s => _invalidateCache(s));
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeNames, 'readwrite');
+    const results = new Array(operations.length);
+    const now = Date.now();
+
+    operations.forEach((op, i) => {
+      const store = tx.objectStore(op.store);
+      const payload = { ...op.data, _updatedAt: now, _synced: false };
+      if (op.type === 'add' && payload._createdAt === undefined) payload._createdAt = now;
+      const req = op.type === 'add' ? store.add(payload) : store.put(payload);
+      req.onsuccess = () => { results[i] = req.result; };
+      // Ne pas intercepter req.onerror ici : on VEUT que l'erreur remonte et
+      // fasse annuler toute la transaction (garantie tout-ou-rien).
+    });
+
+    tx.oncomplete = () => {
+      storeNames.forEach(s => {
+        if (window.NM && typeof window.NM.notifyMutation === 'function') window.NM.notifyMutation(s);
+        else if (navigator.onLine) _scheduleSyncToSupabase();
+        _notifyUIChange(s);
+      });
+      resolve(results);
+    };
+    tx.onerror = () => {
+      console.error('[DB] dbTransactionBulk erreur:', tx.error);
+      reject(tx.error || new Error('dbTransactionBulk: transaction error'));
+    };
+    tx.onabort = () => {
+      console.error('[DB] dbTransactionBulk annulée:', tx.error);
+      reject(tx.error || new Error('dbTransactionBulk: transaction aborted'));
     };
   });
 }
@@ -1673,6 +1821,43 @@ function _showSyncIndicator(active) {
   }
 }
 
+/**
+ * Propage vers Supabase les suppressions locales en attente (tombstones du
+ * store syncQueue créées par dbDelete). Contrepartie du push par upsert :
+ * sans ceci, un enregistrement supprimé localement n'est jamais supprimé
+ * côté serveur et réapparaît au prochain pull.
+ */
+async function _processDeleteQueue(sb) {
+  let queue;
+  try {
+    queue = await dbGetAll('syncQueue');
+  } catch (e) { return; }
+  const pending = queue.filter(t => t && t.type === 'delete' && t.status === 'pending');
+  if (pending.length === 0) return;
+
+  for (const tomb of pending) {
+    if ((window.NM && !window.NM.isOnline()) || !navigator.onLine) {
+      throw new Error('network_offline');
+    }
+    const tableName = tomb.storeName === 'users' ? 'app_users' : tomb.storeName;
+    const keyField = tomb.keyField || (tomb.storeName === 'settings' ? 'key' : 'id');
+    try {
+      const { error } = await _withTimeout(sb.from(tableName).delete().eq(keyField, tomb.recordId));
+      if (!error) {
+        await _dbPutRaw('syncQueue', { ...tomb, status: 'synced', syncedAt: Date.now() });
+        _clearPendingDelete(tomb.storeName, tomb.recordId);
+      } else if (!navigator.onLine) {
+        throw new Error('network_offline');
+      } else {
+        console.warn(`[Flash] Suppression distante différée [${tomb.storeName}/${tomb.recordId}]:`, error.message || error);
+      }
+    } catch (e) {
+      if (e && e.message === 'network_offline') throw e;
+      // Erreur isolée sur cette tombstone — elle reste 'pending', on continue avec les suivantes
+    }
+  }
+}
+
 async function syncToSupabase(isManual = false) {
   if (window.NM && typeof window.NM.requestSync === 'function') {
     window.NM.requestSync(isManual);
@@ -1692,6 +1877,17 @@ async function _internalSyncToSupabase() {
   try {
     const sb = await getSupabaseClient();
     if (!sb) return;
+
+    // Propager les suppressions en attente AVANT les upserts, pour minimiser
+    // la fenêtre pendant laquelle un pull pourrait encore résurrecter un
+    // enregistrement supprimé localement (le filtre pull-time protège déjà
+    // contre ce cas, ceci accélère juste la confirmation distante).
+    try {
+      await _processDeleteQueue(sb);
+    } catch (delErr) {
+      if (delErr && delErr.message === 'network_offline') throw delErr;
+      console.warn('[Flash] _processDeleteQueue erreur:', delErr?.message || delErr);
+    }
 
     // Envoi SÉQUENTIEL et par ordre de priorité absolue (ventes d'abord, catalogues ensuite)
     const storesToSync = [
@@ -2103,7 +2299,14 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
           }
         }
         return localItem;
-      }).filter(item => !(storeName === 'settings' && item.status === 'DELETED'));
+      }).filter(item => {
+        if (storeName === 'settings' && item.status === 'DELETED') return false;
+        // Ne jamais réécrire un enregistrement supprimé localement tant que
+        // sa suppression distante n'est pas confirmée (évite la résurrection).
+        var kProp = (storeName === 'settings') ? 'key' : 'id';
+        if (_isPendingDelete(storeName, item[kProp])) return false;
+        return true;
+      });
       if (prepared.length === 0) return 0;
 
       var keyProp = (storeName === 'settings') ? 'key' : 'id';
@@ -2807,7 +3010,7 @@ if (typeof indexedDB !== 'undefined') {
 // La gestion de connectivité est centralisée et gérée par NetworkManager.
 // Plus de listeners online/offline ou d'écriture brute sur le Service Worker ici.
 
-const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup };
+const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
 Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
 window.DB = _DBExports;

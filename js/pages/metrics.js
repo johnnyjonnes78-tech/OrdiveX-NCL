@@ -73,7 +73,9 @@ async function renderMetrics(container) {
     if (productCount > 50000) {
       products = stockAll.map(s => ({ id: s.productId, minStock: 10, purchasePrice: 0, salePrice: 0 }));
     } else {
-      products = await safeLoad('products');
+      // Exclure les médicaments désactivés des statistiques (un produit
+      // supprimé du catalogue ne doit plus fausser la santé du stock/KPIs).
+      products = (await safeLoad('products')).filter(p => p.status !== 'inactive');
     }
 
     // Index rapide stock par productId pour éviter des .find() répétés
@@ -168,8 +170,9 @@ async function renderMetrics(container) {
       const minSeuil = p.minStock || 10;
       return qty > 0 && qty <= minSeuil;
     }).length;
-    const healthyStock = Math.max(0, productCount - outOfStock - lowStock);
-    const stockHealthPct = productCount > 0 ? Math.round((healthyStock / productCount) * 100) : 100;
+    const activeProductCount = products.length;
+    const healthyStock = Math.max(0, activeProductCount - outOfStock - lowStock);
+    const stockHealthPct = activeProductCount > 0 ? Math.round((healthyStock / activeProductCount) * 100) : 100;
 
     // ── Valeur du stock ──
     const totalStockValue = products.reduce((a, p) => {

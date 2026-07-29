@@ -142,6 +142,20 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // ── version.json : TOUJOURS réseau, JAMAIS de cache ──
+  // Sert de vérité de référence au vérificateur de mise à jour (stability.js).
+  // Le cache-first des assets locaux ci-dessous ignorerait le cache-buster
+  // (?_=timestamp) et figerait ce fichier indéfiniment dans le cache du SW,
+  // rendant la détection de nouvelle version obsolète.
+  if (url.includes('version.json')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(() => new Response('{}', {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      }))
+    );
+    return;
+  }
+
   // Requêtes non-GET et extensions navigateur : ne pas toucher
   if (event.request.method !== 'GET') return;
   if (url.startsWith('chrome-extension')) return;

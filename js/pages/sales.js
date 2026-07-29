@@ -219,7 +219,7 @@ function renderSalesTable(data) {
           <button class="btn btn-xs btn-primary" onclick="viewSaleDetail(${r.id})">Détail</button>
           ${canSms ? `<button class="btn btn-xs" style="margin-left:4px;background:var(--info);color:white;border:none" onclick="openSmsModal(${r.patientId})" title="Envoyer rappel SMS"><i data-lucide="message-square" style="width:12px;height:12px"></i></button>` : ''}
           ${isPending ? `<button class="btn btn-xs btn-success" style="margin-left:4px" onclick="settleDebt(${r.id})"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Encaisser</button>` : ''}
-          ${canAnnul ? `<button class="btn btn-xs btn-danger" style="margin-left:4px" onclick="annulerVente(${r.id})" title="Annuler la vente"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>` : ''}
+          ${canAnnul ? `<button class="btn btn-xs btn-danger" style="margin-left:4px" onclick="annulerVente(${r.id}, this)" title="Annuler la vente"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>` : ''}
         `;
       }
     },
@@ -687,7 +687,7 @@ async function settleDebt(saleId) {
   `, {
     footer: `
       <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-      <button class="btn btn-success" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="confirmSettleDebt(${saleId})"><i data-lucide="check-circle"></i> Encaisser ${UI.formatCurrency(debtAmount)}</button>
+      <button class="btn btn-success" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="confirmSettleDebt(${saleId}, this)"><i data-lucide="check-circle"></i> Encaisser ${UI.formatCurrency(debtAmount)}</button>
     `
   });
 
@@ -705,7 +705,7 @@ function selectDebtPayMethod(btn) {
   btn.style.background = '#EBF5FB';
 }
 
-async function confirmSettleDebt(saleId) {
+async function confirmSettleDebt(saleId, btn) {
   if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Action non autorisée.', 'error', 4000);
     return;
@@ -717,9 +717,20 @@ async function confirmSettleDebt(saleId) {
   const ok = await UI.confirm('Confirmer l\'encaissement de cette dette ?\n\nLa vente sera marquée comme réglée.');
   if (!ok) return;
 
+  return ActionGuard.run('settle-debt-' + saleId, () => _confirmSettleDebtImpl(saleId, paymentMethod, reference), btn, 'Encaissement...');
+}
+
+async function _confirmSettleDebtImpl(saleId, paymentMethod, reference) {
   try {
     const sale = await DB.dbGet('sales', saleId);
     if (!sale) throw new Error('Vente introuvable');
+    // Revérifier l'état actuel — empêche un double encaissement (double-clic,
+    // ou confirmation rejouée) de créer deux entrées de caisse pour la même dette.
+    if (sale.status === 'paid' || sale.creditStatus === 'paid') {
+      UI.toast('Cette dette a déjà été réglée.', 'warning');
+      UI.closeModal();
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     const debtAmount = sale.paymentMethod === 'assurance' ? (sale.assuranceAmount || sale.total) : sale.total;
@@ -781,7 +792,7 @@ async function confirmSettleDebt(saleId) {
   }
 }
 
-async function annulerVente(saleId) {
+async function annulerVente(saleId, btn) {
   if (window.Auth && !Auth.can('sales_cancel') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission d\'annuler une vente.', 'error', 4000);
     return;
@@ -789,6 +800,10 @@ async function annulerVente(saleId) {
   const confirm = await UI.confirm("Êtes-vous sûr de vouloir annuler cette vente ?\n\nLes articles vendus seront rajoutés au stock et la vente sera marquée comme annulée.");
   if (!confirm) return;
 
+  return ActionGuard.run('annuler-vente-' + saleId, () => _annulerVenteImpl(saleId), btn, 'Annulation...');
+}
+
+async function _annulerVenteImpl(saleId) {
   try {
     const sale = await DB.dbGet('sales', saleId);
     if (!sale) { UI.toast("Vente introuvable", "error"); return; }
