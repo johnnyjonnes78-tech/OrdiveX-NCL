@@ -1102,8 +1102,30 @@ function addToCart(productId, mode = 'box') {
     return sum + (c.qty * f);
   }, 0);
 
-  if ((currentlyInCart + unitFactor) > avail) {
-    UI.toast(`Stock insuffisant (${Math.floor(avail / totU)} boîte(s) dispo)`, 'warning'); return;
+  // Plafond réel de vente immédiate : pour un produit à lots, seul le rayon
+  // est physiquement vendable sans transfert préalable. Utiliser le total
+  // agrégé (rayon+réserve) ici permettait de vendre bien plus que ce qui est
+  // réellement sur l'étagère — le solde "vendu" au-delà du rayon ne provenait
+  // d'aucun lot réel, ce qui désynchronisait ensuite le stock agrégé.
+  const isLotTracked = p.hasLots || p._hasLots;
+  const rayonAvail = isLotTracked
+    ? posLots.filter(l => l.productId === productId && l.status === 'active' && (!l.location || l.location === 'rayon')).reduce((s, l) => s + (l.quantity || 0), 0)
+    : avail;
+
+  if ((currentlyInCart + unitFactor) > rayonAvail) {
+    if (isLotTracked) {
+      const reserveAvail = posLots.filter(l => l.productId === productId && l.status === 'active' && l.location === 'reserve').reduce((s, l) => s + (l.quantity || 0), 0);
+      if (reserveAvail > 0) {
+        UI.toast(`Stock rayon insuffisant (${Math.floor(rayonAvail / totU)} boîte(s) dispo). ${reserveAvail} unité(s) en réserve — transférez via Gestion des Stocks avant de vendre.`, 'error', 7000);
+      } else if (avail > rayonAvail) {
+        UI.toast('Stock incohérent pour ce produit : le total affiché ne correspond à aucun lot réel en rayon ni en réserve. Faites un ajustement de stock ou un inventaire pour corriger.', 'error', 7000);
+      } else {
+        UI.toast(`Stock insuffisant (${Math.floor(rayonAvail / totU)} boîte(s) dispo)`, 'warning');
+      }
+    } else {
+      UI.toast(`Stock insuffisant (${Math.floor(rayonAvail / totU)} boîte(s) dispo)`, 'warning');
+    }
+    return;
   }
 
   // Alerte allergie patient
@@ -1123,20 +1145,6 @@ function addToCart(productId, mode = 'box') {
 
   // FEFO : identifier le lot
   const fefoLot = getFEFOLot(productId);
-
-  // Vérification Rayon vs Réserve — ne jamais affirmer que le stock est en
-  // réserve sans l'avoir vérifié : le total agrégé (avail) peut être
-  // désynchronisé des lots après un retour/ajustement/inventaire, auquel cas
-  // il n'y a réellement rien ni en rayon ni en réserve.
-  if ((p.hasLots || p._hasLots) && avail > 0 && !fefoLot) {
-    const hasReserveStock = posLots.some(l => l.productId === productId && l.status === 'active' && l.quantity > 0 && l.location === 'reserve');
-    if (hasReserveStock) {
-      UI.toast('Stock disponible uniquement en RÉSERVE. Veuillez transférer en RAYON via Gestion des Stocks.', 'error', 6000);
-    } else {
-      UI.toast('Stock incohérent pour ce produit : aucun lot actif trouvé en rayon ni en réserve. Faites un ajustement de stock ou un inventaire pour corriger.', 'error', 7000);
-    }
-    return;
-  }
 
   if (existing) { existing.qty++; existing.total = existing.qty * existing.unitPrice; }
   else {
@@ -1158,6 +1166,12 @@ function addToCart(productId, mode = 'box') {
 function checkStockCart(productId) {
   const p = posProductsCache.get(productId) || posProducts.find(x => x.id === productId);
   const avail = posStock[productId] || 0;
+  const isLotTracked = p && (p.hasLots || p._hasLots);
+  // Même plafond que addToCart : le rayon (vendable sans transfert), pas le
+  // total agrégé rayon+réserve — voir addToCart pour le détail du bug évité.
+  const rayonAvail = isLotTracked
+    ? posLots.filter(l => l.productId === productId && l.status === 'active' && (!l.location || l.location === 'rayon')).reduce((s, l) => s + (l.quantity || 0), 0)
+    : avail;
   const totU = (p.unitsPerBox || 1) * (p.subUnitsPerBox || 1);
   const currentlyInCart = posCart.filter(c => c.productId === productId).reduce((sum, c) => {
     let f = 1;
@@ -1168,7 +1182,7 @@ function checkStockCart(productId) {
     }
     return sum + (c.qty * f);
   }, 0);
-  return currentlyInCart <= avail;
+  return currentlyInCart <= rayonAvail;
 }
 
 function changeQty(productId, mode, delta) {
@@ -2632,6 +2646,7 @@ async function _validerVenteLogic() {
     // plantage/fermeture en cours de traitement.
     const txOps = [];
     const stockOpIdxByProduct = new Map(); // productId -> index dans txOps (fusion si 2 lignes du même produit)
+    const stockDiscrepancies = []; // Filet de sécurité : quantité vendue non couverte par un lot réel
 
     for (const item of posCart) {
       const p = posProductsCache.get(item.productId) || posProducts.find(x => x.id === item.productId);
@@ -2659,6 +2674,15 @@ async function _validerVenteLogic() {
           txOps.push({ store: 'lots', type: 'put', data: lot });
         }
       } catch (e) { console.warn('[FEFO] Erreur décrément lot:', e); }
+
+      // Filet de sécurité : si les lots rayon n'ont pas pu fournir toute la
+      // quantité vendue (ne devrait plus arriver — addToCart plafonne
+      // désormais sur le stock rayon réel), tracer l'écart au lieu de le
+      // laisser silencieusement désynchroniser le stock agrégé.
+      if (remainingQty > 0) {
+        stockDiscrepancies.push({ productId: item.productId, productName: item.name, missing: remainingQty });
+        console.warn(`[POS] Vente ${item.name} : ${remainingQty} unité(s) sans lot rayon disponible pour les couvrir.`);
+      }
 
       txOps.push({
         store: 'saleItems',
@@ -2710,6 +2734,14 @@ async function _validerVenteLogic() {
         console.error('[POS] Échec de la transaction stock:', txErr);
         UI.toast('Vente enregistrée, mais la mise à jour du stock a échoué — signalez ce ticket pour vérification manuelle.', 'error', 8000);
       }
+    }
+
+    if (stockDiscrepancies.length > 0) {
+      try {
+        await DB.writeAudit('SALE_STOCK_DISCREPANCY', 'sales', saleId, { discrepancies: stockDiscrepancies });
+      } catch (e) { /* silencieux */ }
+      const detail = stockDiscrepancies.map(d => `${d.productName} (${d.missing})`).join(', ');
+      UI.toast(`⚠️ Vente enregistrée, mais le stock rayon ne couvrait pas tout : ${detail}. Vérifiez le stock de ce(s) produit(s).`, 'error', 9000);
     }
 
     if (posCurrentRx?.id) {

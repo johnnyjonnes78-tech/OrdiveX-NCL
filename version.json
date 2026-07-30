@@ -1,5 +1,5 @@
 {
-  "version": "9.9.5",
+  "version": "9.9.6",
   "date": "2026-07-30",
-  "changelog": "v9.9.5 : Onboarding entièrement repensé (écran divisé premium, desktop et mobile) + correction du compte admin bloqué à la configuration + logo qui effaçait les champs saisis. Médicaments désactivés retirés des factures fournisseurs et bouton \"Réactiver\" ajouté au catalogue. Correction du stock rayon/réserve désynchronisé qui pouvait envoyer vérifier en réserve à tort après un retour, un ajustement ou un inventaire."
+  "changelog": "v9.9.6 : Correction critique du point de vente — il était possible de vendre bien plus que le stock réellement présent en rayon (le plafond utilisait le total rayon+réserve au lieu du rayon seul), ce qui vidait le rayon puis désynchronisait le stock affiché sans jamais avoir réellement débité la réserve. Le POS bloque maintenant la vente au-delà du stock rayon réel et indique clairement s'il faut transférer depuis la réserve."
 }
