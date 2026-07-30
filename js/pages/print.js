@@ -1085,7 +1085,7 @@ PrintEngine.printPurchaseOrder = async function(orderId) {
     const pvInfo = it.salePrice ? ' &middot; P.V : ' + UI.formatCurrency(it.salePrice) : '';
     const lotInfo = (it.lotNumber || it.expiryDate || it.salePrice) ? '<div style="font-size:10px;color:#555;margin-top:2px">' + (it.lotNumber ? 'Lot : ' + it.lotNumber : '') + (it.expiryDate ? ' &middot; Exp : ' + it.expiryDate : '') + pvInfo + '</div>' : '';
 
-    return '<tr style="' + rowStyle + '"><td>' + (idx+1) + '</td><td><strong>' + (it.productName || it.name || '\u2014') + '</strong>' + lotInfo + '</td><td class="bc-ac">' + qteCmd + '</td><td class="bc-ac">' + qteRecueHtml + '</td><td class="bc-ac">' + badge + '</td><td class="bc-ar">' + UI.formatCurrency(pu) + '</td><td class="bc-ar"><strong>' + totalHtml + '</strong></td></tr>';
+    return '<tr style="' + rowStyle + '"><td>' + (idx+1) + '</td><td><strong>' + (it.productName || it.name || '\u2014') + '</strong>' + lotInfo + '</td><td class="bc-ac">' + qteCmd + '</td><td class="bc-ac">' + qteRecueHtml + '</td><td class="bc-ac">' + badge + '</td><td class="bc-ar">' + UI.formatCurrency(pu) + '</td><td class="bc-ar"><strong>' + UI.formatCurrency(totalLigne) + '</strong></td></tr>';
   }).join('');
 
   const theadHTML = isReceived

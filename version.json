@@ -1,5 +1,5 @@
 {
-  "version": "9.9.6",
+  "version": "9.9.7",
   "date": "2026-07-30",
-  "changelog": "v9.9.6 : Correction critique du point de vente — il était possible de vendre bien plus que le stock réellement présent en rayon (le plafond utilisait le total rayon+réserve au lieu du rayon seul), ce qui vidait le rayon puis désynchronisait le stock affiché sans jamais avoir réellement débité la réserve. Le POS bloque maintenant la vente au-delà du stock rayon réel et indique clairement s'il faut transférer depuis la réserve."
+  "changelog": "v9.9.7 : Correction de l'impression des bons de commande, qui échouait silencieusement (variable manquante dans le calcul du total par ligne d'un bon réceptionné)."
 }
