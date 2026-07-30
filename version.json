@@ -1,5 +1,5 @@
 {
-  "version": "9.9.4",
-  "date": "2026-07-27",
-  "changelog": "v9.9.4 : La rangée d'actions du POS passe désormais à la ligne (au lieu de défiler hors champ, invisible sans le savoir) si l'espace manque — plus aucun bouton ne peut sembler \"disparu\". Ticket de caisse imprimé en écriture nettement plus épaisse et contrastée (poids de police maximal + tracé renforcé) pour rester bien lisible sur imprimante thermique."
+  "version": "9.9.5",
+  "date": "2026-07-30",
+  "changelog": "v9.9.5 : Onboarding entièrement repensé (écran divisé premium, desktop et mobile) + correction du compte admin bloqué à la configuration + logo qui effaçait les champs saisis. Médicaments désactivés retirés des factures fournisseurs et bouton \"Réactiver\" ajouté au catalogue. Correction du stock rayon/réserve désynchronisé qui pouvait envoyer vérifier en réserve à tort après un retour, un ajustement ou un inventaire."
 }
