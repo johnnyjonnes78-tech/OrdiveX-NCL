@@ -815,15 +815,52 @@ async function confirmValidation() {
     
     if (shouldAdjust && totalGapsCount > 0) {
       const stockAll = await DB.dbGetAll('stock');
+      const allLots = await DB.dbGetAll('lots');
 
       for (const g of gaps) {
         const existingStock = stockAll.find(s => s.productId === g.id);
-        
+
         // Mettre à jour IndexedDB stock
         if (existingStock) {
           await DB.dbPut('stock', { ...existingStock, quantity: g.physicalQty });
         } else {
           await DB.dbAdd('stock', { productId: g.id, quantity: g.physicalQty, reservedQuantity: 0 });
+        }
+
+        // Répercuter l'écart sur les lots (rayon d'abord, réserve en dernier
+        // recours pour une baisse) — sans cela, le total agrégé change mais
+        // aucun lot ne reflète la quantité réelle, rendant le produit
+        // invisible en rayon ET en réserve au POS après l'inventaire.
+        if (g.gap > 0) {
+          const rayonLot = allLots.find(l => l.productId === g.id && l.status === 'active' && (!l.location || l.location === 'rayon'));
+          if (rayonLot) {
+            rayonLot.quantity = (rayonLot.quantity || 0) + g.gap;
+            await DB.dbPut('lots', rayonLot);
+          } else {
+            const newLotId = await DB.dbAdd('lots', {
+              productId: g.id,
+              lotNumber: 'INV-' + dateStr + '-' + g.id,
+              expiryDate: null,
+              quantity: g.gap,
+              initialQuantity: g.gap,
+              location: 'rayon',
+              status: 'active',
+            });
+            allLots.push({ id: newLotId, productId: g.id, quantity: g.gap, status: 'active', location: 'rayon' });
+          }
+        } else if (g.gap < 0) {
+          let rem = Math.abs(g.gap);
+          const productLots = allLots
+            .filter(l => l.productId === g.id && l.status === 'active')
+            .sort((a, b) => (a.location === 'reserve' ? 1 : 0) - (b.location === 'reserve' ? 1 : 0));
+          for (const lot of productLots) {
+            if (rem <= 0) break;
+            const take = Math.min(rem, lot.quantity || 0);
+            if (take <= 0) continue;
+            lot.quantity = (lot.quantity || 0) - take;
+            rem -= take;
+            await DB.dbPut('lots', lot);
+          }
         }
 
         // Préparer l'objet mouvement standard

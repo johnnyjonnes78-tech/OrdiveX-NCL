@@ -469,6 +469,7 @@ async function processReturn(saleId, selectedItems, reason) {
 
     const refundAmount = selectedItems.reduce((a, i) => a + i.quantity * i.unitPrice, 0);
     const allSaleItems = await DB.dbGetAll('saleItems', 'saleId', saleId);
+    const saleItemMap = new Map(allSaleItems.map(si => [si.id, si]));
     const totalSaleQty = allSaleItems.reduce((a, i) => a + i.quantity, 0);
     const returnedQty = selectedItems.reduce((a, i) => a + i.quantity, 0);
     const isFullReturn = (returnedQty >= totalSaleQty);
@@ -490,6 +491,7 @@ async function processReturn(saleId, selectedItems, reason) {
     });
 
     // 2. Remettre le stock pour chaque article retourné
+    const allLots = await DB.dbGetAll('lots');
     for (const ri of selectedItems) {
         const stockArr = await DB.dbGetAll('stock', 'productId', ri.productId);
         const stockEntry = stockArr[0];
@@ -499,6 +501,33 @@ async function processReturn(saleId, selectedItems, reason) {
                 quantity: (stockEntry.quantity || 0) + ri.quantity,
                 lastUpdated: Date.now(),
             });
+        }
+
+        // 2b. Restaurer la quantité dans un lot réel (le lot d'origine si actif,
+        // sinon un lot rayon existant, sinon un nouveau lot en rayon) — sans
+        // cela, le total agrégé ci-dessus augmente mais le produit retourné
+        // n'existe dans aucun lot, donc invisible en rayon ET en réserve au POS.
+        const originalLotNumber = saleItemMap.get(ri.saleItemId)?.lotNumber;
+        let targetLot = originalLotNumber
+            ? allLots.find(l => l.productId === ri.productId && l.lotNumber === originalLotNumber && l.status === 'active')
+            : null;
+        if (!targetLot) {
+            targetLot = allLots.find(l => l.productId === ri.productId && l.status === 'active' && (!l.location || l.location === 'rayon'));
+        }
+        if (targetLot) {
+            targetLot.quantity = (targetLot.quantity || 0) + ri.quantity;
+            await DB.dbPut('lots', targetLot);
+        } else {
+            const newLotId = await DB.dbAdd('lots', {
+                productId: ri.productId,
+                lotNumber: originalLotNumber || ('RETOUR-' + Date.now()),
+                expiryDate: null,
+                quantity: ri.quantity,
+                initialQuantity: ri.quantity,
+                location: 'rayon',
+                status: 'active',
+            });
+            allLots.push({ id: newLotId, productId: ri.productId, lotNumber: originalLotNumber || ('RETOUR-' + Date.now()), quantity: ri.quantity, status: 'active', location: 'rayon' });
         }
 
         // 3. Enregistrer le mouvement de stock

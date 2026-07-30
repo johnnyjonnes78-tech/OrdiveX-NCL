@@ -800,27 +800,48 @@ async function submitAdjustStock(productId, oldQty) {
       await DB.dbAdd('stock', { productId: productId, quantity: newQty, reservedQuantity: 0 });
     }
 
-    // Synchroniser les lots actifs si le produit possède des lots en rayon
+    // Synchroniser les lots — sans cela, le total agrégé change mais aucun
+    // lot ne reflète la quantité réelle, rendant le produit invisible en
+    // rayon ET en réserve au POS (message "vérifiez en réserve" trompeur).
     try {
       var allLots = await DB.dbGetAll('lots');
-      var prodLots = allLots.filter(function(l) { 
-        return l.productId === productId && l.status === 'active' && (!l.location || l.location === 'rayon'); 
-      }).sort(function(a, b) { 
-        return new Date(b.createdAt || b.expiryDate || 0) - new Date(a.createdAt || a.expiryDate || 0); 
+      var prodLots = allLots.filter(function(l) {
+        return l.productId === productId && l.status === 'active' && (!l.location || l.location === 'rayon');
+      }).sort(function(a, b) {
+        return new Date(b.createdAt || b.expiryDate || 0) - new Date(a.createdAt || a.expiryDate || 0);
       });
-      if (prodLots.length > 0) {
-        if (diff > 0) {
+      if (diff > 0) {
+        if (prodLots.length > 0) {
           prodLots[0].quantity = (prodLots[0].quantity || 0) + diff;
           await DB.dbPut('lots', prodLots[0]);
-        } else if (diff < 0) {
-          var rem = Math.abs(diff);
-          for (var i = 0; i < prodLots.length; i++) {
-            if (rem <= 0) break;
-            var take = Math.min(rem, prodLots[i].quantity || 0);
-            prodLots[i].quantity = (prodLots[i].quantity || 0) - take;
-            rem -= take;
-            await DB.dbPut('lots', prodLots[i]);
-          }
+        } else {
+          // Aucun lot rayon actif : en créer un pour que la quantité ajoutée
+          // soit réellement vendable au lieu d'exister uniquement dans le total agrégé.
+          await DB.dbAdd('lots', {
+            productId: productId,
+            lotNumber: 'AJUST-' + Date.now(),
+            expiryDate: null,
+            quantity: diff,
+            initialQuantity: diff,
+            location: 'rayon',
+            status: 'active',
+          });
+        }
+      } else if (diff < 0) {
+        var rem = Math.abs(diff);
+        // Décrémenter le rayon en premier, puis la réserve en dernier recours,
+        // pour que le total agrégé reste cohérent avec la somme réelle des lots.
+        var reserveLots = allLots.filter(function(l) {
+          return l.productId === productId && l.status === 'active' && l.location === 'reserve';
+        });
+        var lotsToDrain = prodLots.concat(reserveLots);
+        for (var i = 0; i < lotsToDrain.length; i++) {
+          if (rem <= 0) break;
+          var take = Math.min(rem, lotsToDrain[i].quantity || 0);
+          if (take <= 0) continue;
+          lotsToDrain[i].quantity = (lotsToDrain[i].quantity || 0) - take;
+          rem -= take;
+          await DB.dbPut('lots', lotsToDrain[i]);
         }
       }
     } catch (lotErr) {

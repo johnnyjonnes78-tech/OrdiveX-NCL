@@ -1124,9 +1124,17 @@ function addToCart(productId, mode = 'box') {
   // FEFO : identifier le lot
   const fefoLot = getFEFOLot(productId);
 
-  // Vérification Rayon vs Réserve
+  // Vérification Rayon vs Réserve — ne jamais affirmer que le stock est en
+  // réserve sans l'avoir vérifié : le total agrégé (avail) peut être
+  // désynchronisé des lots après un retour/ajustement/inventaire, auquel cas
+  // il n'y a réellement rien ni en rayon ni en réserve.
   if ((p.hasLots || p._hasLots) && avail > 0 && !fefoLot) {
-    UI.toast('Stock disponible uniquement en RÉSERVE. Veuillez transférer en RAYON via Gestion des Stocks.', 'error', 6000);
+    const hasReserveStock = posLots.some(l => l.productId === productId && l.status === 'active' && l.quantity > 0 && l.location === 'reserve');
+    if (hasReserveStock) {
+      UI.toast('Stock disponible uniquement en RÉSERVE. Veuillez transférer en RAYON via Gestion des Stocks.', 'error', 6000);
+    } else {
+      UI.toast('Stock incohérent pour ce produit : aucun lot actif trouvé en rayon ni en réserve. Faites un ajustement de stock ou un inventaire pour corriger.', 'error', 7000);
+    }
     return;
   }
 
