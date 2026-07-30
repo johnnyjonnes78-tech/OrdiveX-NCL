@@ -28,7 +28,9 @@ async function renderInvoices(container) {
 
   const supplierMap = {};
   suppliers.forEach(s => { supplierMap[s.id] = s; });
-  window._invoicesProducts = products;
+  // Exclure les médicaments désactivés : un produit supprimé du catalogue
+  // ne doit plus pouvoir être ajouté à une facture (même un ancien brouillon).
+  window._invoicesProducts = products.filter(p => p.status !== 'inactive');
 
   const sorted = invoices.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   const draft = invoices.filter(i => i.status === 'draft');
@@ -931,7 +933,7 @@ async function importInvoiceCsv(event) {
     const headers = lines[0].split(sep).map(h => h.trim().toLowerCase());
 
     const items = [];
-    const products = window._invoicesProducts || await DB.dbGetAll('products');
+    const products = window._invoicesProducts || (await DB.dbGetAll('products')).filter(p => p.status !== 'inactive');
     
     // Essayer d'identifier les colonnes
     const idxProd = headers.findIndex(h => h.includes('produit') || h.includes('nom') || h.includes('article'));

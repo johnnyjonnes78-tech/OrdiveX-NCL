@@ -406,7 +406,9 @@ function renderProductsTable(data) {
     <div class="actions-cell">
       <button class="btn btn-xs btn-primary" onclick="viewProduct(${r.id})" title="Détails"><i data-lucide="eye"></i></button>
       ${Auth.can('products_edit') ? `<button class="btn btn-xs btn-secondary" onclick="editProductForm(${r.id})" title="Modifier"><i data-lucide="edit-3"></i></button>` : ''}
-      ${Auth.can('products_delete') ? `<button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>` : ''}
+      ${Auth.can('products_delete') ? (r.status === 'inactive'
+        ? `<button class="btn btn-xs btn-success" onclick="reactivateProduct(${r.id})" title="Réactiver"><i data-lucide="rotate-ccw"></i></button>`
+        : `<button class="btn btn-xs btn-danger" onclick="deleteProduct(${r.id})" title="Désactiver"><i data-lucide="trash-2"></i></button>`) : ''}
     </div>`
   });
 
@@ -1542,6 +1544,22 @@ async function deleteProduct(id) {
   await DB.writeAudit('DEACTIVATE_PRODUCT', 'products', id, { name: p.name });
   window._allProducts = null; // invalider le cache du sélecteur produit (bons de commande)
   UI.toast('Produit désactivé', 'success');
+  Router.navigate('products');
+}
+
+async function reactivateProduct(id) {
+  if (window.Auth && !Auth.can('products_delete') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de réactiver des produits.', 'error', 5000);
+    return;
+  }
+  const p = await DB.dbGet('products', id);
+  if (!p) return;
+  const ok = await UI.confirm(`Réactiver "${p.name}" ?\n\nIl sera de nouveau visible dans le catalogue et le point de vente.`);
+  if (!ok) return;
+  await DB.dbPut('products', { ...p, status: 'active' });
+  await DB.writeAudit('REACTIVATE_PRODUCT', 'products', id, { name: p.name });
+  window._allProducts = null; // invalider le cache du sélecteur produit (bons de commande)
+  UI.toast('Produit réactivé', 'success');
   Router.navigate('products');
 }
 
