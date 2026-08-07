@@ -3066,6 +3066,37 @@ function imprimerTicket() {
   if (!el) return;
   const w = window.open('', '_blank', 'width=420,height=750');
   w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Ticket</title><style>
+    /* Le contenu (#recu-printable) est recopié depuis la modale de l'app via
+       outerHTML, qui référence des variables CSS (var(--surface), var(--border),
+       var(--text-muted), var(--primary-color)...) définies uniquement dans le
+       :root de l'app principale. Cette fenêtre est un document isolé qui n'y a
+       pas accès : sans ces définitions, ces styles sont invalides et échouent
+       silencieusement (bordures/fonds absents, hiérarchie visuelle perdue).
+       On les redéfinit ici avec les valeurs réelles du thème clair (un reçu
+       imprimé reste toujours noir sur blanc, quel que soit le thème de l'app). */
+    :root{
+      --primary:#1B6FAE; --primary-color:#1B6FAE;
+      --surface:#FFFFFF; --border:#D8E0EA;
+      --text:#1E293B; --text-color:#1E293B; --text-muted:#64748B;
+      --radius-sm:8px;
+    }
+    /* Format thermique 80mm : sans cette règle, l'imprimante/le navigateur
+       utilise la taille de page par défaut (A4/Lettre), et la longueur
+       restante du "papier" au-delà du contenu réel s'imprime blanche —
+       plusieurs dizaines de cm gaspillés à chaque ticket. */
+    @page{size:80mm auto;margin:0}
+    @media print{
+      html,body{width:80mm}
+      /* Écriture volontairement très appuyée : les imprimantes thermiques
+         rendent le texte normal beaucoup trop pâle pour rester lisible. */
+      *{
+        color:#000!important;
+        font-weight:900!important;
+        -webkit-text-stroke:0.3px #000;
+        -webkit-print-color-adjust:exact!important;
+        print-color-adjust:exact!important;
+      }
+    }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Courier New',monospace;font-size:11px;width:80mm;margin:0 auto;padding:4px;color:#000;background:#fff}
     .recu-header{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:6px}
