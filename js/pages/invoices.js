@@ -134,7 +134,7 @@ function filterInvoices() {
           <button class="btn btn-xs btn-primary" onclick="viewInvoice(${r.id})"><i data-lucide="eye"></i> Voir</button>
           ${canValidate ? `<button class="btn btn-xs btn-success" onclick="validateInvoice(${r.id})"><i data-lucide="check-circle"></i> Valider &amp; Stock</button>` : ''}
           ${canEdit    ? `<button class="btn btn-xs btn-warning" onclick="showNewInvoiceForm(${r.id})"><i data-lucide="edit"></i> Modifier</button>` : ''}
-          ${canCorriger ? `<button class="btn btn-xs btn-warning" onclick="unvalidateInvoice(${r.id})"><i data-lucide="rotate-ccw"></i> Corriger</button>` : ''}
+          ${canCorriger ? `<button class="btn btn-xs btn-warning" onclick="unvalidateInvoice(${r.id}, this)"><i data-lucide="rotate-ccw"></i> Corriger</button>` : ''}
           ${canDelete  ? `<button class="btn btn-xs btn-danger" onclick="deleteInvoice(${r.id})"><i data-lucide="trash-2"></i></button>` : ''}
           <button class="btn btn-xs btn-secondary" onclick="printInvoicePDF(${r.id})"><i data-lucide="printer"></i> PDF</button>
         </div>`;
@@ -1321,7 +1321,7 @@ window.exportInvoicesPDF = function() {
   window.PDFExport.generate("Liste des Factures Fournisseurs", headers, data);
 };
 
-async function unvalidateInvoice(invoiceId) {
+async function unvalidateInvoice(invoiceId, btn) {
   const gs = (key) => (window._appSettings || {})[key];
   if (gs('purchase_allow_edit_after') !== 'true' && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Action non autorisée par les paramètres d\'achat.', 'error');
@@ -1331,23 +1331,36 @@ async function unvalidateInvoice(invoiceId) {
   const confirm = await UI.confirm("Voulez-vous annuler la validation de cette facture ?\n\nCela déduira les articles du stock et remettra la facture en statut Brouillon pour modification.");
   if (!confirm) return;
 
-  try {
-    const invoice = await DB.dbGet('invoices', invoiceId);
-    if (!invoice || invoice.status !== 'validated') return;
+  return ActionGuard.run('unvalidate-invoice-' + invoiceId, () => _unvalidateInvoiceImpl(invoiceId), btn, 'Traitement...');
+}
 
-    // Déduire les articles du stock et désactiver les lots
+async function _unvalidateInvoiceImpl(invoiceId) {
+  try {
+    // Revérifier l'état actuel — empêche un double-clic (ou une réexécution
+    // après re-rendu) de déduire deux fois le stock de la même facture.
+    const invoice = await DB.dbGet('invoices', invoiceId);
+    if (!invoice || invoice.status !== 'validated') {
+      UI.toast('Cette facture a déjà été traitée.', 'warning');
+      return;
+    }
+
+    // Déduire les articles du stock et désactiver les lots — regroupé dans
+    // UNE SEULE transaction IndexedDB (tout s'applique ou rien), pour éviter
+    // un stock partiellement corrigé en cas de plantage en cours de traitement.
     const stockAll = await DB.dbGetAll('stock');
     const stockMap = new Map();
     stockAll.forEach(s => stockMap.set(s.productId, s));
 
     const lotsAll = await DB.dbGetAll('lots');
+    const txOps = [];
 
     for (const item of invoice.items) {
       // 1. Déduire du stock
       const se = stockMap.get(item.productId);
       if (se) {
         const nq = Math.max(0, se.quantity - item.quantity);
-        await DB.dbPut('stock', { ...se, quantity: nq });
+        txOps.push({ store: 'stock', type: 'put', data: { ...se, quantity: nq } });
+        stockMap.set(item.productId, { ...se, quantity: nq }); // pour cumuler si le même produit apparaît sur 2 lignes
       }
 
       // 2. Déduire ou désactiver les lots correspondants
@@ -1356,26 +1369,40 @@ async function unvalidateInvoice(invoiceId) {
         const nq = Math.max(0, lot.quantity - item.quantity);
         lot.quantity = nq;
         if (nq === 0) lot.status = 'inactive';
-        await DB.dbPut('lots', lot);
+        txOps.push({ store: 'lots', type: 'put', data: lot });
       }
 
       // 3. Enregistrer un mouvement EXIT de correction
-      await DB.dbAdd('movements', {
-        productId: item.productId,
-        type: 'EXIT',
-        subType: 'PURCHASE_CANCEL',
-        quantity: -item.quantity,
-        date: new Date().toISOString(),
-        userId: DB.AppState.currentUser?.id,
-        reference: `CANCEL-${invoice.invoiceNumber}`,
-        lotNumber: item.lotNumber
+      txOps.push({
+        store: 'movements',
+        type: 'add',
+        data: {
+          productId: item.productId,
+          type: 'EXIT',
+          subType: 'PURCHASE_CANCEL',
+          quantity: -item.quantity,
+          date: new Date().toISOString(),
+          userId: DB.AppState.currentUser?.id,
+          reference: `CANCEL-${invoice.invoiceNumber}`,
+          lotNumber: item.lotNumber
+        }
       });
+    }
+
+    if (txOps.length > 0) {
+      try {
+        await DB.dbTransactionBulk(txOps);
+      } catch (txErr) {
+        console.error('[Invoice] Échec de la transaction stock:', txErr);
+        UI.toast('Erreur lors de la mise à jour du stock — aucune donnée n\'a été modifiée. Réessayez.', 'error', 6000);
+        return;
+      }
     }
 
     invoice.status = 'draft';
     await DB.dbPut('invoices', invoice);
     await DB.writeAudit('UNVALIDATE_INVOICE', 'invoices', invoiceId, { invoiceNumber: invoice.invoiceNumber });
-    
+
     UI.toast('Facture repassée en brouillon et stock mis à jour', 'success');
     renderInvoices(document.getElementById('app-content'));
   } catch (err) {
