@@ -895,7 +895,7 @@ async function blockExpiredLots() {
     for (const lid of g.lotIds) {
       const lot = await DB.dbGet('lots', lid);
       if (lot && lot.status === 'active') {
-        await DB.writeAudit('LOT_DESTRUCTION', `Destruction massive périmé: ${g.productName}`, { lotNumber: lot.lotNumber, quantity: lot.quantity });
+        await DB.writeAudit('LOT_DESTRUCTION', 'lots', lid, { productName: g.productName, lotNumber: lot.lotNumber, quantity: lot.quantity, mode: 'bulk' });
         lot.quantity = 0;
         lot.status = 'destroyed';
         await DB.dbPut('lots', lot);
@@ -1324,7 +1324,7 @@ window.initDestroyGroup = async function(groupId) {
   for (const lid of g.lotIds) {
     const lot = await DB.dbGet('lots', lid);
     if(lot) {
-      await DB.writeAudit('LOT_DESTRUCTION', `Destruction périmé: ${g.productName} (Qte: ${lot.quantity})`, { lotNumber: lot.lotNumber, quantity: lot.quantity });
+      await DB.writeAudit('LOT_DESTRUCTION', 'lots', lid, { productName: g.productName, lotNumber: lot.lotNumber, quantity: lot.quantity });
       lot.quantity = 0;
       lot.status = 'destroyed';
       await DB.dbPut('lots', lot);

@@ -3,10 +3,37 @@
  */
 
 const Auth = {
+  // Diagnostic de la dernière tentative échouée (pas affiché tel quel à l'utilisateur,
+  // sert à distinguer "vraiment mauvais identifiants" d'un "poste pas synchronisé").
+  lastLoginError: null,
+
   async login(username, password) {
-    const users = await DB.dbGetAll('users');
+    Auth.lastLoginError = null;
+    let users = await DB.dbGetAll('users');
     const uInput = String(username || '').trim().toLowerCase();
     const pInput = String(password || '').trim();
+
+    // Garde-fou : aucun utilisateur en local == quasi certainement un problème de
+    // synchronisation sur CE poste (mauvaise config Supabase, réseau, pull jamais
+    // terminé proprement) et non un mauvais mot de passe. On tente une resynchro
+    // ciblée et immédiate avant d'abandonner, plutôt que d'afficher un message
+    // "identifiant incorrect" trompeur sur un poste dont la base locale est vide.
+    if (users.length === 0) {
+      console.warn('[Auth] Aucun utilisateur en base locale — tentative de resynchronisation avant échec du login...');
+      try {
+        if (typeof DB._internalPullFromSupabase === 'function') {
+          await DB._internalPullFromSupabase(true);
+        }
+      } catch (e) {
+        console.warn('[Auth] Resynchronisation impossible avant login:', e?.message || e);
+      }
+      users = await DB.dbGetAll('users');
+      if (users.length === 0) {
+        console.error('[Auth] Toujours aucun utilisateur après resynchronisation. Vérifier la configuration Supabase de ce poste (Paramètres > Synchronisation) et la connexion réseau.');
+        Auth.lastLoginError = 'no_local_users';
+        return null;
+      }
+    }
 
     console.log('[Auth] Attempting login for:', uInput);
     console.log('[Auth] Users in database:', users.map(u => ({
@@ -15,6 +42,7 @@ const Auth = {
       active: u.active
     })));
 
+    const dbUserRecord = users.find(u => String(u.username || '').trim().toLowerCase() === uInput);
     const user = users.find(u => {
       const dbUser = String(u.username || '').trim().toLowerCase();
       const dbPass = String(u.password || '').trim();
@@ -22,11 +50,17 @@ const Auth = {
     });
 
     if (!user) {
-      console.warn('[Auth] Login failed: Credentials mismatch.');
+      if (!dbUserRecord) {
+        console.warn('[Auth] Login failed: identifiant introuvable en local (' + uInput + ').');
+      } else {
+        console.warn('[Auth] Login failed: mot de passe incorrect pour', uInput);
+      }
+      Auth.lastLoginError = 'invalid_credentials';
       return null;
     }
     if (!user.active) {
       console.warn('[Auth] Login failed: Account is inactive.');
+      Auth.lastLoginError = 'inactive';
       return null;
     }
     const session = { id: 'session_' + Date.now(), userId: user.id, username: user.username, role: user.role, name: user.name, loginTime: Date.now() };

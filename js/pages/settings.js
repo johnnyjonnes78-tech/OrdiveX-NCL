@@ -145,7 +145,13 @@ async function handleLogin(event) {
       // --- PIN POST-LOGIN ---
       await _showPinGate(user);
     } else {
-      errEl.textContent = 'Identifiant ou mot de passe incorrect';
+      if (window.Auth?.lastLoginError === 'no_local_users') {
+        errEl.textContent = 'Impossible de synchroniser les comptes utilisateurs. Vérifiez la connexion Internet et la configuration de synchronisation de ce poste (Paramètres), puis réessayez.';
+      } else if (window.Auth?.lastLoginError === 'inactive') {
+        errEl.textContent = 'Ce compte a été désactivé. Contactez votre administrateur.';
+      } else {
+        errEl.textContent = 'Identifiant ou mot de passe incorrect';
+      }
       errEl.style.display = 'block';
     }
   } catch (err) {

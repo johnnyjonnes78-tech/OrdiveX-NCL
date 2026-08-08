@@ -1889,15 +1889,32 @@ async function _internalSyncToSupabase() {
       console.warn('[Flash] _processDeleteQueue erreur:', delErr?.message || delErr);
     }
 
+    // Cache des TABLES absentes sur ce projet Supabase (schéma pas à jour sur cette pharmacie).
+    // Partagé avec le pull (même clé localStorage) : évite de retenter en boucle
+    // l'envoi vers une table qui n'existe tout simplement pas côté serveur.
+    var _missingTablesPush = {};
+    try { _missingTablesPush = JSON.parse(localStorage.getItem('pharma_missing_tables') || '{}'); } catch (e) { }
+    function _isMissingTableErrorPush(msg) {
+      msg = msg || '';
+      return /Could not find the table/i.test(msg) || /relation "[^"]+" does not exist/i.test(msg) || /schema cache/i.test(msg);
+    }
+    function _markTableMissingPush(sn) {
+      if (!_missingTablesPush[sn]) {
+        _missingTablesPush[sn] = true;
+        localStorage.setItem('pharma_missing_tables', JSON.stringify(_missingTablesPush));
+        console.warn('[Flash] ⚠️ Table absente sur ce projet Supabase — envoi ignoré désormais : ' + sn);
+      }
+    }
+
     // Envoi SÉQUENTIEL et par ordre de priorité absolue (ventes d'abord, catalogues ensuite)
     const storesToSync = [
-      'sales', 'saleItems', 'cashRegister', 'movements', 'returns', 'invoices',
+      'sales', 'saleItems', 'cashRegister', 'movements', 'auditLog', 'returns', 'invoices',
       'patients', 'prescriptions', 'alerts', 'shifts', 'prep_transfers',
       'stock', 'lots', 'purchaseOrders', 'suppliers',
       'insurances', 'insurancePayments', // <-- Assurances synchronisées au cloud
       'users', 'settings',
       'products' // Très lourd (33k+), toujours en dernier !
-    ];
+    ].filter(function (sn) { return !_missingTablesPush[sn]; });
 
     // Cache des colonnes invalides : éviter les 400 inutiles
     // Colonnes CONNUES comme inexistantes dans Supabase (fallback hardcodé)
@@ -1984,6 +2001,27 @@ async function _internalSyncToSupabase() {
           if (tablesWithUserId.includes(storeName)) {
             if (payload.userId === undefined || payload.userId === null) {
               payload.userId = AppState.currentUser?.id || 1;
+            }
+          }
+
+          // auditLog : sécuriser entityId (colonne BIGINT côté Supabase) et details.
+          // Certains appels historiques de writeAudit() passent par erreur un objet
+          // en guise d'entityId (bug d'ordre d'arguments) — un objet envoyé vers une
+          // colonne BIGINT provoque un 400 qui, avant, faisait planter tout le sync
+          // de la table (c'est pour ça qu'auditLog avait été retiré de la synchro).
+          if (storeName === 'auditLog') {
+            var eid = payload.entityId;
+            if (eid !== null && eid !== undefined && typeof eid === 'object') {
+              // L'objet est en réalité le detail de l'action : le récupérer si 'details' est vide
+              if (!payload.details || (typeof payload.details === 'object' && Object.keys(payload.details).length === 0)) {
+                payload.details = eid;
+              }
+              payload.entityId = null;
+            } else if (typeof eid === 'string' && !/^\d+$/.test(eid)) {
+              payload.entityId = null;
+            }
+            if (payload.details && typeof payload.details === 'object') {
+              try { payload.details = JSON.stringify(payload.details); } catch (e) { payload.details = null; }
             }
           }
 
@@ -2083,6 +2121,14 @@ async function _internalSyncToSupabase() {
           }
 
           const errorMsg = lastError?.message || '';
+
+          if (_isMissingTableErrorPush(errorMsg)) {
+            _markTableMissingPush(storeName);
+            lastError = null;
+            allSuccess = true; // Table absente : rien à réessayer, ne pas bloquer les autres stores
+            break;
+          }
+
           const colMatch = errorMsg.match(/Could not find the '([^']+)' column/) ||
                            errorMsg.match(/column "([^"]+)" of relation "[^"]+" does not exist/) ||
                            errorMsg.match(/column "([^"]+)" does not exist/) ||
@@ -2256,13 +2302,35 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
     const sb = await getSupabaseClient();
     if (!sb) return;
 
+    // ── Cache des TABLES absentes sur CE projet Supabase (schéma pas à jour) ──
+    // Certaines pharmacies tournent sur un projet Supabase dont le schéma n'a pas
+    // reçu les dernières migrations (ex: tables 'insurances'/'insurancePayments'
+    // ajoutées en v9.7.84). Sans ce filtre, ces tables absentes échouent (404)
+    // à CHAQUE pull, ce qui empêche 'pharma_last_pull_ts' d'avancer (voir plus bas)
+    // et force un pull COMPLET en boucle sur TOUTES les tables — très lourd sur
+    // réseau lent — au lieu d'un pull incrémental léger. On les ignore une fois
+    // détectées, sans jamais bloquer l'avancement du curseur de synchro.
+    var _missingTables = {};
+    try { _missingTables = JSON.parse(localStorage.getItem('pharma_missing_tables') || '{}'); } catch (e) { }
+    function _isMissingTableError(msg) {
+      msg = msg || '';
+      return /Could not find the table/i.test(msg) || /relation "[^"]+" does not exist/i.test(msg) || /schema cache/i.test(msg);
+    }
+    function _markTableMissing(sn) {
+      if (!_missingTables[sn]) {
+        _missingTables[sn] = true;
+        localStorage.setItem('pharma_missing_tables', JSON.stringify(_missingTables));
+        console.warn('[Flash] ⚠️ Table absente sur ce projet Supabase — ignorée désormais : ' + sn);
+      }
+    }
+
     const storesToPull = [
       'users', 'settings',
       'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
       'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
-      'cashRegister', 'returns', 'invoices', 'shifts', 'prep_transfers',
+      'cashRegister', 'auditLog', 'returns', 'invoices', 'shifts', 'prep_transfers',
       'insurances', 'insurancePayments'
-    ];
+    ].filter(function (sn) { return !_missingTables[sn]; });
 
     // ── PULL INCRÉMENTAL (Delta Sync) ──
     // Auto-pull : ne récupérer que les données modifiées depuis le dernier pull
@@ -2503,6 +2571,10 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
                 const rErrMsg = r.error?.message || String(r.error || '');
                 const rIsNet = rErrMsg.includes('Failed to fetch') || rErrMsg.includes('NetworkError') || rErrMsg.includes('ERR_') || rErrMsg.includes('timeout');
                 if (rIsNet) throw new Error('network_offline');
+                if (_isMissingTableError(rErrMsg)) {
+                  _markTableMissing(r.sn);
+                  continue; // Table jamais créée sur ce projet : pas un échec réseau, ne bloque pas le curseur
+                }
                 // Marquer ce store comme échoué pour forcer un re-pull complet
                 _failedPullStores.add(r.sn);
                 if (rErrMsg && !rErrMsg.includes('null') && !rErrMsg.includes('offline')) {
@@ -2534,6 +2606,10 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
             const ceMsg = countRes.error?.message || '';
             const ceIsNet = ceMsg.includes('Failed to fetch') || ceMsg.includes('NetworkError') || ceMsg.includes('ERR_') || ceMsg.includes('timeout');
             if (ceIsNet) throw new Error('network_offline');
+            if (_isMissingTableError(ceMsg)) {
+              _markTableMissing(storeName);
+              continue; // Table jamais créée sur ce projet : pas un échec, ne bloque pas le curseur
+            }
             _failedPullStores.add(storeName);
             if (ceMsg && !ceMsg.includes('null')) console.warn(`[Flash] Count échoué ${storeName}:`, ceMsg);
             continue; // Passer au store suivant
@@ -2544,6 +2620,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
             const fetchLimit = 1000;
             let storeItemCount = 0;
             let storePullOk = true;
+            let storeTableMissing = false;
 
             for (let offset = 0; offset < totalCount; offset += fetchLimit * 5) {
               if ((window.NM && !window.NM.isOnline()) || !navigator.onLine) {
@@ -2564,6 +2641,11 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
                   const reMsg = res.error?.message || '';
                   const reIsNet = reMsg.includes('Failed to fetch') || reMsg.includes('NetworkError') || reMsg.includes('ERR_') || reMsg.includes('timeout');
                   if (reIsNet) throw new Error('network_offline');
+                  if (_isMissingTableError(reMsg)) {
+                    _markTableMissing(storeName);
+                    storeTableMissing = true;
+                    break; // Table jamais créée sur ce projet : pas un échec, ne bloque pas le curseur
+                  }
                   _failedPullStores.add(storeName);
                   storePullOk = false;
                   if (reMsg && !reMsg.includes('null')) console.warn(`[Flash] Page pull échouée ${storeName}:`, reMsg);
@@ -2573,7 +2655,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
                   storeItemCount += await writeBatchToIDB(storeName, res.data);
                 }
               }
-              if (!storePullOk) break; // Passer au store suivant
+              if (!storePullOk || storeTableMissing) break; // Passer au store suivant
               await new Promise(r => setTimeout(r, 0));
             }
 
@@ -2706,6 +2788,12 @@ async function forceSyncAll() {
     'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
     'cashRegister', 'auditLog', 'users', 'settings', 'returns', 'prep_transfers'
   ];
+
+  // Un forceSync manuel signifie souvent qu'un admin vient de corriger le schéma
+  // Supabase (table créée, colonne ajoutée) : on redonne sa chance aux tables/colonnes
+  // précédemment mises en cache comme "absentes" plutôt que de les ignorer à vie.
+  localStorage.removeItem('pharma_missing_tables');
+  localStorage.removeItem('pharma_bad_columns');
 
   let totalMarked = 0;
   console.log('[Flash] 🔄 Force sync: marquage de tous les items...');
