@@ -166,14 +166,6 @@ const STORES = {
 let db = null;
 let _supabaseInstance = null;
 
-// Utilitaire : log unique par session (évite le spam de logs identiques)
-const _loggedMessages = new Set();
-function _logOnce(level, msg) {
-  if (_loggedMessages.has(msg)) return;
-  _loggedMessages.add(msg);
-  console[level](msg);
-}
-
 // App state manager
 // Device Identity — ID unique déterministe basé sur l'empreinte du navigateur
 // L'ID reste le MÊME pour le même appareil/navigateur, même si localStorage est vidé
