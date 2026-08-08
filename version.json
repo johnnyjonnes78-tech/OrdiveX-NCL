@@ -1,5 +1,5 @@
 {
-  "version": "9.9.9",
-  "date": "2026-07-30",
-  "changelog": "v9.9.9 : Correction d'un risque de double déduction de stock sur \"Corriger\" une facture fournisseur validée (double-clic non protégé, comme les autres opérations critiques déjà sécurisées). Audit des cartes de valeur de stock et des paiements de dettes : aucun autre bug trouvé."
+  "version": "9.9.10",
+  "date": "2026-08-08",
+  "changelog": "v9.9.10 : Restauration de la synchro auditLog (table audit vide depuis v9.6.2), robustesse de synchro face aux tables Supabase manquantes (schema pharmacie non a jour), diagnostic de connexion ameliore (distingue un poste desynchronise d'un mauvais mot de passe), suppression d'une redeclaration morte dans db.js."
 }
