@@ -1,5 +1,5 @@
 {
-  "version": "9.9.13",
+  "version": "9.9.14",
   "date": "2026-08-11",
-  "changelog": "v9.9.13 : Correction de la collision d'id inter-appareils sur les factures (cause des factures manquantes sur certains appareils) - nouvel id resistant aux collisions (timestamp + empreinte appareil), aucun changement de schema, factures existantes intouchees."
+  "changelog": "v9.9.14 : Correction urgente - le detecteur de table Supabase absente (v9.9.10) classait a tort les erreurs de colonne manquante (ex: invoices.subtotal/tvaAmount sur un schema pas a jour) comme table entiere absente, desactivant toute la synchro de la table concernee. Apres mise a jour, recliquer 'Reparer l'envoi Cloud' sur les postes concernes."
 }
