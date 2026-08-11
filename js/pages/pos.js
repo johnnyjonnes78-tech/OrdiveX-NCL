@@ -1951,14 +1951,26 @@ async function attachRx(rxId) {
   let added = 0, skipped = [];
   for (const item of (rx.items || [])) {
     const prod = posProductsCache.get(item.productId) || posProducts.find(p => p.id === item.productId);
-    if (prod && (posStock[prod.id] || 0) > 0) {
+    // Plafonner sur le stock RAYON réellement vendable, pas l'agrégé rayon+réserve —
+    // même règle que addToCart()/checkStockCart() (voir v9.9.6) : ce chemin
+    // d'ajout au panier passait à côté de ce correctif car il pousse directement
+    // dans posCart sans passer par addToCart().
+    const isLotTracked = prod && (prod.hasLots || prod._hasLots);
+    const have = prod
+      ? (isLotTracked
+          ? posLots.filter(l => l.productId === prod.id && l.status === 'active' && (!l.location || l.location === 'rayon')).reduce((s, l) => s + (l.quantity || 0), 0)
+          : (posStock[prod.id] || 0))
+      : 0;
+    if (prod && have > 0) {
       const want = item.quantity || 1;
-      const have = posStock[prod.id] || 0;
       const take = Math.min(want, have);
       const ex = posCart.find(c => c.productId === prod.id);
       if (ex) { ex.qty += take; ex.total = ex.qty * ex.unitPrice; }
       else posCart.push({ productId: prod.id, name: prod.name, dci: prod.dci || '', dosage: prod.dosage || '', unitPrice: prod.salePrice, purchasePrice: prod.purchasePrice || 0, qty: take, total: take * prod.salePrice, requiresPrescription: !!prod.requiresPrescription });
       added += take;
+      if (take < (item.quantity || 1)) {
+        skipped.push(`${prod.name} (${item.quantity || 1} demandé, ${take} en rayon)`);
+      }
     } else {
       skipped.push(item.productName || 'Produit inconnu');
     }
