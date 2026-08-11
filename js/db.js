@@ -1920,7 +1920,15 @@ async function _internalSyncToSupabase() {
     try { _missingTablesPush = JSON.parse(localStorage.getItem('pharma_missing_tables') || '{}'); } catch (e) { }
     function _isMissingTableErrorPush(msg) {
       msg = msg || '';
-      return /Could not find the table/i.test(msg) || /relation "[^"]+" does not exist/i.test(msg) || /schema cache/i.test(msg);
+      // ATTENTION : ne pas ajouter un test générique sur "schema cache" seul —
+      // PostgREST utilise EXACTEMENT la même formule ("... in the schema
+      // cache") pour une COLONNE introuvable ("Could not find the 'x' column
+      // of 'y' in the schema cache") que pour une TABLE introuvable. Un test
+      // trop large classe alors à tort un simple mismatch de colonne (que le
+      // cache de colonnes invalides sait déjà gérer proprement) comme une
+      // table entière absente, désactivant toute la synchro de cette table
+      // au lieu de simplement ignorer la colonne fautive.
+      return /Could not find the table/i.test(msg) || /relation "[^"]+" does not exist/i.test(msg);
     }
     function _markTableMissingPush(sn) {
       if (!_missingTablesPush[sn]) {
@@ -2338,7 +2346,11 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
     try { _missingTables = JSON.parse(localStorage.getItem('pharma_missing_tables') || '{}'); } catch (e) { }
     function _isMissingTableError(msg) {
       msg = msg || '';
-      return /Could not find the table/i.test(msg) || /relation "[^"]+" does not exist/i.test(msg) || /schema cache/i.test(msg);
+      // Voir _isMissingTableErrorPush (push) : ne pas tester "schema cache"
+      // seul, formule partagée par PostgREST avec les erreurs de COLONNE
+      // manquante — trop large, classerait un simple mismatch de colonne
+      // comme une table entière absente.
+      return /Could not find the table/i.test(msg) || /relation "[^"]+" does not exist/i.test(msg);
     }
     function _markTableMissing(sn) {
       if (!_missingTables[sn]) {
