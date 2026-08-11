@@ -1,5 +1,5 @@
 {
-  "version": "9.9.12",
+  "version": "9.9.13",
   "date": "2026-08-11",
-  "changelog": "v9.9.12 : Correction du contournement du plafond stock rayon lors de l'attachement d'une ordonnance au panier POS (attachRx utilisait le stock agrege rayon+reserve au lieu du stock rayon reel, meme bug que le correctif v9.9.6 mais par un autre chemin)."
+  "changelog": "v9.9.13 : Correction de la collision d'id inter-appareils sur les factures (cause des factures manquantes sur certains appareils) - nouvel id resistant aux collisions (timestamp + empreinte appareil), aucun changement de schema, factures existantes intouchees."
 }
