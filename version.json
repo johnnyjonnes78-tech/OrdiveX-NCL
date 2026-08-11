@@ -1,5 +1,5 @@
 {
-  "version": "9.9.11",
+  "version": "9.9.12",
   "date": "2026-08-11",
-  "changelog": "v9.9.11 : Devis proforma reformate en 80mm thermique (etait mis en page pour A4, meme bug que l'ancien ticket trop long/pale). Declenchement auto-impression fiabilise sur ticket et devis."
+  "changelog": "v9.9.12 : Correction du contournement du plafond stock rayon lors de l'attachement d'une ordonnance au panier POS (attachRx utilisait le stock agrege rayon+reserve au lieu du stock rayon reel, meme bug que le correctif v9.9.6 mais par un autre chemin)."
 }
