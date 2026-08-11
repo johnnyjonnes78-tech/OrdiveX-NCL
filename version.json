@@ -1,5 +1,5 @@
 {
-  "version": "9.9.10",
-  "date": "2026-08-08",
-  "changelog": "v9.9.10 : Restauration de la synchro auditLog (table audit vide depuis v9.6.2), robustesse de synchro face aux tables Supabase manquantes (schema pharmacie non a jour), diagnostic de connexion ameliore (distingue un poste desynchronise d'un mauvais mot de passe), suppression d'une redeclaration morte dans db.js."
+  "version": "9.9.11",
+  "date": "2026-08-11",
+  "changelog": "v9.9.11 : Devis proforma reformate en 80mm thermique (etait mis en page pour A4, meme bug que l'ancien ticket trop long/pale). Declenchement auto-impression fiabilise sur ticket et devis."
 }
