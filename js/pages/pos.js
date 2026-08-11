@@ -3135,9 +3135,10 @@ function imprimerTicket() {
     .recu-footer-legal p{font-size:8px;color:#999;margin-bottom:1px}
     .recu-merci{font-size:10px;font-weight:bold;color:#000;margin-top:4px!important}
     .recu-actions,.recu-logo-block{display:none}
-  </style></head><body>${el.outerHTML}</body></html>`);
+  </style></head><body>${el.outerHTML}
+  <script>window.onload = () => setTimeout(() => window.print(), 200);</script>
+  </body></html>`);
   w.document.close();
-  w.onload = () => { setTimeout(() => w.print(), 200); };
 }
 
 async function startBarcodeScan() {
@@ -3738,174 +3739,135 @@ async function printProformaReceipt() {
 
   const itemsHtml = posCart.map(item => `
     <tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0">
-        <div style="font-weight:600;color:#1a2332">${item.name}</div>
-        ${item.dci ? `<div style="font-size:11px;color:#888">${item.dci}</div>` : ''}
+      <td>
+        <div class="recu-drug-name">${item.name}</div>
+        ${item.dci ? `<div class="recu-drug-sub">${item.dci}</div>` : ''}
       </td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:center;color:#555">${item.qty}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;color:#555">${(item.price || 0).toLocaleString('fr-FR')} GNF</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700;color:#1a2332">${(item.total || 0).toLocaleString('fr-FR')} GNF</td>
+      <td class="ta-c">${item.qty}</td>
+      <td class="ta-r">${(item.price || 0).toLocaleString('fr-FR')}</td>
+      <td class="ta-r" style="font-weight:bold">${(item.total || 0).toLocaleString('fr-FR')}</td>
     </tr>
   `).join('');
 
+  // Format 80mm thermique — même imprimante que le ticket de caisse.
+  // Les anciennes dimensions A4 (watermark rotatif 72px, colonnes cote-a-cote)
+  // n'ont physiquement pas de sens sur un rouleau de 80mm : c'était la cause
+  // du même symptôme "ticket très long / illisible" que sur le reçu de vente,
+  // avant correction de imprimerTicket() (v9.9.8). Même traitement ici :
+  // @page 80mm continu + renforcement d'encre pour imprimante thermique.
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
   <title>Devis Proforma — ${proformaId}</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Arial', sans-serif; color: #000; background: #fff; padding: 20px; }
-    .proforma-wrap { max-width: 700px; margin: 0 auto; position: relative; }
-
-    /* ══ FILIGRANE ANTI-FRAUDE ══ */
-    .watermark {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg);
-      font-size: 72px; font-weight: 900; color: rgba(220, 38, 38, 0.08);
-      pointer-events: none; white-space: nowrap; letter-spacing: 4px;
-      z-index: 0; user-select: none;
-    }
-
-    /* ══ BANDEAU ALERTE ══ */
-    .alert-banner {
-      background: linear-gradient(135deg, #fef3c7, #fde68a);
-      border: 2px solid #f59e0b; border-radius: 10px;
-      padding: 12px 20px; margin-bottom: 20px;
-      display: flex; align-items: center; gap: 12px;
-      page-break-inside: avoid;
-    }
-    .alert-icon { font-size: 24px; }
-    .alert-text { font-size: 13px; font-weight: 600; color: #78350f; line-height: 1.4; }
-    .alert-ref { font-size: 11px; color: #92400e; margin-top: 2px; }
-
-    /* ══ EN-TÊTE ══ */
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; page-break-inside: avoid; }
-    .pharmacy-info h1 { font-size: 22px; font-weight: 800; color: #1a2332; }
-    .pharmacy-info p { font-size: 12px; color: #333; margin-top: 2px; }
-    .doc-label {
-      background: #1a2332; color: #fff; padding: 10px 20px;
-      border-radius: 8px; text-align: center;
-    }
-    .doc-label .doc-type { font-size: 14px; font-weight: 800; letter-spacing: 2px; }
-    .doc-label .doc-id { font-size: 11px; color: #cbd5e1; margin-top: 4px; }
-    .doc-label .doc-date { font-size: 11px; color: #cbd5e1; }
-
-    /* ══ BLOC BÉNÉFICIAIRE ══ */
-    .meta-row { display: flex; gap: 16px; margin-bottom: 20px; page-break-inside: avoid; }
-    .meta-box { flex: 1; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; }
-    .meta-box label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #1a2332; font-weight: 700; }
-    .meta-box p { font-size: 13px; font-weight: 600; color: #000; margin-top: 4px; }
-
-    /* ══ TABLEAU ARTICLES ══ */
-    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-    thead th { background: #1a2332; color: #fff; padding: 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
-    thead th:last-child, thead th:nth-child(3), thead th:nth-child(2) { text-align: right; }
-    thead th:nth-child(2) { text-align: center; }
-    tbody tr { page-break-inside: avoid; }
-
-    /* ══ TOTAUX ══ */
-    .totals { margin-left: auto; width: 280px; page-break-inside: avoid; }
-    .total-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #cbd5e1; color: #000; }
-    .total-final { font-weight: 800; font-size: 16px; color: #000; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
-
-    /* ══ PIED DE PAGE ══ */
-    .footer { margin-top: 30px; border-top: 1px dashed #000; padding-top: 16px; text-align: center; page-break-inside: avoid; }
-    .footer p { font-size: 11px; color: #333; line-height: 1.6; }
-    .footer .validity { font-weight: 700; color: #000; font-size: 12px; margin-bottom: 8px; }
-
-    @media print {
-      body { padding: 0; color: #000 !important; background: #fff !important; }
-      @page {
-        size: A4;
-        margin: 15mm;
+    @page{size:80mm auto;margin:0}
+    @media print{
+      html,body{width:80mm}
+      *{
+        color:#000!important;
+        font-weight:900!important;
+        -webkit-text-stroke:0.3px #000;
+        -webkit-print-color-adjust:exact!important;
+        print-color-adjust:exact!important;
       }
-      .proforma-wrap { max-width: 100%; }
-      .meta-box { border-color: #000 !important; background: #fff !important; }
-      .total-row { border-bottom-color: #000 !important; }
-      .footer p, .pharmacy-info p, .meta-box p { color: #000 !important; }
     }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Courier New',monospace;font-size:11px;width:80mm;margin:0 auto;padding:4px;color:#000;background:#fff}
+
+    .dev-band{border:2px solid #000;border-radius:4px;padding:4px;margin-bottom:6px;text-align:center}
+    .dev-band-title{font-size:11px;font-weight:bold;letter-spacing:.5px}
+    .dev-band-sub{font-size:8px;color:#333;margin-top:2px;line-height:1.4}
+
+    .recu-header{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:6px}
+    .recu-orgname{font-size:13px;font-weight:bold;margin:2px 0}
+    .recu-orgdetail{font-size:9px;color:#555;line-height:1.4}
+    .recu-doctype{font-size:12px;font-weight:bold;letter-spacing:1px;margin-top:4px}
+    .recu-docnum{font-size:11px;font-weight:bold;color:#333}
+    .recu-docdate,.recu-doctime{font-size:9px;color:#666}
+    .recu-sep{border-top:1px dashed #999;margin:4px 0}
+
+    .dev-meta{margin:4px 0}
+    .dev-meta-row{display:flex;justify-content:space-between;font-size:9px;padding:1px 0}
+    .dev-meta-label{color:#666;text-transform:uppercase;font-size:8px}
+    .dev-meta-val{font-weight:bold;font-size:10px}
+
+    .recu-table{width:100%;border-collapse:collapse;margin:4px 0}
+    .recu-th-product,.recu-th-qty,.recu-th-pu,.recu-th-total{font-size:8px;font-weight:bold;border-bottom:1px solid #ccc;padding:2px;text-transform:uppercase;color:#444}
+    .recu-table td{padding:3px 2px;vertical-align:top;font-size:10px}
+    .recu-drug-name{font-weight:bold}
+    .recu-drug-sub{font-size:8px;color:#777}
+    .ta-c{text-align:center}.ta-r{text-align:right}
+
+    .recu-totaux-block{display:flex;justify-content:flex-end}
+    .recu-totaux{width:70%;font-size:10px}
+    .recu-tot-row{display:flex;justify-content:space-between;padding:2px 0}
+    .recu-remise{color:#c00}
+    .recu-tot-main{font-size:13px;font-weight:bold;border-top:2px solid #000;margin-top:3px;padding-top:3px}
+
+    .recu-footer{text-align:center;margin-top:6px}
+    .recu-footer p{font-size:8px;color:#666;margin-bottom:2px;line-height:1.4}
+    .recu-footer .validity{font-weight:bold;color:#000;font-size:9px;margin-bottom:3px}
   </style></head><body>
-  <div class="proforma-wrap">
-    <div class="watermark">NON ENCAISSÉ</div>
+  <div class="dev-band">
+    <div class="dev-band-title">*** DEVIS — NON ENCAISSÉ ***</div>
+    <div class="dev-band-sub">Ce document ne constitue pas un reçu de paiement.<br>Aucune sortie de stock enregistrée.</div>
+  </div>
 
-    <!-- Bandeau alerte -->
-    <div class="alert-banner">
-      <div class="alert-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-      </div>
-      <div>
-        <div class="alert-text">DEVIS PROFORMA — CE DOCUMENT NE CONSTITUE PAS UN RE&Ccedil;U DE PAIEMENT</div>
-        <div class="alert-ref">Aucun encaissement effectu&eacute; &bull; Aucune sortie de stock enregistr&eacute;e &bull; R&eacute;f&eacute;rence : ${proformaId}</div>
-      </div>
-    </div>
+  <div class="recu-header">
+    <div class="recu-orgname">${pharmacyName}</div>
+    ${pharmacyAddress ? `<div class="recu-orgdetail">${pharmacyAddress}</div>` : ''}
+    ${pharmacyPhone ? `<div class="recu-orgdetail">${pharmacyPhone}</div>` : ''}
+    <div class="recu-doctype">DEVIS PROFORMA</div>
+    <div class="recu-docnum">${proformaId}</div>
+    <div class="recu-docdate">${dateStr}</div>
+    <div class="recu-doctime">${timeStr}</div>
+  </div>
 
-    <!-- En-tête -->
-    <div class="header">
-      <div class="pharmacy-info">
-        <h1>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a2332" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-right:6px"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
-          ${pharmacyName}
-        </h1>
-        ${pharmacyAddress ? `<p><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>${pharmacyAddress}</p>` : ''}
-        ${pharmacyPhone ? `<p><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.92 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${pharmacyPhone}</p>` : ''}
-      </div>
-      <div class="doc-label">
-        <div class="doc-type">DEVIS PROFORMA</div>
-        <div class="doc-id">${proformaId}</div>
-        <div class="doc-date">${dateStr}</div>
-        <div class="doc-date">${timeStr}</div>
-      </div>
-    </div>
+  <div class="recu-sep"></div>
 
-    <!-- Infos bénéficiaire & opérateur -->
-    <div class="meta-row">
-      <div class="meta-box">
-        <label>Bénéficiaire</label>
-        <p>${patient?.name || 'Client anonyme'}</p>
-        ${patient?.phone ? `<p style="font-size:12px;color:#64748b;font-weight:400">${patient.phone}</p>` : ''}
-      </div>
-      <div class="meta-box">
-        <label>Conseiller</label>
-        <p>${user?.name || user?.username || 'N/A'}</p>
-      </div>
-      <div class="meta-box">
-        <label>Validité du devis</label>
-        <p>24 heures</p>
-      </div>
-    </div>
+  <div class="dev-meta">
+    <div class="dev-meta-row"><span class="dev-meta-label">Bénéficiaire</span><span class="dev-meta-val">${patient?.name || 'Client anonyme'}</span></div>
+    ${patient?.phone ? `<div class="dev-meta-row"><span class="dev-meta-label">Téléphone</span><span class="dev-meta-val">${patient.phone}</span></div>` : ''}
+    <div class="dev-meta-row"><span class="dev-meta-label">Conseiller</span><span class="dev-meta-val">${user?.name || user?.username || 'N/A'}</span></div>
+    <div class="dev-meta-row"><span class="dev-meta-label">Validité</span><span class="dev-meta-val">24 heures</span></div>
+  </div>
 
-    <!-- Articles -->
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left">Désignation</th>
-          <th style="text-align:center">Qté</th>
-          <th style="text-align:right">Prix unit.</th>
-          <th style="text-align:right">Montant</th>
-        </tr>
-      </thead>
-      <tbody>${itemsHtml}</tbody>
-    </table>
+  <div class="recu-sep"></div>
 
-    <!-- Totaux -->
-    <div class="totals">
-      <div class="total-row"><span>Sous-total</span><span>${subtotal.toLocaleString('fr-FR')} GNF</span></div>
-      ${discountVal > 0 ? `<div class="total-row" style="color:#16a34a"><span>Remise</span><span>-${discountVal.toLocaleString('fr-FR')} GNF</span></div>` : ''}
-      <div class="total-row total-final"><span>TOTAL ESTIMÉ</span><span>${total.toLocaleString('fr-FR')} GNF</span></div>
-    </div>
+  <table class="recu-table">
+    <thead>
+      <tr>
+        <th class="recu-th-product" style="text-align:left">Désignation</th>
+        <th class="recu-th-qty">Qté</th>
+        <th class="recu-th-pu ta-r">P.U.</th>
+        <th class="recu-th-total ta-r">Total</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
 
-    <!-- Pied de page -->
-    <div class="footer">
-      <p class="validity">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Ce devis est valable 24h &agrave; compter de son &eacute;mission.
-      </p>
-      <p>Ce document est un devis à titre indicatif uniquement.<br>
-      Le règlement et la délivrance des médicaments s'effectuent au comptoir.<br>
-      Généré par <strong>OrdiveX ERP</strong> · ${pharmacyName} · ${dateStr} à ${timeStr}</p>
+  <div class="recu-totaux-block">
+    <div class="recu-totaux">
+      <div class="recu-tot-row"><span>Sous-total</span><span>${subtotal.toLocaleString('fr-FR')}</span></div>
+      ${discountVal > 0 ? `<div class="recu-tot-row recu-remise"><span>Remise</span><span>-${discountVal.toLocaleString('fr-FR')}</span></div>` : ''}
+      <div class="recu-tot-row recu-tot-main"><span>TOTAL ESTIMÉ</span><span>${total.toLocaleString('fr-FR')} GNF</span></div>
     </div>
   </div>
+
+  <div class="recu-sep"></div>
+
+  <div class="recu-footer">
+    <p class="validity">Devis valable 24h à compter de son émission.</p>
+    <p>Document indicatif uniquement.<br>Règlement et délivrance au comptoir.</p>
+    <p>OrdiveX ERP · ${pharmacyName}</p>
+  </div>
+
+  <div class="dev-band" style="margin-top:6px">
+    <div class="dev-band-title">*** NON ENCAISSÉ ***</div>
+  </div>
+
   <script>window.onload = () => setTimeout(() => window.print(), 300);</script>
   </body></html>`;
 
-  const w = window.open('', '_blank', 'width=760,height=900');
+  const w = window.open('', '_blank', 'width=420,height=750');
   if (!w) {
     UI.toast('Impossible d\'ouvrir la fenêtre d\'impression. Autorisez les popups pour ce site.', 'warning');
     return;
