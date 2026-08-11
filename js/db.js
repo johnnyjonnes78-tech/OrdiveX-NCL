@@ -187,6 +187,38 @@ function _generateStableDeviceId() {
   return 'DEV_' + hash.toString(36).toUpperCase();
 }
 
+// ── Générateur d'ID résistant aux collisions inter-appareils ──
+// Les stores IndexedDB utilisent un compteur autoIncrement LOCAL à chaque
+// appareil (voir createObjectStore plus bas). Deux appareils différents
+// peuvent donc générer le même id pour deux enregistrements différents ;
+// comme la synchro pousse via upsert(onConflict:'id'), l'un écrase
+// silencieusement l'autre côté serveur (cause racine confirmée sur les
+// factures — audit "AUDIT PRIORITAIRE" v9.9.x, ids dupliqués/manquants
+// constatés en production).
+// Utilisé pour les stores où une collision est jugée trop coûteuse à
+// laisser au hasard : id = timestamp_ms * 1000 + empreinte_appareil (0-999).
+// Reste un BIGINT compatible avec les colonnes existantes (pas de migration
+// de schéma), et ne collisionne jamais avec les anciens id séquentiels
+// (bien plus petits) — les enregistrements historiques restent intacts.
+var _lastSyncSafeId = 0;
+function _generateSyncSafeId() {
+  var devId = (typeof AppState !== 'undefined' && AppState.deviceId) || localStorage.getItem('pharma_device_id') || String(Math.random());
+  var h = 0;
+  for (var i = 0; i < devId.length; i++) {
+    h = (h * 31 + devId.charCodeAt(i)) >>> 0;
+  }
+  var base = Date.now() * 1000 + (h % 1000);
+  // Strictement croissant PAR SESSION : garantit qu'aucun appel, même
+  // rapproché dans la même milliseconde sur le MÊME appareil (ex: import
+  // CSV en boucle créant plusieurs factures différentes), ne peut jamais
+  // reproduire un id déjà émis par cette session — quel que soit le rythme
+  // des appels. La disambiguïsation ENTRE appareils reste portée par
+  // l'empreinte (h % 1000) intégrée dans 'base'.
+  if (base <= _lastSyncSafeId) base = _lastSyncSafeId + 1;
+  _lastSyncSafeId = base;
+  return base;
+}
+
 var _stableId = _generateStableDeviceId();
 // Forcer la migration vers l'ID stable — supprimer l'ancien aléatoire
 var _oldDeviceId = localStorage.getItem('pharma_device_id');
@@ -3090,7 +3122,7 @@ if (typeof indexedDB !== 'undefined') {
 // La gestion de connectivité est centralisée et gérée par NetworkManager.
 // Plus de listeners online/offline ou d'écriture brute sur le Service Worker ici.
 
-const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup };
+const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
 Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
 window.DB = _DBExports;

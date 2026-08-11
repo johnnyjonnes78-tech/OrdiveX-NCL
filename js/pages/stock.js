@@ -642,6 +642,7 @@ async function submitStockEntry() {
             if (existSup) supId = existSup.id;
           }
           await DB.dbAdd('invoices', {
+            id: DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
             invoiceNumber: invNum,
             supplierId: supId,
             supplierName: data.supplier || 'Inconnu (Saisie Libre)',
@@ -1048,6 +1049,7 @@ window.importStockCsv = async function(event) {
               if (sup) supId = sup.id;
             }
             inv = {
+              id: DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
               invoiceNumber: invoiceNum,
               supplierId: supId,
               supplierName: supplierName || 'Import CSV',

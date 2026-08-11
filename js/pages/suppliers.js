@@ -1457,6 +1457,7 @@ async function _confirmReceiveOrderImpl(orderId) {
     }
 
     invoiceId = await DB.dbAdd('invoices', {
+      id: DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
       invoiceNumber: invoiceNum,
       supplierId: order.supplierId,
       supplierName: supplierName,

@@ -525,6 +525,10 @@ async function _submitInvoiceImpl(status) {
   const totalAmount = subtotal;
   
   const invoiceData = {
+    // ID résistant aux collisions inter-appareils (voir audit factures) —
+    // ignoré côté dbPut en cas d'édition (l'id existant est réappliqué juste
+    // après), utilisé tel quel côté dbAdd pour une nouvelle facture.
+    id: DB._generateSyncSafeId(),
     invoiceNumber: formData.invoiceNumber,
     supplierId,
     supplierName: supplier ? supplier.name : 'Inconnu',
