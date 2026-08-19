@@ -583,8 +583,20 @@ function mcRenderDetail(contentEl) {
 // ══════════════════════════════════════════════════════════════════════
 
 function mcRenderReorder(contentEl) {
-  const { products, productMap, stockMap, allSales, allSaleItems } = window._mcData;
+  const { products, productMap, stockMap, allSales: allSalesRaw, allSaleItems: allSaleItemsRaw } = window._mcData;
   window._mcReorderPage = window._mcReorderPage || 1;
+
+  // Fiabilisation — une vente annulée restaure intégralement le stock
+  // (annulerVente, sales.js) : ses articles ne doivent PAS compter comme
+  // "consommés" dans le calcul de réapprovisionnement, sinon la CMQ
+  // (consommation moyenne quotidienne) est surestimée et recommande de
+  // racheter des produits qui n'ont en réalité jamais quitté la pharmacie.
+  // Les ventes crédit/assurance encore en attente de règlement restent
+  // comptées : le stock, lui, a bien été décrémenté au moment de la vente,
+  // qu'elle soit payée ou non — seule l'annulation restaure le stock.
+  const allSales = allSalesRaw.filter(s => s.status !== 'annulled');
+  const nonAnnulledSaleIds = new Set(allSales.map(s => s.id));
+  const allSaleItems = allSaleItemsRaw.filter(si => nonAnnulledSaleIds.has(si.saleId));
 
   // Calculer la consommation moyenne quotidienne (CMQ) sur les 30 derniers jours
   const now = new Date();
@@ -965,7 +977,13 @@ async function mcExportPDF() {
 
   } else if (activeTab === 'reorder') {
     // ── Onglet 3 : Aide a la commande fournisseur ──
-    const { products, stockMap, allSales, allSaleItems } = dataObj;
+    // Fiabilisation — même correctif que mcRenderReorder (affichage écran) :
+    // exclure les ventes annulées (stock déjà restauré) du calcul de
+    // consommation moyenne.
+    const { products, stockMap, allSales: allSalesRaw, allSaleItems: allSaleItemsRaw } = dataObj;
+    const allSales = allSalesRaw.filter(s => s.status !== 'annulled');
+    const nonAnnulledSaleIds = new Set(allSales.map(s => s.id));
+    const allSaleItems = allSaleItemsRaw.filter(si => nonAnnulledSaleIds.has(si.saleId));
 
     const now = new Date();
     const d30Ago = new Date(now);

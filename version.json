@@ -1,5 +1,5 @@
 {
-  "version": "9.10.14",
+  "version": "9.10.15",
   "date": "2026-08-19",
-  "changelog": "v9.10.14 : Fiabilisation de l'affichage du cout marchandise et des retours/remboursements dans le Tableau de Bord, les Metriques Business et le Pilotage & Controle. Le Pilotage & Controle comptait par erreur les ventes annulees dans le chiffre d'affaires ; les trois pages pouvaient sous-evaluer la marge en cas de retour sur un article vendu. Toutes les pages utilisent desormais le meme calcul fiable."
+  "changelog": "v9.10.15 : Le module Reapprovisionnement du Pilotage & Controle comptait les ventes annulees dans le calcul de consommation moyenne, recommandant parfois de racheter des produits qui n'avaient en realite jamais quitte la pharmacie (stock deja restaure par l'annulation). Corrige a l'ecran et dans l'export PDF/CSV."
 }
