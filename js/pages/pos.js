@@ -2603,8 +2603,16 @@ async function _validerVenteLogic() {
     const patientPart = method === 'assurance' ? Math.max(0, total - assurAmt) : 0;
     const finalStatus = method === 'credit' ? 'pending' : (method === 'assurance' ? 'pending' : 'completed');
 
+    // ID généré AVANT l'écriture (voir audit factures / Lot 1 hardening) : un
+    // id assigné après coup par le compteur autoIncrement local d'IndexedDB
+    // peut entrer en collision avec l'id qu'un autre appareil assigne à SA
+    // propre vente au même instant — l'un écraserait l'autre côté Supabase
+    // (upsert onConflict:'id'), silencieusement. sales est le store le plus
+    // fréquemment écrit de toute l'app sur des postes multiples simultanés.
+    const saleId = DB._generateSyncSafeId();
     const saleData = {
       ...assurData,
+      id: saleId,
       date: new Date().toISOString(),
       patientId: posCurrentPatient?.id || null,
       patientName: posCurrentPatient?.name || null,
@@ -2627,7 +2635,7 @@ async function _validerVenteLogic() {
       insuranceDetails: assurData.insuranceDetails || null
     };
 
-    const saleId = await DB.dbAdd('sales', saleData);
+    await DB.dbAdd('sales', saleData);
 
     // Si cette vente provient de la file de préparation, clôturer le transfert
     if (window._activePrepTransferId) {
@@ -2700,6 +2708,7 @@ async function _validerVenteLogic() {
         store: 'saleItems',
         type: 'add',
         data: {
+          id: DB._generateSyncSafeId(),
           saleId, productId: item.productId, productName: item.name,
           quantity: item.qty, unitPrice: item.unitPrice,
           purchasePrice: item.purchasePrice, total: item.total,
@@ -2729,6 +2738,7 @@ async function _validerVenteLogic() {
         store: 'movements',
         type: 'add',
         data: {
+          id: DB._generateSyncSafeId(),
           productId: item.productId, type: 'EXIT', subType: 'SALE',
           quantity: -deductQty, date: new Date().toISOString(),
           userId: DB.AppState.currentUser?.id,

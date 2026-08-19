@@ -612,6 +612,7 @@ async function _submitInvoiceImpl(status) {
           store: 'movements',
           type: 'add',
           data: {
+            id: DB._generateSyncSafeId(),
             productId: item.productId,
             type: 'ENTRY',
             subType: 'PURCHASE',
@@ -803,6 +804,7 @@ async function validateInvoice(invoiceId) {
       } catch(e) {}
       
       await DB.dbAdd('movements', {
+        id: DB._generateSyncSafeId(),
         productId: item.productId,
         type: 'ENTRY',
         subType: 'PURCHASE',
@@ -1381,6 +1383,7 @@ async function _unvalidateInvoiceImpl(invoiceId) {
         store: 'movements',
         type: 'add',
         data: {
+          id: DB._generateSyncSafeId(),
           productId: item.productId,
           type: 'EXIT',
           subType: 'PURCHASE_CANCEL',

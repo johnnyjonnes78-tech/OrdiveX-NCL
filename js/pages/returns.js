@@ -532,6 +532,7 @@ async function processReturn(saleId, selectedItems, reason) {
 
         // 3. Enregistrer le mouvement de stock
         await DB.dbAdd('movements', {
+            id: DB._generateSyncSafeId(),
             productId: ri.productId,
             type: 'RETURN',
             subType: 'CUSTOMER_RETURN',

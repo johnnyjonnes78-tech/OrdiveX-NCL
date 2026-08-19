@@ -397,6 +397,7 @@ window.submitTransferLot = async function(lotId, btn) {
 
     // Traçabilité mouvement
     await DB.dbAdd('movements', {
+      id: DB._generateSyncSafeId(),
       productId: lot.productId,
       type: 'TRANSFER',
       quantity: 0,
@@ -671,6 +672,7 @@ async function submitStockEntry() {
 
     // Movement
     await DB.dbAdd('movements', {
+      id: DB._generateSyncSafeId(),
       productId,
       type: 'ENTRY',
       subType: 'PURCHASE',
@@ -851,6 +853,7 @@ async function submitAdjustStock(productId, oldQty) {
 
     // Enregistrer le mouvement
     await DB.dbAdd('movements', {
+      id: DB._generateSyncSafeId(),
       productId: productId,
       type: diff > 0 ? 'ENTRY' : 'EXIT',
       subType: 'ADMIN_ADJUSTMENT',
@@ -1092,6 +1095,7 @@ window.importStockCsv = async function(event) {
 
         // 5. Mouvement
         await DB.dbAdd('movements', {
+          id: DB._generateSyncSafeId(),
           productId: prod.id,
           type: 'ENTRY',
           subType: 'PURCHASE',

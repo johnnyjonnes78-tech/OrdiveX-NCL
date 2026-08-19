@@ -76,6 +76,20 @@ const Auth = {
       if (typeof AlertsEngine !== 'undefined') AlertsEngine.start();
       if (typeof updateAlertBadge !== 'undefined') updateAlertBadge();
       if (window.SecurityLock) window.SecurityLock.reloadConfig();
+      // Détection (lecture seule) des ventes fantômes — voir DB.detectOrphanSales.
+      // Réservé aux rôles d'encadrement : c'est une alerte technique, pas une
+      // information utile au quotidien pour un caissier.
+      const canSeeOrphans = ['admin', 'pharmacien', 'responsable'].includes(user.role);
+      if (canSeeOrphans && typeof DB.detectOrphanSales === 'function') {
+        DB.detectOrphanSales().then(orphans => {
+          if (orphans.length > 0 && typeof UI !== 'undefined' && UI.toast) {
+            UI.toast(
+              `⚠ ${orphans.length} vente(s) enregistrée(s) sans mise à jour de stock associée détectée(s) — consultez le journal d'audit (Ventes) pour vérification.`,
+              'error', 10000
+            );
+          }
+        }).catch(() => { /* non bloquant */ });
+      }
     }, 500);
     return DB.AppState.currentUser;
   },

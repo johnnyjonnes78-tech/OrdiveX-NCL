@@ -1753,6 +1753,48 @@ async function writeAudit(action, entity, entityId, details, userId) {
   }
 }
 
+// ── Détection de « ventes fantômes » (Lot 1 hardening) ──
+// La finalisation d'une vente écrit 'sales' dans une transaction, puis
+// saleItems/stock/movements/lots dans une SECONDE transaction distincte
+// (js/pages/pos.js, _validerVenteLogic). Une coupure entre les deux laisse
+// une vente encaissée sans aucun article lié ni impact stock. Détection
+// pure lecture seule — AUCUNE réparation ni suppression automatique : une
+// vente ambiguë doit être signalée et traitée par une procédure guidée,
+// jamais « nettoyée » silencieusement (règle absolue du hardening).
+const _orphanSaleAlertedIds = new Set(); // évite de re-signaler la même vente à chaque appel dans une session
+async function detectOrphanSales(minAgeMs) {
+  minAgeMs = minAgeMs || 5 * 60 * 1000; // 5 min : laisse le temps à la transaction bulk de s'exécuter normalement
+  try {
+    const [sales, saleItems] = await Promise.all([dbGetAll('sales'), dbGetAll('saleItems')]);
+    const saleIdsWithItems = new Set(saleItems.map(si => si.saleId));
+    const now = Date.now();
+    const orphans = sales.filter(s => {
+      if (saleIdsWithItems.has(s.id)) return false;
+      if (!s.itemCount || s.itemCount <= 0) return false; // panier vide n'est normalement pas synonyme d'anomalie
+      const createdAt = s._createdAt || Date.parse(s.date) || 0;
+      return (now - createdAt) > minAgeMs;
+    });
+
+    // Journaliser (une seule fois par vente et par session applicative) pour
+    // que l'anomalie soit tracée même avant l'existence du module Diagnostic (Lot 6).
+    for (const s of orphans) {
+      if (_orphanSaleAlertedIds.has(s.id)) continue;
+      _orphanSaleAlertedIds.add(s.id);
+      try {
+        await writeAudit('ORPHAN_SALE_DETECTED', 'sales', s.id, {
+          saleTotal: s.total, saleDate: s.date, itemCountExpected: s.itemCount,
+          reason: 'Vente sans saleItems associées au-delà du délai normal — transaction stock probablement interrompue.'
+        }, s.userId);
+      } catch (e) { /* non bloquant */ }
+      console.warn('[Hardening] Vente fantôme détectée : id=' + s.id + ', total=' + s.total + ', date=' + s.date);
+    }
+    return orphans;
+  } catch (e) {
+    console.warn('[Hardening] detectOrphanSales a échoué:', e?.message || e);
+    return [];
+  }
+}
+
 // Initialisation des paramètres de base (aucune donnée de test)
 async function seedDemoData() {
   _isSystemOp = true;
@@ -3134,7 +3176,7 @@ if (typeof indexedDB !== 'undefined') {
 // La gestion de connectivité est centralisée et gérée par NetworkManager.
 // Plus de listeners online/offline ou d'écriture brute sur le Service Worker ici.
 
-const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId };
+const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId, detectOrphanSales };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
 Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
 window.DB = _DBExports;

@@ -865,6 +865,7 @@ async function confirmValidation() {
 
         // Préparer l'objet mouvement standard
         dbMovements.push({
+          id: DB._generateSyncSafeId(), // id sync-safe : évite les collisions inter-appareils (Lot 1 hardening)
           productId: g.id,
           type: g.gap > 0 ? 'ENTRY' : 'EXIT',
           subType: 'INVENTORY_ADJUSTMENT',

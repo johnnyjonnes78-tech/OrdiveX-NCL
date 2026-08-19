@@ -846,6 +846,7 @@ async function _annulerVenteImpl(saleId) {
 
       // 3. Mouvement de stock inverse
       await DB.dbAdd('movements', {
+        id: DB._generateSyncSafeId(),
         productId: item.productId,
         type: 'ENTRY',
         subType: 'SALE_CANCEL',

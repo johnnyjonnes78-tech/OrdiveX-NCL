@@ -859,6 +859,7 @@ async function confirmDestroyLot(lotId) {
 
   // Movement
   await DB.dbAdd('movements', {
+    id: DB._generateSyncSafeId(),
     productId: lot.productId,
     type: 'EXIT',
     subType: 'DESTRUCTION',
