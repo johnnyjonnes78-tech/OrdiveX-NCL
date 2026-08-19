@@ -3,7 +3,17 @@
  * Cache-first PWA strategy pour fonctionnement 100% offline
  */
 
-const CACHE_NAME = 'pharma-cache-v9.10.3';
+const CACHE_NAME = 'pharma-cache-v9.10.4';
+// Lot 5 hardening (F13) : dérivé de CACHE_NAME plutôt qu'une constante
+// séparée, pour ne pas ajouter un 3e endroit à synchroniser manuellement à
+// chaque version (déjà CACHE_NAME + index.html ?v= + version.json).
+const SW_ASSET_VERSION = CACHE_NAME.slice('pharma-cache-v'.length);
+// Seuls les .js/.css sont réellement requêtés avec ?v=... à l'exécution
+// (voir les <script>/<link> d'index.html) — les autres types (html, json,
+// png...) sont requêtés sans query string, on les laisse tels quels.
+function _versionedAssetUrl(path) {
+  return /\.(js|css)$/.test(path) ? (path + '?v=' + SW_ASSET_VERSION) : path;
+}
 const ASSETS = [
   './',
   './index.html',
@@ -63,7 +73,14 @@ self.addEventListener('install', event => {
       console.log('[SW] Caching app shell individually...');
       for (const url of ASSETS) {
         try {
-          const request = new Request(url, { cache: 'reload' });
+          // Lot 5 hardening (F13) : pré-cacher sous la MÊME URL (avec ?v=...
+          // pour les .js/.css) que celle que le navigateur demandera
+          // réellement à l'exécution — voir _versionedAssetUrl ci-dessus.
+          // Avant, le pré-cache utilisait l'URL nue tandis que le runtime
+          // demandait l'URL versionnée : deux clés différentes pour le même
+          // fichier, et la clé nue traînait sans jamais être servie ni
+          // invalidée par un simple bump de ?v=.
+          const request = new Request(_versionedAssetUrl(url), { cache: 'reload' });
           const response = await fetch(request);
           if (response.ok) {
             await cache.put(request, response);
@@ -164,11 +181,20 @@ self.addEventListener('fetch', event => {
   if (!url.startsWith(self.location.origin)) return;
 
   // ── ASSETS LOCAUX : cache-first ──
-  const urlObj = new URL(url);
-  const isLocalAsset = /\.(js|css|html|json|png|svg|ico|webp)(\?|$)/.test(urlObj.pathname);
-  const cacheKey = isLocalAsset
-    ? new Request(urlObj.origin + urlObj.pathname) // URL sans ?v=xxx
-    : event.request;
+  // Lot 5 hardening (F13) : la clé de cache est désormais la requête telle
+  // quelle, query string incluse. Avant, elle était retirée pour éviter un
+  // double-cache entre "./js/db.js" (pré-cache install, sans version) et
+  // "./js/db.js?v=X" (requête réelle, avec version) — mais ça figeait alors
+  // indéfiniment le contenu SERVI à chaque nouvelle version : le
+  // cache-buster applicatif (?v=) était neutralisé par ce retrait. Fixé à la
+  // racine plutôt qu'en surface : le pré-cache d'installation utilise
+  // désormais LA MÊME URL versionnée que celle réellement requêtée (voir
+  // _versionedAssetUrl au-dessus de ASSETS) — plus besoin de normaliser, la
+  // clé coïncide déjà, et change automatiquement à chaque version (qui
+  // provoque de toute façon un nouveau CACHE_NAME et donc un cache
+  // entièrement neuf, donc pas de doublon résiduel au-delà d'un seul cycle
+  // de version).
+  const cacheKey = event.request;
 
   event.respondWith(
     caches.match(cacheKey).then(cached => {

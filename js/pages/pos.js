@@ -5,6 +5,12 @@
  */
 
 let posCart = [];
+// Lot 5 hardening (F16) : `let` en portée top-level de script classique ne
+// crée PAS de propriété sur `window` (contrairement à `var`) — window.posCart
+// serait toujours undefined pour tout code externe (ex. le guard de reload SW
+// dans index.html). Un getter fermé sur la variable réelle reste valide même
+// après réassignation de posCart (ex. `posCart = []` au paiement).
+window._getPosCartLength = function() { return posCart.length; };
 let posProducts = [];
 let posStock = {};
 let posLots = []; // Loaded for FEFO

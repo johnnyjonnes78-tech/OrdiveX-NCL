@@ -1,5 +1,5 @@
 {
-  "version": "9.10.3",
+  "version": "9.10.4",
   "date": "2026-08-19",
-  "changelog": "v9.10.3 : [Hardening Lot 4] Generation d'identifiants desormais coordonnee entre plusieurs onglets OrdiveX ouverts sur le meme poste (Web Locks), et protegee contre une horloge systeme incorrecte (pile CMOS morte) qui aurait pu recreer une collision avec d'anciennes donnees."
+  "changelog": "v9.10.4 : [Hardening Lot 5] Mise a jour de l'application fiabilisee : plus aucun rechargement automatique pendant une vente en cours ou un formulaire ouvert (le declenchement etait invalide et ne protegeait rien), cle de cache alignee sur la version reelle demandee (fin des fichiers figes apres deploiement), et bouton \"Plus tard\" desormais reellement silencieux pour la version en cours."
 }

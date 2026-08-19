@@ -537,18 +537,17 @@
     ];
     criticalFns.forEach(_safeGlobal);
 
-    // Version check toutes les 4h (silencieux)
-    setTimeout(function() {
-      checkForUpdates(true).then(function(remote) {
-        if (remote) _showUpdateNotification(remote);
-      });
-    }, 15000);
-
-    setInterval(function() {
-      checkForUpdates(true).then(function(remote) {
-        if (remote) _showUpdateNotification(remote);
-      });
-    }, _versionCheckInterval);
+    // Lot 5 hardening (F17) : la boucle proactive de vérification de version
+    // qui tournait ici (toutes les 4h) a été retirée — elle faisait doublon
+    // avec le système de bannière basé sur le vrai cycle de vie du Service
+    // Worker (index.html, reg.update() toutes les 30 min + updatefound), qui
+    // compare correctement les versions par segment numérique au lieu d'une
+    // simple inégalité de chaîne (celle-ci aurait pu déclencher une fausse
+    // alerte si version.json était temporairement en retard sur l'app, ex.
+    // juste après un rollback). checkForUpdates()/_showUpdateNotification()
+    // restent définies : Naomie (_injectNaomieVersionCheck plus bas) les
+    // utilise encore, à la demande, quand l'utilisateur pose la question —
+    // usage différent d'une notification proactive, conservé tel quel.
 
     // Watchdog memoire toutes les 30 min
     setTimeout(_memoryWatchdog, 60000);
