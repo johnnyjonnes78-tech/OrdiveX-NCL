@@ -3,6 +3,28 @@
  * Dossiers patients, historique médicaments, allergies
  */
 
+// Fiabilisation — gestion des dettes cohérente avec sales.js (settleDebt) :
+// une vente à crédit ET une vente à assurance sont TOUTES DEUX des dettes
+// en cours tant qu'elles n'ont pas été réglées (creditStatus !== 'paid',
+// même champ mis à jour par TOUS les circuits de règlement de l'app).
+// Avant ce correctif, ce fichier ne considérait QUE paymentMethod==='credit'
+// — un patient avec une vente assurance impayée voyait un "Encours" trop
+// bas, et "Solder tout l'encours" laissait sa dette assurance non réglée
+// tout en affichant un succès complet.
+function _isUnsettledDebtSale(s) {
+  return (s.paymentMethod === 'credit' || s.paymentMethod === 'assurance') && s.creditStatus !== 'paid';
+}
+// Montant RÉELLEMENT dû : pour une vente assurance, seule la part prise en
+// charge par l'assureur (sale.assuranceAmount, déjà calculée à la création
+// de la vente — pos.js) reste une dette ; la part patient (ticket
+// modérateur) est déjà encaissée à la vente. Utiliser sale.total pour une
+// vente assurance surestimerait la dette de la part déjà payée par le
+// patient. Même champ que sales.js (settleDebt/confirmSettleDebt) — source
+// unique, pas de recalcul divergent via paymentDetails.
+function _debtAmountForSale(s) {
+  return s.paymentMethod === 'assurance' ? (s.assuranceAmount || s.total || 0) : (s.total || 0);
+}
+
 async function renderPatients(container) {
   if (window.Auth && !Auth.can('patients_view') && DB.AppState.currentUser?.role !== 'admin') {
     container.innerHTML = `
@@ -155,8 +177,8 @@ async function viewPatient(patientId) {
   const totalSpent = patientSales.reduce((sum, s) => sum + (s.total || 0), 0);
   const avgBasket = patientSales.length > 0 ? Math.round(totalSpent / patientSales.length) : 0;
   const lastVisitDate = patientSales.length > 0 ? patientSales.sort((a,b) => new Date(b.date) - new Date(a.date))[0].date : null;
-  const creditSales = patientSales.filter(s => s.paymentMethod === 'credit' && s.creditStatus !== 'paid');
-  const totalCredit = creditSales.reduce((sum, s) => sum + (s.total || 0), 0);
+  const creditSales = patientSales.filter(_isUnsettledDebtSale);
+  const totalCredit = creditSales.reduce((sum, s) => sum + _debtAmountForSale(s), 0);
 
   // Drug history from prescriptions
   const drugHistory = {};
@@ -237,9 +259,9 @@ async function viewPatient(patientId) {
           <div class="patient-stat-val">${lastVisitDate ? UI.formatDate(lastVisitDate) : '—'}</div>
           <div class="patient-stat-label">Dernière visite</div>
         </div>
-        <div class="patient-stat-card" id="kpi-credit-card" style="border-color:${totalCredit > 0 ? 'var(--danger)' : 'var(--border)'}; cursor:pointer;" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active')); const btn = Array.from(document.querySelectorAll('.patient360-tab')).find(b => b.textContent.includes('Crédits')); if(btn) btn.classList.add('active');">
+        <div class="patient-stat-card" id="kpi-credit-card" style="border-color:${totalCredit > 0 ? 'var(--danger)' : 'var(--border)'}; cursor:pointer;" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active')); const btn = Array.from(document.querySelectorAll('.patient360-tab')).find(b => b.textContent.includes('Dettes')); if(btn) btn.classList.add('active');">
           <div class="patient-stat-val kpi-value" style="color:${totalCredit > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${UI.formatCurrency(totalCredit)}</div>
-          <div class="patient-stat-label">Crédit en cours</div>
+          <div class="patient-stat-label">Dettes en cours</div>
         </div>
         <div class="patient-stat-card">
           <div class="patient-stat-val">${patientRx.length}</div>
@@ -252,7 +274,7 @@ async function viewPatient(patientId) {
         <div class="patient360-tabs" style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:12px;overflow-x:auto;white-space:nowrap;">
           <button class="patient360-tab active" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-summary').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')">Résumé</button>
           <button class="patient360-tab" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-purchases').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')">Achats (${patientSales.length})</button>
-          <button class="patient360-tab" id="tab-credits-header" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')" style="color:${totalCredit > 0 ? 'var(--danger)' : 'inherit'}">Crédits (${creditSales.length})</button>
+          <button class="patient360-tab" id="tab-credits-header" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-credits').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')" style="color:${totalCredit > 0 ? 'var(--danger)' : 'inherit'}">Dettes (${creditSales.length})</button>
           <button class="patient360-tab" onclick="document.querySelectorAll('.p360-panel').forEach(e=>e.style.display='none');document.getElementById('p360-rx').style.display='';document.querySelectorAll('.patient360-tab').forEach(e=>e.classList.remove('active'));this.classList.add('active')">Ordonnances (${patientRx.length})</button>
         </div>
 
@@ -435,15 +457,15 @@ window._renderPatientCredits = function(page) {
   if (!container) return;
 
   const credits = window._curPatientCredits || [];
-  const totalCredit = credits.reduce((sum, s) => sum + (s.total || 0), 0);
+  const totalCredit = credits.reduce((sum, s) => sum + _debtAmountForSale(s), 0);
 
   if (credits.length === 0) {
-    container.innerHTML = '<p class="text-muted">Aucun crédit en cours</p>';
+    container.innerHTML = '<p class="text-muted">Aucune dette en cours</p>';
     // Mettre à jour l'état du KPI et de l'onglet
     const tabHeader = document.getElementById('tab-credits-header');
     if (tabHeader) {
       tabHeader.style.color = 'inherit';
-      tabHeader.textContent = `Crédits (0)`;
+      tabHeader.textContent = `Dettes (0)`;
     }
     const kpiCard = document.getElementById('kpi-credit-card');
     if (kpiCard) {
@@ -468,7 +490,7 @@ window._renderPatientCredits = function(page) {
     <div style="padding:12px;background:rgba(214,59,59,0.06);border-radius:8px;margin-bottom:12px;border-left:3px solid var(--danger);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
       <div>
         <strong style="color:var(--danger)">Encours total : ${UI.formatCurrency(totalCredit)}</strong>
-        <span class="text-muted text-sm"> — ${credits.length} vente(s) à crédit</span>
+        <span class="text-muted text-sm"> — ${credits.length} vente(s) à crédit/assurance</span>
       </div>
       ${canSettle && credits.length > 1 ? `
         <button class="btn btn-xs btn-danger" onclick="window.settleAllPatientDebts(window._curPatientId)">
@@ -495,14 +517,22 @@ window._renderPatientCredits = function(page) {
               </div>
             `).join(' ');
 
+            const isAssurance = s.paymentMethod === 'assurance';
+            const debtAmount = _debtAmountForSale(s);
             return `
               <tr>
                 <td data-label="Date">${UI.formatDate(s.date)}</td>
-                <td data-label="Montant"><strong style="color:var(--danger)">${UI.formatCurrency(s.total || 0)}</strong></td>
+                <td data-label="Montant">
+                  <strong style="color:var(--danger)">${UI.formatCurrency(debtAmount)}</strong>
+                  ${isAssurance && debtAmount !== (s.total || 0) ? `<div class="text-muted text-sm">sur ${UI.formatCurrency(s.total || 0)} (part patient déjà réglée)</div>` : ''}
+                </td>
                 <td data-label="Médicaments détaillés" style="max-width:400px;text-align:left;">
                   <div style="display:flex;flex-wrap:wrap;gap:4px;">${drugsList || '—'}</div>
                 </td>
-                <td data-label="Statut"><span class="badge badge-warning">${s.creditStatus || 'En attente'}</span></td>
+                <td data-label="Statut">
+                  <span class="badge badge-warning">${s.creditStatus || 'En attente'}</span>
+                  ${isAssurance ? `<div class="text-muted text-sm">${s.assuranceName || 'Assurance'}</div>` : ''}
+                </td>
                 <td data-label="Action">
                   <div class="action-btn-group" style="display:flex;gap:4px;">
                     ${canSettle ? `
@@ -609,14 +639,14 @@ window.settleAllPatientDebts = async function(patientId) {
   const allSales = await DB.dbGetAll('sales');
   const patient = await DB.dbGet('patients', patientId);
   if (!patient) return;
-  const creditSales = allSales.filter(s => (s.patientId === patientId || s.patientName === patient.name) && s.paymentMethod === 'credit' && s.creditStatus !== 'paid');
+  const creditSales = allSales.filter(s => (s.patientId === patientId || s.patientName === patient.name) && _isUnsettledDebtSale(s));
 
   if (creditSales.length === 0) {
     UI.toast('Aucune dette en cours pour ce patient.', 'info');
     return;
   }
 
-  const totalAmount = creditSales.reduce((sum, s) => sum + (s.total || 0), 0);
+  const totalAmount = creditSales.reduce((sum, s) => sum + _debtAmountForSale(s), 0);
 
   UI.modal('<i data-lucide="receipt" class="modal-icon-inline"></i> Tout solder', `
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -628,7 +658,7 @@ window.settleAllPatientDebts = async function(patientId) {
         </div>
         <div style="font-size:38px;font-weight:900;color:#D32F2F;letter-spacing:-1px">${UI.formatCurrency(totalAmount)}</div>
         <div style="font-size:12px;color:#94A3B8;margin-top:6px">
-          Patient : <strong style="color:#475569">${patient.name}</strong> · <strong>${creditSales.length} facture(s) à crédit</strong>
+          Patient : <strong style="color:#475569">${patient.name}</strong> · <strong>${creditSales.length} vente(s) à crédit/assurance</strong>
         </div>
       </div>
 
@@ -695,10 +725,16 @@ async function _confirmSettleAllDebtsImpl(patientId, paymentMethod, reference) {
   try {
     const allSales = await DB.dbGetAll('sales');
     const patient = await DB.dbGet('patients', patientId);
-    const creditSales = allSales.filter(s => (s.patientId === patientId || s.patientName === patient.name) && s.paymentMethod === 'credit' && s.creditStatus !== 'paid');
+    const creditSales = allSales.filter(s => (s.patientId === patientId || s.patientName === patient.name) && _isUnsettledDebtSale(s));
     const today = new Date().toISOString().split('T')[0];
 
     for (const sale of creditSales) {
+      // Montant réellement encaissé : pour une vente assurance, seule la
+      // part assureur (sale.assuranceAmount) — la part patient a déjà été
+      // encaissée à la vente. Enregistrer sale.total ici surestimerait le
+      // montant réellement reçu lors de ce règlement.
+      const debtAmount = _debtAmountForSale(sale);
+
       // 1. Update status
       sale.status = 'paid';
       sale.creditStatus = 'paid'; // aligné avec le filtre patients.js
@@ -710,7 +746,7 @@ async function _confirmSettleAllDebtsImpl(patientId, paymentMethod, reference) {
       // 2. Record in cashRegister
       await DB.dbAdd('cashRegister', {
         type: 'debt_in',
-        amount: sale.total,
+        amount: debtAmount,
         paymentMethod: paymentMethod,
         reason: `Règlement global dette — Vente #${String(sale.id).padStart(6, '0')} · Patient: ${patient.name}`,
         reference: reference,
@@ -721,7 +757,7 @@ async function _confirmSettleAllDebtsImpl(patientId, paymentMethod, reference) {
       });
 
       // 3. Audit
-      await DB.writeAudit('DEBT_REFUND', 'sales', sale.id, { amount: sale.total, patient: patient.name, paymentMethod });
+      await DB.writeAudit('DEBT_REFUND', 'sales', sale.id, { amount: debtAmount, patient: patient.name, paymentMethod });
     }
 
     UI.toast('Toutes les dettes ont été réglées avec succès !', 'success');

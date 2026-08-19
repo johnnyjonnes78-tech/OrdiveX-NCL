@@ -1,5 +1,5 @@
 {
-  "version": "9.10.12",
+  "version": "9.10.13",
   "date": "2026-08-19",
-  "changelog": "v9.10.12 : Correction du bouton \"Recharger pour mettre a jour\" du Diagnostic du Poste, qui ne produisait visiblement aucun effet — il rechargeait la page sans forcer au prealable la verification du Service Worker, donc re-servait la meme version deja en cache. Le bouton declenche desormais une vraie verification de mise a jour."
+  "changelog": "v9.10.13 : Harmonisation de la gestion des dettes patients partout dans l'application. Les dettes liees a une prise en charge assurance etaient auparavant ignorees dans la fiche patient (encours affiche trop bas, \"Solder tout l'encours\" laissait ces dettes non reglees) et sous-evaluees dans les Metriques Business en cas de vente couverte par plusieurs assurances. Toutes les pages utilisent desormais le meme montant de reference (part reellement due par l'assureur, deja calculee a la vente)."
 }

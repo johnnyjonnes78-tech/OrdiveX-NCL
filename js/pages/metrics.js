@@ -204,18 +204,16 @@ async function renderMetrics(container) {
     const creditSales = filteredSales.filter(s => ['credit', 'assurance'].includes(s.paymentMethod));
     const paidCredits = creditSales.filter(s => s.status === 'completed' || s.status === 'paid');
     const unpaidCredits = creditSales.filter(s => s.status === 'pending');
+    // Fiabilisation — même source que sales.js (settleDebt/confirmSettleDebt)
+    // et patients.js : sale.assuranceAmount, calculé une seule fois à la
+    // création de la vente (pos.js) et déjà pré-sommé sur tous les
+    // assureurs d'une vente multi-assurance. La récupération précédente via
+    // paymentDetails.find(d => d.method==='assurance') ne capturait QUE le
+    // premier assureur trouvé — une vente couverte par plusieurs assurances
+    // (insuranceDetails.length > 1) voyait sa créance sous-évaluée.
     const totalCreances = unpaidCredits.reduce((a, s) => {
         if (s.paymentMethod === 'assurance') {
-            // Pour l'assurance, la créance est la part de l'assurance (total de la vente moins les paiements du patient et sans compter les autres paiements combinés s'ils existent)
-            // Mais plus simplement, on peut prendre sale.total - (montant payé par patient) = dette assurance.
-            // Actuellement la dette est calculée via reduce, prenons s.total pour simplifier, ou s.debtAmount si c'est enregistré.
-            // On peut calculer la part assurance:
-            let debtAmount = s.total || 0;
-            if (s.paymentDetails && Array.isArray(s.paymentDetails)) {
-                const assurDetail = s.paymentDetails.find(d => d.method === 'assurance');
-                if (assurDetail) debtAmount = assurDetail.amount || 0;
-            }
-            return a + debtAmount;
+            return a + (s.assuranceAmount || s.total || 0);
         }
         return a + (s.total || 0);
     }, 0);
@@ -241,14 +239,12 @@ async function renderMetrics(container) {
       payBreakdown[m] = (payBreakdown[m] || 0) + (s.total || 0);
       payCount[m] = (payCount[m] || 0) + 1;
     });
-    // Include pending credit and assurance sales too
+    // Include pending credit and assurance sales too — même correctif que
+    // totalCreances ci-dessus : sale.assuranceAmount plutôt que
+    // paymentDetails.find() (qui ne capturait que le premier assureur).
     sales.filter(s => ['credit', 'assurance'].includes(s.paymentMethod) && s.status === 'pending').forEach(s => {
       const m = s.paymentMethod;
-      let amount = s.total || 0;
-      if (m === 'assurance' && s.paymentDetails && Array.isArray(s.paymentDetails)) {
-          const assurDetail = s.paymentDetails.find(d => d.method === 'assurance');
-          if (assurDetail) amount = assurDetail.amount || 0;
-      }
+      const amount = m === 'assurance' ? (s.assuranceAmount || s.total || 0) : (s.total || 0);
       payBreakdown[m] = (payBreakdown[m] || 0) + amount;
       payCount[m] = (payCount[m] || 0) + 1;
     });
