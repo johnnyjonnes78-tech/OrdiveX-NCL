@@ -418,11 +418,11 @@ function _diagRenderHTML(s) {
     </div>
 
     <div class="card" style="padding:20px; margin-bottom:16px">
-      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="database" style="width:18px;height:18px"></i> Conformité schéma Supabase</h3>
+      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="database" style="width:18px;height:18px"></i> Conformité schéma serveur</h3>
       ${schemaOk ? `<p style="color:var(--text-muted); margin:0">${_diagPill(true, 'OK')} Aucune table ni colonne manquante détectée.</p>` : `
-        ${missingTableNames.length ? `<p style="margin:0 0 8px 0"><strong>Tables absentes côté Supabase :</strong> ${missingTableNames.join(', ')}</p>` : ''}
+        ${missingTableNames.length ? `<p style="margin:0 0 8px 0"><strong>Tables absentes côté serveur :</strong> ${missingTableNames.join(', ')}</p>` : ''}
         ${badColumnEntries.length ? `<p style="margin:0"><strong>Colonnes non conformes :</strong> ${badColumnEntries.map(([k]) => k).join(', ')}</p>` : ''}
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px">La synchronisation Cloud de ces tables est suspendue jusqu'à correction du schéma côté Supabase.</p>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:8px">La synchronisation Cloud de ces tables est suspendue jusqu'à correction du schéma côté serveur.</p>
       `}
       ${lastIDBErrorHtml(s.lastIDBError)}
     </div>

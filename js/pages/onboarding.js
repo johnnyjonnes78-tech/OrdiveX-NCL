@@ -508,7 +508,7 @@ const Onboarding = {
           if (window.updatePharmacyDisplay) await updatePharmacyDisplay();
           Router.navigate('login');
         } else {
-          UI.toast('Configuration Supabase OK, mais aucune donnée trouvée sur le cloud.', 'warning');
+          UI.toast('Configuration du serveur OK, mais aucune donnée trouvée sur le cloud.', 'warning');
           this.render();
         }
       }

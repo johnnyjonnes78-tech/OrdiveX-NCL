@@ -778,15 +778,15 @@ async function renderSettings(container) {
         <div class="danger-zone">
           <div class="danger-zone-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-            Zone Sensible — Configuration Supabase
+            Zone Sensible — Configuration du Serveur
           </div>
           <p>
             Ces clés donnent un accès complet à votre base de données cloud. Ne les partagez jamais avec des personnes non autorisées. Toute modification ici affecte immédiatement toutes les connexions.
           </p>
           <form id="supabase-config-form" class="form-grid">
             <div class="form-group">
-              <label>URL du Projet Supabase</label>
-              <input type="password" name="supabase_url" class="form-control" value="${gs('supabase_url') || ''}" placeholder="https://xyz.supabase.co">
+              <label>URL du Serveur</label>
+              <input type="password" name="supabase_url" class="form-control" value="${gs('supabase_url') || ''}" placeholder="https://votre-serveur.exemple.com">
             </div>
             <div class="form-group">
               <label>Clé Anon Public (API Key)</label>
@@ -1806,7 +1806,7 @@ async function saveSupabaseConfig() {
         await DB.dbAdd('settings', { key, value, updatedAt: Date.now() });
       }
     }
-    UI.toast('Configuration Supabase enregistrée', 'success');
+    UI.toast('Configuration du serveur enregistrée', 'success');
     setTimeout(() => location.reload(), 1500);
   } catch (err) {
     UI.toast('Erreur : ' + err.message, 'error');
@@ -1814,7 +1814,7 @@ async function saveSupabaseConfig() {
 }
 
 async function repairSync() {
-  const ok = await UI.confirm("Cette action va marquer TOUTES vos données locales comme 'non synchronisées' pour forcer un renvoi complet vers Supabase.\n\nCela peut prendre quelques minutes et réparera les problèmes de comptes manquants sur mobile.\n\nContinuer ?");
+  const ok = await UI.confirm("Cette action va marquer TOUTES vos données locales comme 'non synchronisées' pour forcer un renvoi complet vers le serveur.\n\nCela peut prendre quelques minutes et réparera les problèmes de comptes manquants sur mobile.\n\nContinuer ?");
   if (!ok) return;
 
   const btn = event.currentTarget;

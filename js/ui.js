@@ -448,7 +448,7 @@ const UI = {
             if (url) {
                 throw new Error('Pas de connexion internet (Hors-ligne)');
             } else {
-                throw new Error('Supabase non configuré');
+                throw new Error('Serveur non configuré');
             }
         }
 

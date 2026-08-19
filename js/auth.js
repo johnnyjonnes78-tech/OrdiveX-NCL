@@ -397,7 +397,7 @@ const Auth = {
     { key: 'settings_users',           label: 'Gérer les comptes utilisateurs et rôles',      cat: 'admin' },
     { key: 'settings_permissions',     label: 'Modifier la grille de permissions',            cat: 'admin' },
     { key: 'settings_backup',          label: 'Sauvegarder et restaurer les données',         cat: 'admin' },
-    { key: 'settings_sync',            label: 'Gérer la synchronisation Supabase',            cat: 'admin' },
+    { key: 'settings_sync',            label: 'Gérer la synchronisation avec le serveur',     cat: 'admin' },
     { key: 'settings_device',          label: 'Configurer le nom du terminal/caisse',         cat: 'admin' }
   ],
 

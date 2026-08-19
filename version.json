@@ -1,5 +1,5 @@
 {
-  "version": "9.10.10",
+  "version": "9.10.11",
   "date": "2026-08-19",
-  "changelog": "v9.10.10 : [Fiabilisation Lot 11] Ajout d'une colonne \"Sync\" a l'historique des factures fournisseurs, avec le meme indicateur fiable (Synchronise / En attente / Echec sync) que celui deja present sur l'historique des ventes."
+  "changelog": "v9.10.11 : [Fiabilisation Lot 12] Le terme technique interne \"Supabase\" n'apparait plus dans l'interface destinee au personnel de pharmacie (Diagnostic, Parametres, messages de statut, assistant Naomie) — remplace par \"serveur\" ou \"Cloud\" selon le contexte."
 }

@@ -733,12 +733,12 @@ const FAQ_DATABASE = [
  {
  keywords: ['sauvegarde', 'backup', 'restaurer', 'données', 'json'],
  question: 'Comment sauvegarder mes données ?',
- answer:"Allez dans **Paramètres > Synchronisation** :\n\n **Sauvegarde locale** : Cliquez « Sauvegarder maintenant » pour télécharger un fichier JSON contenant toutes vos données.\n\n️ **Cloud (Supabase)** : Si configuré, vos données se synchronisent automatiquement. Pensez à faire un **PULL** régulièrement pour récupérer les données des autres appareils!"
+ answer:"Allez dans **Paramètres > Synchronisation** :\n\n **Sauvegarde locale** : Cliquez « Sauvegarder maintenant » pour télécharger un fichier JSON contenant toutes vos données.\n\n️ **Cloud (Serveur)** : Si configuré, vos données se synchronisent automatiquement. Pensez à faire un **PULL** régulièrement pour récupérer les données des autres appareils!"
  },
  {
  keywords: ['synchronisation', 'sync', 'cloud', 'supabase', 'pull', 'push', 'appareil', 'mobile'],
  question: 'Comment synchroniser entre plusieurs appareils ?',
- answer:"OrdiveX fonctionne en mode **offline-first** :\n\n1. Configurez Supabase dans **Paramètres > Appareil & Cloud**\n2. Les données se **PUSH** (envoient) automatiquement\n3. Faites un **PULL** (dans Paramètres) pour récupérer les données d'un autre appareil\n\n️ Pensez à faire un PULL chaque semaine si vous travaillez hors-ligne depuis longtemps!"
+ answer:"OrdiveX fonctionne en mode **offline-first** :\n\n1. Configurez le serveur dans **Paramètres > Appareil & Cloud**\n2. Les données se **PUSH** (envoient) automatiquement\n3. Faites un **PULL** (dans Paramètres) pour récupérer les données d'un autre appareil\n\n️ Pensez à faire un PULL chaque semaine si vous travaillez hors-ligne depuis longtemps!"
  },
  {
  keywords: ['caisse', 'clôture', 'journée', 'encaissement', 'espèce', 'orange money'],
@@ -788,7 +788,7 @@ const FAQ_DATABASE = [
  {
  keywords: ['paramètre', 'configuration', 'pharmacie', 'nom', 'logo', 'adresse', 'devise', 'monnaie'],
  question: 'Comment configurer les paramètres de la pharmacie ?',
- answer:"Allez dans **️ Paramètres** puis :\n\n **Informations Pharmacie** : Nom, adresse, téléphone, numéro d'agrément, logo (affiché sur les reçus)\n **Devise** : Choisissez votre monnaie locale (GNF, XOF, MAD...)\n️ **Impression** : Format du reçu, texte de pied de page\n **SMS** : Configuration du service d'envoi SMS\n️ **Cloud** : Clés Supabase pour la synchro multi-appareils\n\nTous les changements s'enregistrent et se synchronisent automatiquement. ️"
+ answer:"Allez dans **️ Paramètres** puis :\n\n **Informations Pharmacie** : Nom, adresse, téléphone, numéro d'agrément, logo (affiché sur les reçus)\n **Devise** : Choisissez votre monnaie locale (GNF, XOF, MAD...)\n️ **Impression** : Format du reçu, texte de pied de page\n **SMS** : Configuration du service d'envoi SMS\n️ **Cloud** : Clés du serveur pour la synchro multi-appareils\n\nTous les changements s'enregistrent et se synchronisent automatiquement. ️"
  },
  {
  keywords: ['mouvement', 'entrée', 'sortie', 'tracabilité', 'historique stock', 'journal'],
