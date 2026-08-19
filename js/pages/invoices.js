@@ -39,6 +39,17 @@ async function renderInvoices(container) {
   window._invoicesData = sorted;
   window._invoicesSupplierMap = supplierMap;
   window._invoicesCurrentPage = 1;
+  // Fiabilisation post-hardening (Lot 11) : même mécanisme que les ventes
+  // (Lot 7) — quels stores ont une opération de synchro en échec définitif
+  // MAINTENANT, pour le badge de sync par facture (UI.syncBadge). Best-effort :
+  // une erreur ici ne doit jamais bloquer l'affichage des factures.
+  window._invoicesFailedStores = new Set();
+  if (window.OperationQueue) {
+    try {
+      const failedOps = await window.OperationQueue.getFailed();
+      failedOps.forEach(op => { if (op.payload && op.payload.store) window._invoicesFailedStores.add(op.payload.store); });
+    } catch (e) { /* best-effort */ }
+  }
 
   container.innerHTML = `
     <div class="page-header">
@@ -122,6 +133,7 @@ function filterInvoices() {
         return `<span class="badge ${s.cls}">${s.label}</span>`;
       }
     },
+    { label: 'Sync', render: r => UI.syncBadge(r, 'invoices', window._invoicesFailedStores) },
     {
       label: 'Actions', render: r => {
         const gs = (key) => (window._appSettings || {})[key];
