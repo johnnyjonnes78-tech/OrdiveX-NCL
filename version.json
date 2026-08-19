@@ -1,5 +1,5 @@
 {
-  "version": "9.10.6",
+  "version": "9.10.7",
   "date": "2026-08-19",
-  "changelog": "v9.10.6 : [Hardening Lot 7] L'indicateur de synchronisation de la barre laterale affiche desormais l'heure de la derniere synchro reussie et distingue une vraie coupure reseau d'un serveur OrdiveX momentanement indisponible. Nouveau badge d'etat de synchronisation (Synchronise / En attente / Echec sync) sur l'historique des ventes."
+  "changelog": "v9.10.7 : [Fiabilisation Lot 8] Correction de la version qui semblait changer a chaque rafraichissement de page : deux systemes de mise a jour independants (l'ancien controle de version et le nouveau systeme de mise a jour du Service Worker) se relancaient mutuellement en cascade lors d'un deploiement. Ils sont desormais coordonnes, et l'application n'a plus qu'une seule source de version affichee."
 }

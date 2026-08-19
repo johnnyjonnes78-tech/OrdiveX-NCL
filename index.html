@@ -4,28 +4,61 @@
 <head>
   <script>
     (function() {
-      const CURRENT_APP_VERSION = '9.10.6';
+      // Fiabilisation post-hardening (Lot 8) — source de vérité UNIQUE pour la
+      // version exécutée par cette page. Auparavant CE littéral (ligne
+      // ci-dessous) ET un second `window.APP_VERSION = '9.x.x'` plus bas dans
+      // <head> étaient deux chaînes codées en dur INDÉPENDANTES qu'il fallait
+      // synchroniser à la main à chaque déploiement — exposé ici sous
+      // window.APP_VERSION dès que possible pour que tout le reste du fichier
+      // le lise au lieu de le redéclarer.
+      const CURRENT_APP_VERSION = '9.10.7';
+      window.APP_VERSION = CURRENT_APP_VERSION;
+
       const lastVersion = localStorage.getItem('ordivex_version');
       if (lastVersion !== CURRENT_APP_VERSION) {
-        localStorage.setItem('ordivex_version', CURRENT_APP_VERSION);
-        if (window.caches) {
-          caches.keys().then(function(names) {
-            return Promise.all(names.map(function(name) {
-              return caches.delete(name);
-            }));
-          }).then(function() {
-            if (navigator.serviceWorker) {
-              return navigator.serviceWorker.getRegistrations().then(function(regs) {
-                return Promise.all(regs.map(function(reg) {
-                  return reg.unregister();
-                }));
-              });
-            }
-          }).then(function() {
-            window.location.reload(true);
-          }).catch(function() {
-            window.location.reload(true);
-          });
+        // Fiabilisation post-hardening (Lot 8) — cause racine de "la version
+        // change à chaque refresh" : CE script (antérieur au Lot 5) et le
+        // système de mise à jour du Lot 5 (bannière + _reloadWhenSafe, plus
+        // bas dans ce fichier) réagissaient TOUS LES DEUX, indépendamment,
+        // au même événement (nouvelle version déployée) — chacun avec son
+        // propre window.location.reload(). Le Lot 5 recharge PROPREMENT
+        // (attend la fin d'une vente/un formulaire ouvert) puis CE script,
+        // sur le rechargement qui en résulte, détectait à nouveau un écart
+        // de version et détruisait le Service Worker/cache que le Lot 5
+        // venait d'installer correctement — nouveau cycle d'installation,
+        // nouveau rechargement, etc. D'où l'alternance observée sur
+        // plusieurs refresh successifs alors qu'une seule version est
+        // réellement déployée. Le drapeau sessionStorage ci-dessous (posé
+        // par _reloadWhenSafe juste avant SON propre reload, voir plus bas)
+        // indique que CE rechargement précis est déjà le fruit du système
+        // sûr du Lot 5 : dans ce cas, on se contente d'aligner localStorage
+        // et de NE PAS relancer une seconde procédure de nettoyage/reload.
+        var _swManagedReload = false;
+        try { _swManagedReload = sessionStorage.getItem('ordivex_sw_managed_reload') === '1'; } catch (e) {}
+        if (_swManagedReload) {
+          try { sessionStorage.removeItem('ordivex_sw_managed_reload'); } catch (e) {}
+          localStorage.setItem('ordivex_version', CURRENT_APP_VERSION);
+        } else {
+          localStorage.setItem('ordivex_version', CURRENT_APP_VERSION);
+          if (window.caches) {
+            caches.keys().then(function(names) {
+              return Promise.all(names.map(function(name) {
+                return caches.delete(name);
+              }));
+            }).then(function() {
+              if (navigator.serviceWorker) {
+                return navigator.serviceWorker.getRegistrations().then(function(regs) {
+                  return Promise.all(regs.map(function(reg) {
+                    return reg.unregister();
+                  }));
+                });
+              }
+            }).then(function() {
+              window.location.reload();
+            }).catch(function() {
+              window.location.reload();
+            });
+          }
         }
       }
     })();
@@ -53,9 +86,12 @@
     rel="stylesheet"
     media="print" onload="this.media='all'"
     onerror="this.remove()">
-  <link rel="stylesheet" href="css/main.css?v=9.10.6">
-  <link rel="stylesheet" href="css/mobile.css?v=9.10.6">
-  <script>window.APP_VERSION = '9.10.6';</script>
+  <link rel="stylesheet" href="css/main.css?v=9.10.7">
+  <link rel="stylesheet" href="css/mobile.css?v=9.10.7">
+  <!-- Fiabilisation post-hardening (Lot 8) : window.APP_VERSION est désormais
+       défini une seule fois, dans le tout premier bloc script du head
+       (source de vérité unique — voir son commentaire). Ce second littéral
+       indépendant a été retiré. -->
   <meta name="theme-color" content="#1B4F72">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -223,48 +259,48 @@
     </button>
   </nav>
 
-  <script src="js/utils/network-manager.js?v=9.10.6"></script>
-  <script src="js/db.js?v=9.10.6"></script>
-  <script src="js/utils/queue.js?v=9.10.6"></script>
-  <script src="js/auth.js?v=9.10.6"></script>
-  <script src="js/ui.js?v=9.10.6"></script>
-  <script src="js/mobile-money.js?v=9.10.6"></script>
-  <script src="js/sms.js?v=9.10.6"></script>
-  <script src="js/pages/dashboard.js?v=9.10.6"></script>
-  <script src="js/pages/pos.js?v=9.10.6"></script>
-  <script src="js/pages/stock.js?v=9.10.6"></script>
-  <script src="js/pages/products.js?v=9.10.6"></script>
-  <script src="js/pages/sales.js?v=9.10.6"></script>
-  <script src="js/pages/returns.js?v=9.10.6"></script>
-  <script src="js/pages/settings.js?v=9.10.6"></script>
-  <script src="js/pages/prescriptions.js?v=9.10.6"></script>
-  <script src="js/pages/suppliers.js?v=9.10.6"></script>
-  <script src="js/pages/invoices.js?v=9.10.6"></script>
-  <script src="js/pages/patients.js?v=9.10.6"></script>
-  <script src="js/pages/caisse.js?v=9.10.6"></script>
-  <script src="js/pages/traceability.js?v=9.10.6"></script>
-  <script src="js/pages/alerts-engine.js?v=9.10.6"></script>
-  <script src="js/pages/alerts.js?v=9.10.6"></script>
-  <script src="js/pages/print.js?v=9.10.6"></script>
-  <script src="js/pages/onboarding.js?v=9.10.6"></script>
-  <script src="js/pages/insurances.js?v=9.10.6"></script>
-  <script src="js/pages/metrics.js?v=9.10.6"></script>
-  <script src="js/pages/management-control.js?v=9.10.6"></script>
-  <script src="js/pages/accounting.js?v=9.10.6"></script>
-  <script src="js/ui/command-palette.js?v=9.10.6"></script>
-  <script src="js/ui/feedback.js?v=9.10.6"></script>
-  <script src="js/utils/animations.js?v=9.10.6"></script>
-  <script src="js/components/supportWidget.js?v=9.10.6"></script>
-  <script src="js/pages/shifts.js?v=9.10.6"></script>
-  <script src="js/pages/hr.js?v=9.10.6"></script>
-  <script src="js/pages/stock-exits.js?v=9.10.6"></script>
-  <script src="js/pages/inventory.js?v=9.10.6"></script>
-  <script src="js/pages/diagnostic.js?v=9.10.6"></script>
-  <script src="js/utils/pdf-export.js?v=9.10.6"></script>
-  <script src="js/utils/action-guard.js?v=9.10.6"></script>
-  <script src="js/utils/stability.js?v=9.10.6"></script>
-  <script src="js/utils/devtools-guard.js?v=9.10.6"></script>
-  <script src="js/utils/security-lock.js?v=9.10.6"></script>
+  <script src="js/utils/network-manager.js?v=9.10.7"></script>
+  <script src="js/db.js?v=9.10.7"></script>
+  <script src="js/utils/queue.js?v=9.10.7"></script>
+  <script src="js/auth.js?v=9.10.7"></script>
+  <script src="js/ui.js?v=9.10.7"></script>
+  <script src="js/mobile-money.js?v=9.10.7"></script>
+  <script src="js/sms.js?v=9.10.7"></script>
+  <script src="js/pages/dashboard.js?v=9.10.7"></script>
+  <script src="js/pages/pos.js?v=9.10.7"></script>
+  <script src="js/pages/stock.js?v=9.10.7"></script>
+  <script src="js/pages/products.js?v=9.10.7"></script>
+  <script src="js/pages/sales.js?v=9.10.7"></script>
+  <script src="js/pages/returns.js?v=9.10.7"></script>
+  <script src="js/pages/settings.js?v=9.10.7"></script>
+  <script src="js/pages/prescriptions.js?v=9.10.7"></script>
+  <script src="js/pages/suppliers.js?v=9.10.7"></script>
+  <script src="js/pages/invoices.js?v=9.10.7"></script>
+  <script src="js/pages/patients.js?v=9.10.7"></script>
+  <script src="js/pages/caisse.js?v=9.10.7"></script>
+  <script src="js/pages/traceability.js?v=9.10.7"></script>
+  <script src="js/pages/alerts-engine.js?v=9.10.7"></script>
+  <script src="js/pages/alerts.js?v=9.10.7"></script>
+  <script src="js/pages/print.js?v=9.10.7"></script>
+  <script src="js/pages/onboarding.js?v=9.10.7"></script>
+  <script src="js/pages/insurances.js?v=9.10.7"></script>
+  <script src="js/pages/metrics.js?v=9.10.7"></script>
+  <script src="js/pages/management-control.js?v=9.10.7"></script>
+  <script src="js/pages/accounting.js?v=9.10.7"></script>
+  <script src="js/ui/command-palette.js?v=9.10.7"></script>
+  <script src="js/ui/feedback.js?v=9.10.7"></script>
+  <script src="js/utils/animations.js?v=9.10.7"></script>
+  <script src="js/components/supportWidget.js?v=9.10.7"></script>
+  <script src="js/pages/shifts.js?v=9.10.7"></script>
+  <script src="js/pages/hr.js?v=9.10.7"></script>
+  <script src="js/pages/stock-exits.js?v=9.10.7"></script>
+  <script src="js/pages/inventory.js?v=9.10.7"></script>
+  <script src="js/pages/diagnostic.js?v=9.10.7"></script>
+  <script src="js/utils/pdf-export.js?v=9.10.7"></script>
+  <script src="js/utils/action-guard.js?v=9.10.7"></script>
+  <script src="js/utils/stability.js?v=9.10.7"></script>
+  <script src="js/utils/devtools-guard.js?v=9.10.7"></script>
+  <script src="js/utils/security-lock.js?v=9.10.7"></script>
 
   <script>
     const NAV_ITEMS = [
@@ -620,6 +656,13 @@
           return;
         }
         _swRefreshing = true;
+        // Fiabilisation post-hardening (Lot 8) : signale au script de tête
+        // de <head> (voir son commentaire) que CE rechargement est déjà
+        // piloté par le système sûr du Service Worker — évite qu'il ne
+        // déclenche à son tour un second nettoyage/reload sur la page qui
+        // en résulte. sessionStorage (pas localStorage) : le drapeau ne
+        // doit survivre qu'à CE rechargement précis, dans CET onglet.
+        try { sessionStorage.setItem('ordivex_sw_managed_reload', '1'); } catch (e) {}
         window.location.reload();
       }
       navigator.serviceWorker.addEventListener('controllerchange', _reloadWhenSafe);
@@ -745,7 +788,11 @@
         if ('caches' in window) {
           caches.keys().then(names => names.forEach(name => caches.delete(name)));
         }
-        setTimeout(() => window.location.reload(true), 800);
+        // Fiabilisation post-hardening (Lot 8) : même coordination que
+        // _reloadWhenSafe — ce reload est lui aussi piloté par le système
+        // de mise à jour, pas un reload "spontané".
+        try { sessionStorage.setItem('ordivex_sw_managed_reload', '1'); } catch (e) {}
+        setTimeout(() => window.location.reload(), 800);
       }
     }
     window._applyUpdate = _applyUpdate;
