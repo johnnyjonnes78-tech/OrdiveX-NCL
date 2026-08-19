@@ -1,5 +1,5 @@
 {
-  "version": "9.10.1",
+  "version": "9.10.2",
   "date": "2026-08-19",
-  "changelog": "v9.10.1 : [Hardening Lot 2] Erreurs IndexedDB desormais classifiees (Quota/Blocage/Contrainte...) au lieu d'etre avalees silencieusement - message clair si stockage plein, avertissement si un autre onglet bloque une mise a jour, import CSV volumineux verifie l'espace disponible et n'annule plus tout un lot pour une seule ligne en erreur."
+  "changelog": "v9.10.2 : [Hardening Lot 3] Corrige un faux 'En ligne' possible en cliquant Synchroniser pendant une vraie coupure reseau. Nouveau statut 'serveur momentanement inaccessible' distinct de 'hors ligne' quand Supabase repond en erreur (reseau fonctionnel). Les operations de synchro qui echouent definitivement restent visibles et peuvent etre relancees manuellement au lieu de disparaitre silencieusement."
 }
