@@ -3,7 +3,7 @@
  * Cache-first PWA strategy pour fonctionnement 100% offline
  */
 
-const CACHE_NAME = 'pharma-cache-v9.10.7';
+const CACHE_NAME = 'pharma-cache-v9.10.8';
 // Lot 5 hardening (F13) : dérivé de CACHE_NAME plutôt qu'une constante
 // séparée, pour ne pas ajouter un 3e endroit à synchroniser manuellement à
 // chaque version (déjà CACHE_NAME + index.html ?v= + version.json).
@@ -121,6 +121,15 @@ self.addEventListener('message', event => {
   }
   if (event.data && event.data.type === 'OFFLINE_STATE') {
     _swConfirmedOffline = event.data.offline;
+  }
+  // Fiabilisation post-hardening (Lot 9) : permet à la page de connaître la
+  // version RÉELLEMENT active du Service Worker (celle qui sert vraiment les
+  // requêtes en ce moment) plutôt que de supposer qu'elle correspond à
+  // window.APP_VERSION — les deux peuvent diverger transitoirement pendant
+  // une mise à jour. Répond via le MessagePort fourni par la page
+  // (event.ports[0]) — pas de broadcast, une seule réponse ciblée.
+  if (event.data && event.data.type === 'GET_VERSION' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ type: 'VERSION_INFO', cacheName: CACHE_NAME, swAssetVersion: SW_ASSET_VERSION });
   }
 });
 

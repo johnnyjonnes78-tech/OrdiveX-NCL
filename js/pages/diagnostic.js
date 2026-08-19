@@ -1,12 +1,17 @@
 /**
  * OrdiveX — diagnostic.js
- * Diagnostic du poste — Hardening Lot 6
+ * Diagnostic du poste — Hardening Lot 6, etendu Fiabilisation Lot 9
  *
  * Page reservee aux administrateurs, verrouillee sur le role (pas sur une
  * permission delegable via les Parametres — un diagnostic technique donne
  * une vue sur l'infrastructure interne, pas sur un module metier).
  * Chaque valeur affichee est mesuree en direct a l'ouverture de la page —
  * aucune valeur "supposee" ou en cache silencieux.
+ *
+ * Trois notions de version distinctes (Lot 9) : appVersion (executee par
+ * cette page), swVersion (rapportee par le Service Worker actif lui-meme
+ * via postMessage), serverVersion (derniere version disponible, lue en
+ * direct depuis version.json). Ne jamais les confondre.
  */
 
 async function renderDiagnostic(container) {
@@ -30,14 +35,15 @@ async function renderDiagnostic(container) {
 async function _diagRenderAll(container) {
   const t0 = performance.now();
 
-  const [supabaseCheck, storage, storeCounts, pending, failed, updateCheck, swStatus] = await Promise.all([
+  const [supabaseCheck, storage, storeCounts, pending, failed, serverVersion, swStatus, swVersion] = await Promise.all([
     _diagCheckSupabase(),
     (DB.checkStorageHealth ? DB.checkStorageHealth() : Promise.resolve({ available: false })),
     _diagStoreCounts(),
     (window.OperationQueue ? window.OperationQueue.getPending().catch(() => []) : Promise.resolve([])),
     (window.OperationQueue ? window.OperationQueue.getFailed().catch(() => []) : Promise.resolve([])),
-    _diagCheckUpdate(),
+    _diagCheckServerVersion(),
     _diagSwStatus(),
+    _diagGetSwVersion(),
   ]);
 
   const missingTables = _diagSafeJSON(localStorage.getItem('pharma_missing_tables'));
@@ -46,12 +52,18 @@ async function _diagRenderAll(container) {
   const lastIDBError = window.DB && DB._lastIDBError;
   const jsErrors = window.OrdiveXDiag ? window.OrdiveXDiag.errors() : [];
   const lastPullTs = localStorage.getItem('pharma_last_pull_ts');
+  const browser = _diagBrowserInfo();
+  const idbOperational = storeCounts.length > 0 && storeCounts.every(r => r.error === null);
   const elapsedMs = Math.round(performance.now() - t0);
 
   const snapshot = {
-    appVersion: window.APP_VERSION || 'inconnue',
-    updateCheck, supabaseCheck, storage, storeCounts, pending, failed,
-    swStatus, missingTables, badColumns,
+    // Fiabilisation post-hardening (Lot 9) — trois notions de version
+    // explicitement distinctes (Objectif 1), jamais confondues entre elles :
+    appVersion: window.APP_VERSION || 'inconnue',        // version RÉELLEMENT EXÉCUTÉE par cette page (window.APP_VERSION, source unique — voir index.html)
+    swVersion,                                            // version RAPPORTÉE PAR le Service Worker actif lui-même (peut différer transitoirement de appVersion pendant une mise à jour)
+    serverVersion,                                        // dernière version DISPONIBLE sur le serveur (fetch live de version.json, jamais depuis un cache)
+    supabaseCheck, storage, storeCounts, pending, failed,
+    swStatus, missingTables, badColumns, idbOperational, browser,
     nmState: nm ? nm.state : 'indisponible',
     nmLastSuccessTime: nm ? nm.lastSuccessTime : 0,
     nmLastCommunicationTime: nm ? nm.lastCommunicationTime : 0,
@@ -99,17 +111,51 @@ async function _diagStoreCounts() {
   return results;
 }
 
-async function _diagCheckUpdate() {
-  if (!navigator.onLine) return { checked: false, reason: 'offline' };
+// Fiabilisation post-hardening (Lot 9) : lecture LIVE de version.json,
+// systématiquement — contrairement à checkForUpdates() (stability.js), qui
+// ne renvoie une valeur que lorsqu'elle diffère de la version locale (utile
+// pour une notification, inadapté à un diagnostic qui doit pouvoir AFFICHER
+// "9.10.7 = 9.10.7" explicitement, pas juste "à jour").
+async function _diagCheckServerVersion() {
+  if (!navigator.onLine) return { checked: false, reason: 'offline', version: null };
   try {
-    const remote = window.OrdiveXDiag ? await window.OrdiveXDiag.checkUpdate() : null;
-    if (remote && remote.version) {
-      return { checked: true, upToDate: false, remoteVersion: remote.version, changelog: remote.changelog || '' };
-    }
-    return { checked: true, upToDate: true };
+    const res = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return { checked: false, reason: 'HTTP ' + res.status, version: null };
+    const data = await res.json();
+    if (!data || !data.version) return { checked: false, reason: 'version.json invalide', version: null };
+    return { checked: true, reason: null, version: data.version, changelog: data.changelog || '' };
   } catch (e) {
-    return { checked: false, reason: e && e.message ? e.message : String(e) };
+    return { checked: false, reason: e && e.message ? e.message : String(e), version: null };
   }
+}
+
+// Fiabilisation post-hardening (Lot 9) : interroge le Service Worker
+// RÉELLEMENT actif pour sa propre version (CACHE_NAME) via MessageChannel,
+// plutôt que de supposer qu'elle correspond à window.APP_VERSION — les deux
+// peuvent diverger transitoirement pendant une mise à jour (voir Lot 8).
+// Timeout court : un SW plus ancien qui ne connaît pas encore ce type de
+// message (déployé juste avant ce lot) ne doit jamais bloquer le diagnostic.
+function _diagGetSwVersion() {
+  return new Promise((resolve) => {
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      resolve(null);
+      return;
+    }
+    let settled = false;
+    const timer = setTimeout(() => { if (!settled) { settled = true; resolve(null); } }, 2000);
+    try {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = (event) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(event.data && event.data.type === 'VERSION_INFO' ? event.data : null);
+      };
+      navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+    } catch (e) {
+      if (!settled) { settled = true; clearTimeout(timer); resolve(null); }
+    }
+  });
 }
 
 async function _diagSwStatus() {
@@ -129,6 +175,34 @@ async function _diagSwStatus() {
   } catch (e) {
     return { supported: true, registered: false, error: e && e.message ? e.message : String(e) };
   }
+}
+
+// Fiabilisation post-hardening (Lot 9) : détection de navigateur — usage
+// AFFICHAGE UNIQUEMENT (jamais pour brancher un comportement, le reste du
+// code fait toujours du feature-detection). Les booléens de support d'API
+// ci-dessous, eux, sont des vérifications RÉELLES (`in`/typeof), pas du
+// sniffing par nom de navigateur.
+function _diagBrowserInfo() {
+  const ua = navigator.userAgent;
+  let name = 'Navigateur inconnu', version = '';
+  const patterns = [
+    [/Edg\/([\d.]+)/, 'Edge'],
+    [/OPR\/([\d.]+)/, 'Opera'],
+    [/Chrome\/([\d.]+)/, 'Chrome'],
+    [/Firefox\/([\d.]+)/, 'Firefox'],
+    [/Version\/([\d.]+).*Safari/, 'Safari'],
+  ];
+  for (const [re, label] of patterns) {
+    const m = ua.match(re);
+    if (m) { name = label; version = m[1].split('.')[0]; break; }
+  }
+  return {
+    label: version ? (name + ' ' + version) : name,
+    serviceWorkerSupported: 'serviceWorker' in navigator,
+    indexedDBSupported: 'indexedDB' in window,
+    webLocksSupported: !!(navigator.locks && typeof navigator.locks.request === 'function'),
+    storageEstimateSupported: !!(navigator.storage && typeof navigator.storage.estimate === 'function'),
+  };
 }
 
 function _diagSafeJSON(str) {
@@ -154,12 +228,70 @@ function _diagPill(ok, label) {
   return `<span class="badge ${cls}">${label}</span>`;
 }
 
+// Même logique de parsing que _checkAndShowUpdateBanner (index.html) — un
+// segment manquant/non-numérique retourne null plutôt que de fausser la
+// comparaison. Dupliqué intentionnellement (fonctions isolées par script,
+// pas de module partagé dans cette codebase) plutôt que de créer un couplage
+// entre index.html et diagnostic.js pour trois lignes de logique.
+function _diagParseVer(v) {
+  if (typeof v !== 'string') return null;
+  const parts = v.split('.').map(s => parseInt(s, 10));
+  if (parts.length < 3 || parts.some(n => !Number.isFinite(n) || n < 0)) return null;
+  return parts;
+}
+function _diagIsNewer(remote, local) {
+  const r = _diagParseVer(remote), l = _diagParseVer(local);
+  if (!r || !l) return null; // inconnu — ne jamais affirmer "obsolète" sans preuve
+  return r[0] > l[0] || (r[0] === l[0] && r[1] > l[1]) || (r[0] === l[0] && r[1] === l[1] && r[2] > l[2]);
+}
+
 function _diagRenderHTML(s) {
   const totalRecords = s.storeCounts.reduce((a, r) => a + (r.count || 0), 0);
-  const storesInError = s.storeCounts.filter(r => r.error);
   const missingTableNames = Object.keys(s.missingTables || {});
   const badColumnEntries = Object.entries(s.badColumns || {});
   const schemaOk = missingTableNames.length === 0 && badColumnEntries.length === 0;
+
+  // Fiabilisation post-hardening (Lot 9, Objectif 8) — tous les états sont
+  // dérivés de valeurs RÉELLEMENT mesurées ci-dessus, jamais supposés.
+  const isOffline = s.supabaseCheck.reason === 'offline';
+  const versionNewer = s.serverVersion.checked ? _diagIsNewer(s.serverVersion.version, s.appVersion) : null;
+  const versionOutdated = versionNewer === true;
+  const serverDown = !isOffline && !s.supabaseCheck.ok && s.supabaseCheck.reason !== 'not_configured';
+  const storageAlmostFull = s.storage.available && s.storage.percentUsed >= 85;
+  const swWaiting = !!s.swStatus.waiting;
+  const idbProblem = !s.idbOperational;
+
+  const critical = [];
+  const warnings = [];
+  if (s.failed.length > 0) critical.push(s.failed.length + ' opération(s) en échec définitif');
+  if (serverDown) critical.push('Serveur inaccessible');
+  if (idbProblem) critical.push('Base locale — erreur détectée');
+  if (!schemaOk) critical.push('Schéma serveur non conforme');
+  if (isOffline) warnings.push('Poste hors ligne');
+  if (versionOutdated) warnings.push('Nouvelle version disponible');
+  if (s.pending.length > 0) warnings.push(s.pending.length + ' opération(s) en attente');
+  if (storageAlmostFull) warnings.push('Stockage local presque plein');
+  if (swWaiting) warnings.push('Mise à jour prête à appliquer');
+
+  const globalStatus = critical.length > 0 ? { dot: '🔴', label: critical.length + ' problème(s) détecté(s)' }
+    : warnings.length > 0 ? { dot: '🟡', label: warnings.length + ' avertissement(s)' }
+    : { dot: '🟢', label: 'Poste opérationnel' };
+
+  // Objectif 9 : UNE action appropriée par problème détecté, jamais
+  // "Effacer les données" en premier recours. Ordre : critique puis
+  // avertissement.
+  // NOTE : ces chaînes onclick sont injectées dans un attribut HTML
+  // délimité par des guillemets DOUBLES (`onclick="${a.onclick}"` plus bas)
+  // — n'utiliser QUE des guillemets simples à l'intérieur, jamais de
+  // guillemets doubles échappés (ils casseraient l'attribut HTML).
+  const actions = [];
+  if (s.failed.length > 0) actions.push({ label: s.failed.length + ' synchronisation(s) en échec', action: 'Voir les opérations', onclick: "document.getElementById('diag-failed-ops')?.scrollIntoView({behavior:'smooth'})" });
+  if (serverDown) actions.push({ label: 'Serveur inaccessible', action: 'Voir le détail', onclick: "document.getElementById('diag-server-card')?.scrollIntoView({behavior:'smooth'})" });
+  if (!schemaOk) actions.push({ label: 'Schéma serveur non conforme', action: 'Réparer la synchro', onclick: "if (typeof repairSync === 'function') repairSync(); else UI.toast('Ouvrez Paramètres > Cloud', 'info')" });
+  if (versionOutdated) actions.push({ label: 'Version v' + s.serverVersion.version + ' disponible', action: 'Recharger pour mettre à jour', onclick: 'window.location.reload()' });
+  if (swWaiting) actions.push({ label: 'Mise à jour déjà téléchargée', action: 'Appliquer la mise à jour', onclick: "if (typeof window._applyUpdate === 'function') window._applyUpdate()" });
+  if (s.pending.length > 0) actions.push({ label: s.pending.length + ' opération(s) en attente', action: 'Synchroniser maintenant', onclick: "if (window.NM) window.NM.requestSync(true); UI.toast('Synchronisation lancée', 'info')" });
+  if (storageAlmostFull) actions.push({ label: 'Stockage à ' + s.storage.percentUsed + '%', action: 'Voir le stockage', onclick: "document.getElementById('diag-storage-kpi')?.scrollIntoView({behavior:'smooth'})" });
 
   return `
     <div class="page-header">
@@ -173,24 +305,41 @@ function _diagRenderHTML(s) {
       </div>
     </div>
 
+    <div class="card" style="padding:16px 20px; margin-bottom:16px; display:flex; align-items:center; gap:12px; font-size:1.05rem; font-weight:700">
+      <span style="font-size:1.4rem; line-height:1">${globalStatus.dot}</span> ${globalStatus.label}
+    </div>
+
+    ${actions.length > 0 ? `
+    <div class="card" style="padding:16px 20px; margin-bottom:16px">
+      <h3 style="margin:0 0 12px 0; font-size:0.95rem">Actions recommandées</h3>
+      <div style="display:flex; flex-direction:column; gap:8px">
+        ${actions.map(a => `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 12px; background:var(--bg); border-radius:8px; border:1px solid var(--border)">
+            <span style="font-size:0.85rem">${a.label}</span>
+            <button class="btn btn-sm btn-secondary" onclick="${a.onclick}">${a.action}</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
+
     <div class="kpi-grid">
-      <div class="kpi-card ${s.updateCheck.checked && !s.updateCheck.upToDate ? 'kpi-orange kpi-alert' : 'kpi-blue'}">
+      <div class="kpi-card ${versionOutdated ? 'kpi-orange kpi-alert' : 'kpi-blue'}">
         <div class="kpi-icon"><i data-lucide="tag"></i></div>
         <div class="kpi-content">
           <div class="kpi-value">v${s.appVersion}</div>
-          <div class="kpi-label">Version installée</div>
-          <div class="kpi-sub">${
-            !s.updateCheck.checked ? 'Vérification impossible (' + (s.updateCheck.reason === 'offline' ? 'hors ligne' : s.updateCheck.reason) + ')'
-            : s.updateCheck.upToDate ? 'À jour' : 'Nouvelle version v' + s.updateCheck.remoteVersion + ' disponible'
+          <div class="kpi-label">Version exécutée</div>
+          <div class="kpi-sub">Disponible : ${
+            !s.serverVersion.checked ? 'inconnue (' + (s.serverVersion.reason === 'offline' ? 'hors ligne' : s.serverVersion.reason) + ')'
+            : 'v' + s.serverVersion.version + (versionOutdated ? ' — mise à jour disponible' : versionNewer === false ? ' — à jour' : '')
           }</div>
         </div>
       </div>
-      <div class="kpi-card ${s.supabaseCheck.ok ? 'kpi-green' : 'kpi-red kpi-alert'}">
+      <div id="diag-server-card" class="kpi-card ${s.supabaseCheck.ok ? 'kpi-green' : 'kpi-red kpi-alert'}">
         <div class="kpi-icon"><i data-lucide="cloud"></i></div>
         <div class="kpi-content">
           <div class="kpi-value">${s.supabaseCheck.ok ? s.supabaseCheck.latencyMs + ' ms' : '—'}</div>
-          <div class="kpi-label">Connectivité Supabase</div>
-          <div class="kpi-sub">${s.supabaseCheck.ok ? 'Réponse OK' : (s.supabaseCheck.reason === 'offline' ? 'Poste hors ligne' : s.supabaseCheck.reason === 'not_configured' ? 'Non configuré' : 'Échec : ' + s.supabaseCheck.reason)}</div>
+          <div class="kpi-label">Connectivité serveur</div>
+          <div class="kpi-sub">${s.supabaseCheck.ok ? 'Réponse OK' : (isOffline ? 'Poste hors ligne' : s.supabaseCheck.reason === 'not_configured' ? 'Non configuré' : 'Échec : ' + s.supabaseCheck.reason)}</div>
         </div>
       </div>
       <div class="kpi-card ${s.failed.length > 0 ? 'kpi-red kpi-alert' : s.pending.length > 0 ? 'kpi-orange' : 'kpi-green'}">
@@ -201,7 +350,7 @@ function _diagRenderHTML(s) {
           <div class="kpi-sub">Dernier envoi réussi : ${_diagFmtTime(s.nmLastSuccessTime)}</div>
         </div>
       </div>
-      <div class="kpi-card ${s.storage.available && s.storage.percentUsed >= 85 ? 'kpi-red kpi-alert' : 'kpi-blue'}">
+      <div id="diag-storage-kpi" class="kpi-card ${storageAlmostFull ? 'kpi-red kpi-alert' : 'kpi-blue'}">
         <div class="kpi-icon"><i data-lucide="hard-drive"></i></div>
         <div class="kpi-content">
           <div class="kpi-value">${s.storage.available ? s.storage.percentUsed + '%' : 'Inconnu'}</div>
@@ -217,6 +366,7 @@ function _diagRenderHTML(s) {
         <tbody>
           <tr><td>État réseau (NetworkManager)</td><td>${_diagPill(s.nmState === 'ONLINE' || s.nmState === 'SYNCING', s.nmState)}</td></tr>
           <tr><td>Service Worker enregistré</td><td>${_diagPill(s.swStatus.registered, s.swStatus.registered ? 'Oui — ' + (s.swStatus.active ? 'actif' : 'inactif') : 'Non')}</td></tr>
+          <tr><td>Version rapportée par le Service Worker</td><td>${s.swVersion ? '<code>' + s.swVersion.swAssetVersion + '</code>' : '<span style="color:var(--text-muted)">Non disponible (SW inactif ou pas encore mis à jour)</span>'}</td></tr>
           <tr><td>Mise à jour SW en attente</td><td>${_diagPill(!s.swStatus.waiting, s.swStatus.waiting ? 'Oui — en attente d\'activation' : 'Non')}</td></tr>
           <tr><td>Dernière communication serveur</td><td>${_diagFmtTime(s.nmLastCommunicationTime)}</td></tr>
           <tr><td>Dernier pull réussi</td><td>${_diagFmtTime(s.lastPullTs ? parseInt(s.lastPullTs, 10) : 0)}</td></tr>
@@ -236,7 +386,8 @@ function _diagRenderHTML(s) {
     </div>
 
     <div class="card" style="padding:20px; margin-bottom:16px; overflow:auto">
-      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="hard-drive-download" style="width:18px;height:18px"></i> Stores IndexedDB (${s.storeCounts.length} stores, ${totalRecords.toLocaleString('fr-FR')} enregistrements)</h3>
+      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="hard-drive-download" style="width:18px;height:18px"></i> Base locale — IndexedDB</h3>
+      <p style="margin:0 0 14px 0">${_diagPill(s.idbOperational, s.idbOperational ? 'Opérationnelle' : 'Erreur détectée')} ${s.storeCounts.length} stores, ${totalRecords.toLocaleString('fr-FR')} enregistrements</p>
       <table class="data-table">
         <thead><tr><th>Store</th><th>Enregistrements</th></tr></thead>
         <tbody>
@@ -245,7 +396,7 @@ function _diagRenderHTML(s) {
       </table>
     </div>
 
-    <div class="card" style="padding:20px; margin-bottom:16px">
+    <div id="diag-failed-ops" class="card" style="padding:20px; margin-bottom:16px">
       <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="alert-triangle" style="width:18px;height:18px"></i> Opérations en échec définitif (${s.failed.length})</h3>
       ${s.failed.length === 0 ? '<p style="color:var(--text-muted); margin:0">Aucune — toutes les opérations ont fini par être synchronisées.</p>' : `
         <table class="data-table">
@@ -276,14 +427,19 @@ function _diagRenderHTML(s) {
     </div>
 
     <div class="card" style="padding:20px">
-      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="monitor" style="width:18px;height:18px"></i> Informations appareil</h3>
+      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="monitor" style="width:18px;height:18px"></i> Navigateur & appareil</h3>
       <table class="data-table">
         <tbody>
+          <tr><td>Navigateur détecté</td><td>${s.browser.label}</td></tr>
+          <tr><td>Service Worker</td><td>${_diagPill(s.browser.serviceWorkerSupported, s.browser.serviceWorkerSupported ? 'Supporté' : 'Non supporté')}</td></tr>
+          <tr><td>IndexedDB</td><td>${_diagPill(s.browser.indexedDBSupported, s.browser.indexedDBSupported ? 'Supporté' : 'Non supporté')}</td></tr>
+          <tr><td>Verrous multi-onglets (Web Locks)</td><td>${_diagPill(s.browser.webLocksSupported, s.browser.webLocksSupported ? 'Supporté' : 'Non supporté — coordination dégradée en best-effort')}</td></tr>
+          <tr><td>Estimation du stockage</td><td>${_diagPill(s.browser.storageEstimateSupported, s.browser.storageEstimateSupported ? 'Supporté' : 'Non supporté')}</td></tr>
           <tr><td>Nom de l'appareil</td><td>${s.deviceName || '—'}</td></tr>
           <tr><td>Identifiant appareil</td><td><code>${s.deviceId || '—'}</code></td></tr>
           <tr><td>Résolution écran</td><td>${s.screen}</td></tr>
           <tr><td>Langue</td><td>${s.language}</td></tr>
-          <tr><td>Navigateur</td><td style="max-width:520px; overflow-wrap:break-word">${s.userAgent}</td></tr>
+          <tr><td>User-Agent complet</td><td style="max-width:520px; overflow-wrap:break-word; font-size:0.75rem; color:var(--text-muted)">${s.userAgent}</td></tr>
         </tbody>
       </table>
     </div>

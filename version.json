@@ -1,5 +1,5 @@
 {
-  "version": "9.10.7",
+  "version": "9.10.8",
   "date": "2026-08-19",
-  "changelog": "v9.10.7 : [Fiabilisation Lot 8] Correction de la version qui semblait changer a chaque rafraichissement de page : deux systemes de mise a jour independants (l'ancien controle de version et le nouveau systeme de mise a jour du Service Worker) se relancaient mutuellement en cascade lors d'un deploiement. Ils sont desormais coordonnes, et l'application n'a plus qu'une seule source de version affichee."
+  "changelog": "v9.10.8 : [Fiabilisation Lot 9] Le Diagnostic du Poste affiche desormais trois versions clairement distinctes (executee / rapportee par le Service Worker / disponible sur le serveur), un etat global en un coup d'oeil et des actions de recuperation adaptees a chaque probleme reellement detecte (jamais de suppression de donnees proposee en premier recours)."
 }

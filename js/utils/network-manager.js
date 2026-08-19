@@ -2,6 +2,29 @@
  * OrdiveX - NetworkManager v2.0
  * Gestionnaire réseau centralisé avec détection OFFLINE immédiate,
  * classification intelligente des erreurs, Circuit Breaker et Mutex global.
+ *
+ * ── Matrice de compatibilité navigateurs (Fiabilisation Lot 9, Objectif 2) ──
+ * Audit du 2026-08-19 : aucune API critique n'est utilisée sans repli —
+ * chaque ligne "Non universel" ci-dessous a déjà son fallback documenté au
+ * site d'appel réel (grep le nom de l'API pour le retrouver).
+ *
+ *   Mécanisme                        | Chrome/Edge | Firefox | Safari | Repli si absent
+ *   Service Worker                   | Oui         | Oui     | Oui (11.1+) | —
+ *   Cache Storage API                | Oui         | Oui     | Oui         | —
+ *   IndexedDB                        | Oui         | Oui     | Oui (bugs historiques en navigation privée, largement corrigés ≥14) | rejet de promesse propagé par initDB(), pas de crash silencieux
+ *   Web Locks (navigator.locks)      | Oui         | Oui (≥96) | Oui (≥15.4) | js/db.js _generateSyncSafeId() : calcul direct sans verrou si absent
+ *   navigator.storage.estimate()     | Oui         | Oui     | Partiel/imprécis historiquement | js/db.js checkStorageHealth() renvoie {available:false}
+ *   navigator.connection (Network Information API) | Oui | Non (jamais, choix délibéré du vendeur) | Non (jamais) | ce fichier : `if (navigator.connection)` — optimisation de reconnexion rapide, pas un mécanisme critique ; l'app fonctionne pleinement sans
+ *   BroadcastChannel natif           | Oui         | Oui     | Oui (≥15.4) | non utilisé directement par le code OrdiveX (seulement en interne par le SDK Supabase vendu, pour son propre usage)
+ *   controllerchange (Service Worker)| Oui         | Oui     | Oui         | —
+ *   { updateViaCache: 'none' } (registration) | Oui | Oui  | Oui         | —
+ *
+ * Aucun mécanisme critique (sync, IndexedDB, offline-first) ne dépend
+ * exclusivement d'une API non universellement disponible. Les seules API non
+ * universelles utilisées (Web Locks, navigator.connection,
+ * storage.estimate) sont toutes des OPTIMISATIONS avec repli déjà en place —
+ * leur absence dégrade la précision/rapidité de détection, jamais la
+ * disponibilité de l'application.
  */
 
 (function () {
