@@ -3379,4 +3379,7 @@ async function checkStorageHealth() {
 const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId, detectOrphanSales, checkStorageHealth };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
 Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
+// Lot 6 hardening : expose la dernière erreur IndexedDB classifiée (voir
+// _reportIDBError plus haut) au module Diagnostic du poste.
+Object.defineProperty(_DBExports, '_lastIDBError', { get: () => _lastIDBError });
 window.DB = _DBExports;
