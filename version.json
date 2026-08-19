@@ -1,5 +1,5 @@
 {
-  "version": "9.10.0",
+  "version": "9.10.1",
   "date": "2026-08-19",
-  "changelog": "v9.10.0 : [Hardening Lot 1] IDs resistants aux collisions inter-appareils etendus a sales/saleItems/movements (meme mecanisme deja valide sur invoices) - corrige la cause racine des ventes/mouvements perdus entre postes. Detection en lecture seule des ventes fantomes (vente enregistree sans mise a jour de stock associee suite a une coupure) avec alerte admin, sans reparation automatique."
+  "changelog": "v9.10.1 : [Hardening Lot 2] Erreurs IndexedDB desormais classifiees (Quota/Blocage/Contrainte...) au lieu d'etre avalees silencieusement - message clair si stockage plein, avertissement si un autre onglet bloque une mise a jour, import CSV volumineux verifie l'espace disponible et n'annule plus tout un lot pour une seule ligne en erreur."
 }
