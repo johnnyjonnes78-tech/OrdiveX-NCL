@@ -1189,6 +1189,18 @@ async function processImportPatientsCSV(content) {
     return;
   }
 
+  // Vérification préventive du stockage disponible (Lot 2 hardening — F32)
+  if (typeof DB.checkStorageHealth === 'function') {
+    const health = await DB.checkStorageHealth();
+    if (health.available && health.percentUsed !== null && health.percentUsed >= 90) {
+      const proceed = await UI.confirm(
+        `⚠ Stockage local presque plein (${health.percentUsed}% utilisé, ${health.quotaMB - health.usageMB} Mo restants).\n\n` +
+        `L'import de ${lines.length - 1} patients peut échouer en cours de route. Continuer quand même ?`
+      );
+      if (!proceed) return;
+    }
+  }
+
   const header = lines[0];
   const sep = header.includes(';') ? ';' : ',';
   const cols = header.split(sep).map(c => c.replace(/"/g, '').trim().toLowerCase());
@@ -1254,8 +1266,14 @@ async function processImportPatientsCSV(content) {
   for (let i = 0; i < parsed.length; i += BULK_SIZE) {
     const chunk = parsed.slice(i, i + BULK_SIZE);
     try {
-      await DB.dbBulkPut('patients', chunk);
-      imported += chunk.length;
+      const res = await DB.dbBulkPut('patients', chunk);
+      // dbBulkPut isole désormais les échecs par enregistrement (Lot 2
+      // hardening) — compter précisément plutôt que supposer un succès total.
+      imported += res.count;
+      if (res.rejected.length > 0) {
+        errors += res.rejected.length;
+        console.warn(`[Import Patients] ${res.rejected.length} ligne(s) rejetée(s) dans ce lot :`, res.rejected.map(r => r.error));
+      }
     } catch (err) {
       console.error('[Import Patients] Erreur bulk:', err);
       errors += chunk.length;

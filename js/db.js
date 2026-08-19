@@ -219,6 +219,62 @@ function _generateSyncSafeId() {
   return base;
 }
 
+// ── Classification centralisée des erreurs IndexedDB (Lot 2 hardening — F28) ──
+// dbAdd/dbPut/dbDelete résolvent silencieusement en `null` sur toute erreur
+// IndexedDB (voir req.onerror/tx.onerror plus bas) : un DOMException
+// QuotaExceededError n'était jusqu'ici pas distingué d'un autre échec, donc
+// jamais signalé à l'utilisateur malgré un mécanisme de toast déjà écrit
+// (js/utils/stability.js) mais qui ne peut jamais se déclencher puisqu'il
+// attend un rejet de promesse qui ne survient jamais sur ce chemin.
+const _KNOWN_IDB_ERRORS = ['QuotaExceededError', 'InvalidStateError', 'NotFoundError', 'ConstraintError', 'VersionError', 'AbortError'];
+function _classifyIDBError(err) {
+  const name = err && err.name;
+  return _KNOWN_IDB_ERRORS.includes(name) ? name : 'UnknownError';
+}
+// Dernière erreur IndexedDB classifiée, tenue à jour pour le futur module
+// Diagnostic (Lot 6) — pas de dépendance inverse, juste un point de lecture.
+let _lastIDBError = null;
+function _reportIDBError(storeName, operation, err) {
+  const type = _classifyIDBError(err);
+  _lastIDBError = { type, store: storeName, operation, message: err && err.message, timestamp: Date.now() };
+  console.error(`[DB] ${operation} ${storeName} — ${type}${err && err.message ? ': ' + err.message : ''}`);
+  if (type === 'QuotaExceededError' && typeof window !== 'undefined' && window.UI && typeof window.UI.toast === 'function') {
+    // Un seul toast à la fois : évite le spam si plusieurs écritures échouent en rafale (ex. import CSV).
+    if (!_reportIDBError._quotaToastAt || (Date.now() - _reportIDBError._quotaToastAt) > 15000) {
+      _reportIDBError._quotaToastAt = Date.now();
+      window.UI.toast(
+        'Stockage local presque plein — cette opération n\'a pas pu être enregistrée. Libérez de l\'espace ou contactez votre administrateur.',
+        'error', 10000
+      );
+    }
+  }
+  return type;
+}
+
+// ── Bannière de blocage IndexedDB (Lot 2 hardening — F29) ──
+// Autonome vis-à-vis de UI.js : initDB() s'exécute avant que ui.js soit
+// chargé/exécuté (voir ordre des <script> dans index.html), on ne peut donc
+// pas dépendre de UI.toast() à ce stade du démarrage.
+function _showIDBBlockedBanner(timedOut) {
+  if (typeof document === 'undefined') return;
+  let el = document.getElementById('idb-blocked-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'idb-blocked-banner';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#B3261E;color:#fff;padding:14px 20px;font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    document.body?.appendChild(el);
+  }
+  el.innerHTML = timedOut
+    ? '⚠ OrdiveX attend toujours la fermeture d\'un autre onglet. Fermez tous les autres onglets/fenêtres OrdiveX ouverts sur cet appareil. '
+      + '<button onclick="location.reload()" style="margin-left:10px;background:#fff;color:#B3261E;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:600">Recharger</button>'
+    : '⚠ OrdiveX attend la fermeture d\'un autre onglet pour terminer une mise à jour. Fermez les autres onglets OrdiveX ouverts sur cet appareil.';
+}
+function _hideIDBBlockedBanner() {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById('idb-blocked-banner');
+  if (el) el.remove();
+}
+
 var _stableId = _generateStableDeviceId();
 // Forcer la migration vers l'ID stable — supprimer l'ancien aléatoire
 var _oldDeviceId = localStorage.getItem('pharma_device_id');
@@ -648,7 +704,29 @@ async function initDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+    // ── Blocage multi-onglets (Lot 2 hardening — F29) ──
+    // Se déclenche quand un AUTRE onglet a encore une connexion ouverte sur
+    // une version antérieure du schéma pendant qu'on tente une migration
+    // (onupgradeneeded) ici. Sans ce gestionnaire, la promesse ne se résout
+    // ni ne rejette jamais tant que l'autre onglet n'est pas fermé — écran
+    // de chargement figé, sans aucune explication. On ne recharge JAMAIS
+    // automatiquement (donnée en cours d'écriture possible dans l'autre
+    // onglet) : on informe et on laisse l'utilisateur agir.
+    let _blockedTimeoutId = null;
+    request.onblocked = () => {
+      console.warn('[DB] Ouverture IndexedDB bloquée — un autre onglet OrdiveX a une connexion ouverte sur une version antérieure.');
+      _showIDBBlockedBanner(false);
+      if (!_blockedTimeoutId) {
+        _blockedTimeoutId = setTimeout(() => {
+          console.warn('[DB] Blocage IndexedDB toujours actif après 10s.');
+          _showIDBBlockedBanner(true);
+        }, 10000);
+      }
+    };
+
     request.onsuccess = async () => {
+      if (_blockedTimeoutId) { clearTimeout(_blockedTimeoutId); _blockedTimeoutId = null; }
+      _hideIDBBlockedBanner();
       db = request.result;
 
       // If URL params are present, update settings automatically
@@ -1310,10 +1388,10 @@ async function dbAdd(storeName, data) {
         }
         _notifyUIChange(storeName);
       };
-      req.onerror = () => { console.error(`[DB] Erreur add ${storeName}:`, req.error); resolve(null); };
-      tx.onerror = () => { console.error(`[DB] Transaction add erreur ${storeName}`); resolve(null); };
+      req.onerror = () => { _reportIDBError(storeName, 'add', req.error); resolve(null); };
+      tx.onerror = () => { _reportIDBError(storeName, 'add(tx)', tx.error); resolve(null); };
     } catch (e) {
-      console.error(`[DB] Exception dans dbAdd(${storeName}):`, e);
+      _reportIDBError(storeName, 'add(exception)', e);
       resolve(null);
     }
   });
@@ -1346,10 +1424,10 @@ async function dbPut(storeName, data) {
         }
         _notifyUIChange(storeName);
       };
-      req.onerror = () => { console.error(`[DB] Erreur put ${storeName}:`, req.error); resolve(null); };
-      tx.onerror = () => { console.error(`[DB] Transaction put erreur ${storeName}`); resolve(null); };
+      req.onerror = () => { _reportIDBError(storeName, 'put', req.error); resolve(null); };
+      tx.onerror = () => { _reportIDBError(storeName, 'put(tx)', tx.error); resolve(null); };
     } catch (e) {
-      console.error(`[DB] Exception dans dbPut(${storeName}):`, e);
+      _reportIDBError(storeName, 'put(exception)', e);
       resolve(null);
     }
   });
@@ -1578,10 +1656,10 @@ async function dbDelete(storeName, id) {
         _notifyUIChange(storeName);
         resolve(true);
       };
-      req.onerror = () => { console.error(`[DB] Erreur delete ${storeName}/${id}:`, req.error); resolve(false); };
-      tx.onerror = () => { console.error(`[DB] Transaction delete erreur ${storeName}`); resolve(false); };
+      req.onerror = () => { _reportIDBError(storeName, 'delete', req.error); resolve(false); };
+      tx.onerror = () => { _reportIDBError(storeName, 'delete(tx)', tx.error); resolve(false); };
     } catch (e) {
-      console.error(`[DB] Exception dans dbDelete(${storeName}, ${id}):`, e);
+      _reportIDBError(storeName, 'delete(exception)', e);
       resolve(false);
     }
   });
@@ -1642,39 +1720,60 @@ async function dbStockValue(stockMap) {
 /**
  * Bulk Put — Insertion/mise à jour de masse via UNE SEULE transaction IndexedDB.
  * Conçu pour supporter des centaines de milliers d'enregistrements sans geler le navigateur.
+ * Isole les échecs par enregistrement (Lot 2 hardening — F30) : un seul
+ * enregistrement rejeté (ex: contrainte d'unicité) n'annule plus le lot entier.
  * @param {string} storeName - Nom du store IndexedDB
  * @param {Array} dataArray - Tableau d'objets à insérer/mettre à jour
- * @returns {Promise<number>} - Nombre d'objets traités avec succès
+ * @returns {Promise<{count:number, rejected:Array}>} - Nombre traité avec succès + détail des rejets individuels
  */
 async function dbBulkPut(storeName, dataArray) {
   if (!db) await initDB();
-  if (!dataArray || dataArray.length === 0) return 0;
+  if (!dataArray || dataArray.length === 0) return { count: 0, rejected: [] };
   _invalidateCache(storeName);
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
     let count = 0;
+    const rejected = []; // {item, error} — enregistrements individuellement rejetés (ex: ConstraintError sur un code dupliqué)
 
     for (const item of dataArray) {
       try {
-        store.put({ ...item, _updatedAt: item._updatedAt || Date.now(), _synced: item._synced !== undefined ? item._synced : true });
-        count++;
+        const req = store.put({ ...item, _updatedAt: item._updatedAt || Date.now(), _synced: item._synced !== undefined ? item._synced : true });
+        req.onsuccess = () => { count++; };
+        // Isolation par enregistrement (Lot 2 hardening — F30) : sans
+        // preventDefault()/stopPropagation() ici, l'échec d'UN SEUL
+        // enregistrement (ex: contrainte d'unicité sur 'code' lors d'un
+        // import CSV de 1000 lignes) annule la transaction ENTIÈRE — les
+        // 999 autres lignes valides du même lot seraient perdues avec elle.
+        // dbBulkPut est utilisé pour des imports de catalogue où la
+        // tolérance ligne-par-ligne est souhaitable — voir dbTransactionBulk
+        // pour les opérations métier où l'atomicité stricte reste requise.
+        req.onerror = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          rejected.push({ item, error: _classifyIDBError(req.error) });
+          console.warn(`[DB] BulkPut : enregistrement rejeté dans ${storeName} (${_classifyIDBError(req.error)}) :`, req.error?.message);
+        };
       } catch (e) {
+        rejected.push({ item, error: _classifyIDBError(e) });
         console.warn(`[DB] BulkPut erreur item:`, e);
       }
     }
 
     tx.oncomplete = () => {
       _notifyUIChange(storeName);
-      resolve(count);
+      if (rejected.length > 0) {
+        _lastIDBError = { type: 'BulkPartialFailure', store: storeName, operation: 'bulkPut', rejectedCount: rejected.length, timestamp: Date.now() };
+      }
+      resolve({ count, rejected });
     };
     tx.onerror = () => {
-      console.error(`[DB] BulkPut transaction erreur:`, tx.error);
+      _reportIDBError(storeName, 'bulkPut(tx)', tx.error);
       reject(tx.error);
     };
     tx.onabort = () => {
-      console.error(`[DB] BulkPut transaction annulée:`, tx.error);
+      _reportIDBError(storeName, 'bulkPut(abort)', tx.error);
       reject(tx.error);
     };
   });
@@ -1725,11 +1824,11 @@ async function dbTransactionBulk(operations) {
       resolve(results);
     };
     tx.onerror = () => {
-      console.error('[DB] dbTransactionBulk erreur:', tx.error);
+      _reportIDBError(storeNames.join('+'), 'transactionBulk(tx)', tx.error);
       reject(tx.error || new Error('dbTransactionBulk: transaction error'));
     };
     tx.onabort = () => {
-      console.error('[DB] dbTransactionBulk annulée:', tx.error);
+      _reportIDBError(storeNames.join('+'), 'transactionBulk(abort)', tx.error);
       reject(tx.error || new Error('dbTransactionBulk: transaction aborted'));
     };
   });
@@ -3176,7 +3275,31 @@ if (typeof indexedDB !== 'undefined') {
 // La gestion de connectivité est centralisée et gérée par NetworkManager.
 // Plus de listeners online/offline ou d'écriture brute sur le Service Worker ici.
 
-const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId, detectOrphanSales };
+// ── Vérification du stockage disponible (Lot 2 hardening — F32) ──
+// Utilisé avant un import volumineux (CSV produits/patients) pour avertir
+// PRÉVENTIVEMENT plutôt que de découvrir un QuotaExceededError en cours de
+// route, lot après lot. Best-effort : navigator.storage.estimate() n'est
+// pas disponible sur tous les navigateurs (ex: Safari ancien) — dans ce cas
+// on renvoie simplement "inconnu", jamais une fausse alerte.
+async function checkStorageHealth() {
+  try {
+    if (!navigator.storage || typeof navigator.storage.estimate !== 'function') {
+      return { available: false, percentUsed: null, usageMB: null, quotaMB: null };
+    }
+    const { usage, quota } = await navigator.storage.estimate();
+    const percentUsed = quota > 0 ? Math.round((usage / quota) * 100) : null;
+    return {
+      available: true,
+      percentUsed,
+      usageMB: Math.round((usage || 0) / 1048576),
+      quotaMB: Math.round((quota || 0) / 1048576)
+    };
+  } catch (e) {
+    return { available: false, percentUsed: null, usageMB: null, quotaMB: null };
+  }
+}
+
+const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId, detectOrphanSales, checkStorageHealth };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
 Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
 window.DB = _DBExports;

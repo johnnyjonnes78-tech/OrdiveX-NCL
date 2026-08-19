@@ -1740,6 +1740,20 @@ async function processImportCSV(content) {
     return;
   }
 
+  // Vérification préventive du stockage disponible (Lot 2 hardening — F32) :
+  // avertir avant de démarrer plutôt que de découvrir un espace insuffisant
+  // lot après lot, en plein milieu d'un import de plusieurs milliers de lignes.
+  if (typeof DB.checkStorageHealth === 'function') {
+    const health = await DB.checkStorageHealth();
+    if (health.available && health.percentUsed !== null && health.percentUsed >= 90) {
+      const proceed = await UI.confirm(
+        `⚠ Stockage local presque plein (${health.percentUsed}% utilisé, ${health.quotaMB - health.usageMB} Mo restants).\n\n` +
+        `L'import de ${lines.length - 1} produits peut échouer en cours de route. Continuer quand même ?`
+      );
+      if (!proceed) return;
+    }
+  }
+
   // Detect separator
   const header = lines[0];
   const sep = header.includes(';') ? ';' : ',';
@@ -1823,8 +1837,17 @@ async function processImportCSV(content) {
   for (let i = 0; i < totalParsed; i += BULK_SIZE) {
     const chunk = parsedProducts.slice(i, i + BULK_SIZE);
     try {
-      await DB.dbBulkPut('products', chunk);
-      imported += chunk.length;
+      const res = await DB.dbBulkPut('products', chunk);
+      // dbBulkPut isole désormais les échecs par enregistrement (Lot 2
+      // hardening) : compter précisément succès/rejets réels plutôt que de
+      // supposer que tout le lot a réussi dès lors qu'aucune exception globale
+      // n'a été levée — sinon des lignes silencieusement rejetées (ex: code
+      // dupliqué) seraient comptées à tort comme importées.
+      imported += res.count;
+      if (res.rejected.length > 0) {
+        errors += res.rejected.length;
+        console.warn(`[Import] ${res.rejected.length} ligne(s) rejetée(s) dans ce lot :`, res.rejected.map(r => r.error));
+      }
     } catch (err) {
       console.error('[Import] Erreur bulk lot:', err);
       errors += chunk.length;
