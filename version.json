@@ -1,5 +1,5 @@
 {
-  "version": "9.10.13",
+  "version": "9.10.14",
   "date": "2026-08-19",
-  "changelog": "v9.10.13 : Harmonisation de la gestion des dettes patients partout dans l'application. Les dettes liees a une prise en charge assurance etaient auparavant ignorees dans la fiche patient (encours affiche trop bas, \"Solder tout l'encours\" laissait ces dettes non reglees) et sous-evaluees dans les Metriques Business en cas de vente couverte par plusieurs assurances. Toutes les pages utilisent desormais le meme montant de reference (part reellement due par l'assureur, deja calculee a la vente)."
+  "changelog": "v9.10.14 : Fiabilisation de l'affichage du cout marchandise et des retours/remboursements dans le Tableau de Bord, les Metriques Business et le Pilotage & Controle. Le Pilotage & Controle comptait par erreur les ventes annulees dans le chiffre d'affaires ; les trois pages pouvaient sous-evaluer la marge en cas de retour sur un article vendu. Toutes les pages utilisent desormais le meme calcul fiable."
 }

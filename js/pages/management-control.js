@@ -170,7 +170,26 @@ function mcCustomPeriod() {
 // ══════════════════════════════════════════════════════════════════════
 
 function mcRenderDashboard(contentEl) {
-  const { sales, saleItems, products, productMap, stockAll, stockMap, lots, movements, returns, userMap } = window._mcData;
+  const { sales: allPeriodSales, saleItems: allPeriodSaleItems, products, productMap, stockAll, stockMap, lots, movements, returns: allPeriodReturns, userMap } = window._mcData;
+
+  // Fiabilisation — le Chiffre d'Affaires comptait auparavant TOUTES les
+  // ventes de la période sans filtrer sur le statut : une vente annulée
+  // (sale.status === 'annulled', stock déjà restauré par annulerVente)
+  // était additionnée à la fois au CA et au COGS comme une vraie vente
+  // réalisée, et une vente crédit/assurance encore en attente de règlement
+  // y était comptée comme du chiffre d'affaires encaissé. Résultat : ce CA
+  // pouvait différer de celui du Tableau de Bord et des Métriques Business
+  // pour la MÊME période — même correctif ['completed','paid'] que ces deux
+  // pages, pour une seule vérité de CA dans toute l'application.
+  const sales = allPeriodSales.filter(s => ['completed', 'paid'].includes(s.status));
+  const completedSaleIds = new Set(sales.map(s => s.id));
+  const saleItems = allPeriodSaleItems.filter(si => completedSaleIds.has(si.saleId));
+  // Un retour peut être traité sur une vente crédit/assurance encore en
+  // attente (returns.js ne l'interdit pas) — dans ce cas sale.total n'est
+  // jamais compté dans totalCA ci-dessus : ne pas non plus soustraire ce
+  // retour, sous peine de faire baisser artificiellement CA/bénéfice d'un
+  // montant qui n'a jamais été ajouté.
+  const returns = allPeriodReturns.filter(r => r.status !== 'approved' || completedSaleIds.has(r.saleId));
 
   // KPIs Calculs
   const totalCA = sales.reduce((a, s) => a + (s.total || 0), 0);
@@ -185,7 +204,20 @@ function mcRenderDashboard(contentEl) {
     const costPrice = si.purchasePrice || (prod ? prod.purchasePrice : 0) || 0;
     return a + costPrice * (si.quantity || 0);
   }, 0);
-  const benefice = totalCA - totalCOGS;
+  // Fiabilisation — coût et montant des articles retournés (approuvés) :
+  // sans cette double soustraction, la marchandise revenue en stock restait
+  // comptée comme vendue (COGS) et son remboursement n'était jamais déduit
+  // du CA/bénéfice affichés (montantRetours était calculé plus bas mais
+  // jamais réellement soustrait de `benefice`).
+  const approvedReturns = returns.filter(r => r.status === 'approved');
+  const returnsRefundTotal = approvedReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+  const returnsCOGS = approvedReturns.reduce((a, r) => {
+    return a + (r.items || []).reduce((acc, ri) => {
+      const si = allPeriodSaleItems.find(x => x.id === ri.saleItemId);
+      return acc + (si?.purchasePrice || 0) * (ri.quantity || 0);
+    }, 0);
+  }, 0);
+  const benefice = (totalCA - returnsRefundTotal) - (totalCOGS - returnsCOGS);
 
   // Valeur du stock restant et vendu
   const stockValue = products.reduce((a, p) => {
@@ -201,7 +233,7 @@ function mcRenderDashboard(contentEl) {
   const entries = movements.filter(m => m.type === 'ENTRY');
   const exits = movements.filter(m => m.type === 'EXIT' || m.type === 'SALE');
   const nbRetours = returns.length;
-  const montantRetours = returns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+  const montantRetours = returnsRefundTotal;
 
   // Ventilation paiement
   const payBreakdown = {};
@@ -381,8 +413,18 @@ function mcRenderDashboard(contentEl) {
 // ══════════════════════════════════════════════════════════════════════
 
 function mcRenderDetail(contentEl) {
-  const { saleItems, sales, productMap, stockMap, userMap, patientMap, products } = window._mcData;
+  const { saleItems: allPeriodSaleItems, sales: allPeriodSales, productMap, stockMap, userMap, patientMap, products } = window._mcData;
   window._mcDetailPage = window._mcDetailPage || 1;
+
+  // Fiabilisation — même correctif que mcRenderDashboard : sans ce filtre,
+  // ce rapport détaillé listait des lignes de ventes ANNULÉES (coût/profit
+  // affichés comme si la vente avait réellement eu lieu) et de ventes
+  // crédit/assurance encore en attente — en désaccord avec le nombre de
+  // ventes affiché par l'onglet Tableau de Bord de CETTE MÊME page pour la
+  // même période.
+  const sales = allPeriodSales.filter(s => ['completed', 'paid'].includes(s.status));
+  const completedSaleIds = new Set(sales.map(s => s.id));
+  const saleItems = allPeriodSaleItems.filter(si => completedSaleIds.has(si.saleId));
 
   // Construire les donnees detaillees : chaque saleItem enrichi
   const saleMap = {};
@@ -768,7 +810,14 @@ async function mcExportPDF() {
 
   if (activeTab === 'dashboard') {
     // ── Onglet 1 : Tableau de bord quotidien ──
-    const { sales, saleItems, productMap, stockMap, products, movements, returns } = dataObj;
+    // Fiabilisation — même correctif que mcRenderDashboard : exclure les
+    // ventes annulées/en attente du CA/COGS exportés, sinon ce CSV peut
+    // afficher un CA différent de ce que montre l'écran pour la même période.
+    const { sales: allPeriodSales, saleItems: allPeriodSaleItems, productMap, stockMap, products, movements, returns: allPeriodReturns } = dataObj;
+    const sales = allPeriodSales.filter(s => ['completed', 'paid'].includes(s.status));
+    const completedSaleIds = new Set(sales.map(s => s.id));
+    const saleItems = allPeriodSaleItems.filter(si => completedSaleIds.has(si.saleId));
+    const returns = allPeriodReturns.filter(r => r.status !== 'approved' || completedSaleIds.has(r.saleId));
 
     const totalCA = sales.reduce((a, s) => a + (s.total || 0), 0);
     const nbVentes = sales.length;
@@ -781,7 +830,15 @@ async function mcExportPDF() {
       const costPrice = si.purchasePrice || (prod ? prod.purchasePrice : 0) || 0;
       return a + costPrice * (si.quantity || 0);
     }, 0);
-    const benefice = totalCA - totalCOGS;
+    const approvedReturns = returns.filter(r => r.status === 'approved');
+    const returnsRefundTotal = approvedReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+    const returnsCOGS = approvedReturns.reduce((a, r) => {
+      return a + (r.items || []).reduce((acc, ri) => {
+        const si = allPeriodSaleItems.find(x => x.id === ri.saleItemId);
+        return acc + (si?.purchasePrice || 0) * (ri.quantity || 0);
+      }, 0);
+    }, 0);
+    const benefice = (totalCA - returnsRefundTotal) - (totalCOGS - returnsCOGS);
 
     const stockValue = products.reduce((a, p) => a + ((stockMap[p.id]?.quantity || 0) * (p.purchasePrice || 0)), 0);
     const stockSaleValue = products.reduce((a, p) => a + ((stockMap[p.id]?.quantity || 0) * (p.salePrice || 0)), 0);
@@ -789,7 +846,7 @@ async function mcExportPDF() {
     const entries = movements.filter(m => m.type === 'ENTRY');
     const exits = movements.filter(m => m.type === 'EXIT' || m.type === 'SALE');
     const nbRetours = returns.length;
-    const montantRetours = returns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+    const montantRetours = returnsRefundTotal;
 
     const headers = ["Indicateur", "Valeur"];
     const rows = [
@@ -821,7 +878,11 @@ async function mcExportPDF() {
 
   } else if (activeTab === 'detail') {
     // ── Onglet 2 : Rapport detaille des ventes ──
-    const { saleItems, sales, productMap, stockMap, userMap, patientMap } = dataObj;
+    // Fiabilisation — même correctif que mcRenderDetail (affichage écran).
+    const { saleItems: allPeriodSaleItems, sales: allPeriodSales, productMap, stockMap, userMap, patientMap } = dataObj;
+    const sales = allPeriodSales.filter(s => ['completed', 'paid'].includes(s.status));
+    const completedSaleIds = new Set(sales.map(s => s.id));
+    const saleItems = allPeriodSaleItems.filter(si => completedSaleIds.has(si.saleId));
 
     const saleMap = {};
     sales.forEach(s => { saleMap[s.id] = s; });

@@ -62,8 +62,16 @@ async function _refreshDashboard(container) {
 
     const todaySales = sales.filter(s => new Date(s.date).getTime() >= startOfDay && ['completed', 'paid'].includes(s.status));
     const monthSales = sales.filter(s => new Date(s.date).getTime() >= startOfMonth && ['completed', 'paid'].includes(s.status));
-    const todayReturns = allReturns.filter(r => new Date(r.date).getTime() >= startOfDay && r.status === 'approved');
-    const monthReturns = allReturns.filter(r => new Date(r.date).getTime() >= startOfMonth && r.status === 'approved');
+    // Fiabilisation — un retour peut légalement être traité sur une vente
+    // encore en attente (crédit/assurance non réglée, returns.js ne
+    // l'interdit pas). sale.total de cette vente n'est jamais ajouté à
+    // todayRevenue/monthRevenue (hors ventes completed/paid) : sans ce
+    // filtre, un tel retour soustrayait quand même son refundAmount — un
+    // montant jamais compté à l'origine — faussant le CA affiché à la baisse.
+    const completedSaleIds = new Set(sales.filter(s => ['completed', 'paid'].includes(s.status)).map(s => s.id));
+    const countedReturns = allReturns.filter(r => r.status === 'approved' && completedSaleIds.has(r.saleId));
+    const todayReturns = countedReturns.filter(r => new Date(r.date).getTime() >= startOfDay);
+    const monthReturns = countedReturns.filter(r => new Date(r.date).getTime() >= startOfMonth);
 
     const todayRevenue = todaySales.reduce((a, s) => a + s.total, 0) - todayReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
     const monthRevenue = monthSales.reduce((a, s) => a + s.total, 0) - monthReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
@@ -71,7 +79,18 @@ async function _refreshDashboard(container) {
     // Margin
     const monthItems = saleItems.filter(si => monthSales.some(s => s.id === si.saleId));
     const monthCOGS = monthItems.reduce((a, si) => a + (si.purchasePrice || 0) * si.quantity, 0);
-    const monthGrossProfit = monthRevenue - monthCOGS;
+    // Fiabilisation — coût des articles retournés ce mois-ci : sans cette
+    // soustraction, le coût de la marchandise revenue en stock restait
+    // compté comme si elle avait été vendue, sous-évaluant systématiquement
+    // la marge affichée dès qu'il y a des retours (même correctif que
+    // metrics.js — refundsCOGS).
+    const monthReturnsCOGS = monthReturns.reduce((a, r) => {
+      return a + (r.items || []).reduce((acc, ri) => {
+        const si = saleItems.find(s => s.id === ri.saleItemId);
+        return acc + (si?.purchasePrice || 0) * (ri.quantity || 0);
+      }, 0);
+    }, 0);
+    const monthGrossProfit = monthRevenue - (monthCOGS - monthReturnsCOGS);
     const marginPct = monthRevenue > 0 ? (monthGrossProfit / monthRevenue * 100).toFixed(1) : 0;
 
     // Stock alerts — Map indexé pour éviter un O(n²) sur 100k produits
@@ -96,9 +115,9 @@ async function _refreshDashboard(container) {
         return t >= dayStart && t < dayEnd && ['completed', 'paid'].includes(s.status);
       }).reduce((a, s) => a + s.total, 0);
 
-      const dayReturns = allReturns.filter(r => {
+      const dayReturns = countedReturns.filter(r => {
         const t = new Date(r.date).getTime();
-        return t >= dayStart && t < dayEnd && r.status === 'approved';
+        return t >= dayStart && t < dayEnd;
       }).reduce((a, r) => a + (r.refundAmount || 0), 0);
 
       last15.push(daySales - dayReturns);

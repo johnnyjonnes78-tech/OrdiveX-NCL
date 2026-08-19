@@ -109,12 +109,20 @@ async function renderMetrics(container) {
         });
     }
 
-    const approvedReturns = filteredReturns.filter(r => r.status === 'approved');
-    const totalRefunds = approvedReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
     const completedSales = filteredSales.filter(s => ['completed', 'paid'].includes(s.status));
-    
+    const completedSaleIds = new Set(completedSales.map(s => s.id));
+    // Fiabilisation — un retour peut légalement être traité sur une vente
+    // encore en attente (crédit/assurance non réglée, returns.js ne
+    // l'interdit pas) : sale.total/COGS de CETTE vente ne sont jamais
+    // ajoutés à totalRevenue/rawCOGS ci-dessous (hors complétées). Sans ce
+    // filtre, un tel retour soustrayait quand même son refundAmount/coût —
+    // un montant jamais compté à l'origine — faussant artificiellement à la
+    // baisse le CA affiché et à la hausse la marge affichée pour la période.
+    const approvedReturns = filteredReturns.filter(r => r.status === 'approved' && completedSaleIds.has(r.saleId));
+    const totalRefunds = approvedReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+
     window._metricsExportData = completedSales; // Pour l'export CSV
-    
+
     const totalRevenue = completedSales.reduce((a, s) => a + (s.total || 0), 0) - totalRefunds;
     const totalTransactions = completedSales.length;
     const avgBasket = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
@@ -186,8 +194,7 @@ async function renderMetrics(container) {
     const potentialProfit = totalStockSellValue - totalStockValue;
 
     // ── Marges & COGS ──
-    const filteredSaleIds = new Set(completedSales.map(s => s.id));
-    const filteredSaleItems = saleItems.filter(si => filteredSaleIds.has(si.saleId));
+    const filteredSaleItems = saleItems.filter(si => completedSaleIds.has(si.saleId));
 
     const rawCOGS = filteredSaleItems.reduce((a, si) => a + (si.purchasePrice || 0) * (si.quantity || 0), 0);
     const refundsCOGS = approvedReturns.reduce((a, r) => {
