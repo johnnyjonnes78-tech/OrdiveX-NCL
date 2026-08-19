@@ -1,6 +1,6 @@
 /**
  * OrdiveX — diagnostic.js
- * Diagnostic du poste — Hardening Lot 6, etendu Fiabilisation Lot 9
+ * Diagnostic du poste — Hardening Lot 6, etendu Fiabilisation Lots 9-10
  *
  * Page reservee aux administrateurs, verrouillee sur le role (pas sur une
  * permission delegable via les Parametres — un diagnostic technique donne
@@ -35,7 +35,7 @@ async function renderDiagnostic(container) {
 async function _diagRenderAll(container) {
   const t0 = performance.now();
 
-  const [supabaseCheck, storage, storeCounts, pending, failed, serverVersion, swStatus, swVersion] = await Promise.all([
+  const [supabaseCheck, storage, storeCounts, pending, failed, serverVersion, swStatus, swVersion, salesProblems] = await Promise.all([
     _diagCheckSupabase(),
     (DB.checkStorageHealth ? DB.checkStorageHealth() : Promise.resolve({ available: false })),
     _diagStoreCounts(),
@@ -44,6 +44,7 @@ async function _diagRenderAll(container) {
     _diagCheckServerVersion(),
     _diagSwStatus(),
     _diagGetSwVersion(),
+    _diagSalesProblems(),
   ]);
 
   const missingTables = _diagSafeJSON(localStorage.getItem('pharma_missing_tables'));
@@ -62,7 +63,7 @@ async function _diagRenderAll(container) {
     appVersion: window.APP_VERSION || 'inconnue',        // version RÉELLEMENT EXÉCUTÉE par cette page (window.APP_VERSION, source unique — voir index.html)
     swVersion,                                            // version RAPPORTÉE PAR le Service Worker actif lui-même (peut différer transitoirement de appVersion pendant une mise à jour)
     serverVersion,                                        // dernière version DISPONIBLE sur le serveur (fetch live de version.json, jamais depuis un cache)
-    supabaseCheck, storage, storeCounts, pending, failed,
+    supabaseCheck, storage, storeCounts, pending, failed, salesProblems,
     swStatus, missingTables, badColumns, idbOperational, browser,
     nmState: nm ? nm.state : 'indisponible',
     nmLastSuccessTime: nm ? nm.lastSuccessTime : 0,
@@ -109,6 +110,41 @@ async function _diagStoreCounts() {
     }
   }));
   return results;
+}
+
+// Fiabilisation post-hardening (Lot 10, Objectif 4) : remonte les ventes
+// méritant une investigation — fantômes (Lot 1, DB.detectOrphanSales, lecture
+// seule) et non synchronisées depuis un délai anormal (champ _synced réel,
+// même source que UI.syncBadge — Lot 7). N'affirme JAMAIS qu'une vente
+// précise a échoué à synchroniser : la file (OperationQueue) ne trace les
+// échecs qu'au niveau du STORE entier, pas par enregistrement — on le
+// signale honnêtement via storeSyncFailing plutôt que d'inventer une
+// causalité qu'on ne peut pas prouver au niveau de chaque vente.
+const SALE_STALE_UNSYNCED_MS = 30 * 60 * 1000; // 30 min : au-delà, ce n'est plus une latence normale de sync
+async function _diagSalesProblems() {
+  try {
+    const [orphans, sales, failedOps] = await Promise.all([
+      (DB.detectOrphanSales ? DB.detectOrphanSales().catch(() => []) : Promise.resolve([])),
+      DB.dbGetAll('sales').catch(() => []),
+      (window.OperationQueue ? window.OperationQueue.getFailed().catch(() => []) : Promise.resolve([])),
+    ]);
+    const now = Date.now();
+    const orphanIds = new Set(orphans.map(s => s.id));
+    const staleUnsynced = sales.filter(s => {
+      if (orphanIds.has(s.id)) return false; // déjà couvert par "fantôme", éviter le doublon
+      if (s._synced !== false) return false;
+      const createdAt = s._createdAt || Date.parse(s.date) || 0;
+      return (now - createdAt) > SALE_STALE_UNSYNCED_MS;
+    });
+    const storeSyncFailing = failedOps.some(op => op.payload && op.payload.store === 'sales');
+    const items = [
+      ...orphans.map(s => ({ id: s.id, date: s.date, total: s.total, kind: 'orphan' })),
+      ...staleUnsynced.map(s => ({ id: s.id, date: s.date, total: s.total, kind: 'stale_unsynced' })),
+    ].sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+    return { items, storeSyncFailing };
+  } catch (e) {
+    return { items: [], storeSyncFailing: false, error: e && e.message ? e.message : String(e) };
+  }
 }
 
 // Fiabilisation post-hardening (Lot 9) : lecture LIVE de version.json,
@@ -261,17 +297,22 @@ function _diagRenderHTML(s) {
   const swWaiting = !!s.swStatus.waiting;
   const idbProblem = !s.idbOperational;
 
+  const salesOrphanCount = s.salesProblems.items.filter(i => i.kind === 'orphan').length;
+  const salesStaleCount = s.salesProblems.items.filter(i => i.kind === 'stale_unsynced').length;
+
   const critical = [];
   const warnings = [];
   if (s.failed.length > 0) critical.push(s.failed.length + ' opération(s) en échec définitif');
   if (serverDown) critical.push('Serveur inaccessible');
   if (idbProblem) critical.push('Base locale — erreur détectée');
   if (!schemaOk) critical.push('Schéma serveur non conforme');
+  if (salesOrphanCount > 0) critical.push(salesOrphanCount + ' vente(s) fantôme(s) détectée(s)');
   if (isOffline) warnings.push('Poste hors ligne');
   if (versionOutdated) warnings.push('Nouvelle version disponible');
   if (s.pending.length > 0) warnings.push(s.pending.length + ' opération(s) en attente');
   if (storageAlmostFull) warnings.push('Stockage local presque plein');
   if (swWaiting) warnings.push('Mise à jour prête à appliquer');
+  if (salesStaleCount > 0) warnings.push(salesStaleCount + ' vente(s) non synchronisée(s) depuis longtemps');
 
   const globalStatus = critical.length > 0 ? { dot: '🔴', label: critical.length + ' problème(s) détecté(s)' }
     : warnings.length > 0 ? { dot: '🟡', label: warnings.length + ' avertissement(s)' }
@@ -285,6 +326,7 @@ function _diagRenderHTML(s) {
   // — n'utiliser QUE des guillemets simples à l'intérieur, jamais de
   // guillemets doubles échappés (ils casseraient l'attribut HTML).
   const actions = [];
+  if (salesOrphanCount > 0) actions.push({ label: salesOrphanCount + ' vente(s) fantôme(s)', action: 'Voir les ventes', onclick: "document.getElementById('diag-sales-problems')?.scrollIntoView({behavior:'smooth'})" });
   if (s.failed.length > 0) actions.push({ label: s.failed.length + ' synchronisation(s) en échec', action: 'Voir les opérations', onclick: "document.getElementById('diag-failed-ops')?.scrollIntoView({behavior:'smooth'})" });
   if (serverDown) actions.push({ label: 'Serveur inaccessible', action: 'Voir le détail', onclick: "document.getElementById('diag-server-card')?.scrollIntoView({behavior:'smooth'})" });
   if (!schemaOk) actions.push({ label: 'Schéma serveur non conforme', action: 'Réparer la synchro', onclick: "if (typeof repairSync === 'function') repairSync(); else UI.toast('Ouvrez Paramètres > Cloud', 'info')" });
@@ -396,6 +438,25 @@ function _diagRenderHTML(s) {
       </table>
     </div>
 
+    <div id="diag-sales-problems" class="card" style="padding:20px; margin-bottom:16px">
+      <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="shopping-bag" style="width:18px;height:18px"></i> Problèmes de ventes (${s.salesProblems.items.length})</h3>
+      ${s.salesProblems.error ? `<p style="color:var(--danger); margin:0">Vérification impossible : ${s.salesProblems.error}</p>` : s.salesProblems.items.length === 0 ? '<p style="color:var(--text-muted); margin:0">Aucune vente fantôme ni non synchronisée de manière anormale.</p>' : `
+        ${s.salesProblems.storeSyncFailing ? `<p style="font-size:0.8rem; color:var(--warning); margin:0 0 12px 0">⚠ La synchronisation du store « ventes » a échoué au moins une fois récemment — certaines des ventes en attente ci-dessous en sont probablement la cause, sans certitude au niveau de chaque vente individuelle.</p>` : ''}
+        <table class="data-table">
+          <thead><tr><th>Vente</th><th>Date</th><th>Montant</th><th>État</th><th></th></tr></thead>
+          <tbody>
+            ${s.salesProblems.items.map(it => `<tr>
+              <td><code class="code-tag">#${String(it.id).padStart(6, '0')}</code></td>
+              <td>${_diagFmtTime(Date.parse(it.date) || 0)}</td>
+              <td>${UI.formatCurrency(it.total || 0)}</td>
+              <td>${it.kind === 'orphan' ? _diagPill(false, 'Vente fantôme — sans articles liés') : _diagPill(null, 'Non synchronisée depuis longtemps')}</td>
+              <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:0.78rem" onclick="_diagOpenSale(${it.id})">Voir la vente</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      `}
+    </div>
+
     <div id="diag-failed-ops" class="card" style="padding:20px; margin-bottom:16px">
       <h3 style="margin:0 0 14px 0; font-size:1rem; display:flex; align-items:center; gap:8px"><i data-lucide="alert-triangle" style="width:18px;height:18px"></i> Opérations en échec définitif (${s.failed.length})</h3>
       ${s.failed.length === 0 ? '<p style="color:var(--text-muted); margin:0">Aucune — toutes les opérations ont fini par être synchronisées.</p>' : `
@@ -454,6 +515,24 @@ function lastIDBErrorHtml(err) {
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────
+
+// Fiabilisation post-hardening (Lot 10, Objectif 4) : réutilise le mécanisme
+// EXISTANT (viewSaleDetail, js/pages/sales.js) plutôt que d'inventer un
+// routage par URL/query string — OrdiveX est une SPA en mémoire sans
+// historique d'URL, un tel mécanisme n'existe nulle part ailleurs dans le
+// code. viewSaleDetail() récupère la vente directement par ID depuis
+// IndexedDB (pas depuis une liste filtrée/paginée) et ouvre un UI.modal()
+// attaché à document.body — indépendant du rendu de #app-content, donc pas
+// de condition de course avec le chargement de la page Ventes.
+function _diagOpenSale(saleId) {
+  Router.navigate('sales');
+  if (typeof viewSaleDetail === 'function') {
+    viewSaleDetail(saleId);
+  } else {
+    UI.toast('Impossible d\'ouvrir le détail de la vente #' + saleId, 'error', 4000);
+  }
+}
+window._diagOpenSale = _diagOpenSale;
 
 async function _diagRetryOp(id) {
   if (!window.OperationQueue) return;

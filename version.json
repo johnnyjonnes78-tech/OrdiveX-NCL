@@ -1,5 +1,5 @@
 {
-  "version": "9.10.8",
+  "version": "9.10.9",
   "date": "2026-08-19",
-  "changelog": "v9.10.8 : [Fiabilisation Lot 9] Le Diagnostic du Poste affiche desormais trois versions clairement distinctes (executee / rapportee par le Service Worker / disponible sur le serveur), un etat global en un coup d'oeil et des actions de recuperation adaptees a chaque probleme reellement detecte (jamais de suppression de donnees proposee en premier recours)."
+  "changelog": "v9.10.9 : [Fiabilisation Lot 10] Le Diagnostic du Poste signale desormais les ventes fantomes et les ventes non synchronisees depuis longtemps, avec un bouton \"Voir la vente\" qui ouvre directement le detail de la vente concernee dans l'historique des ventes."
 }
