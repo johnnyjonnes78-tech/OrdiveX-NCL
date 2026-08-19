@@ -60,6 +60,27 @@ const UI = {
     return `<span class="badge badge-success">${this.formatDate(dateStr)}</span>`;
   },
 
+  // Lot 7 hardening : badge d'état de synchronisation d'un enregistrement.
+  // Basé sur le champ _synced réel écrit par js/db.js (mis à false à la
+  // création/modification, remis à true UNIQUEMENT après confirmation
+  // d'un upsert Supabase réussi — voir _internalSyncToSupabase) : ce n'est
+  // pas un état recalculé/supposé, c'est la trace directe de la dernière
+  // tentative de synchronisation de CET enregistrement précis.
+  // failedStoreNames (Set optionnel, ex. depuis OperationQueue.getFailed())
+  // permet de distinguer "en attente" de "en échec" — sans lui, un
+  // enregistrement non synchronisé est toujours affiché "En attente" :
+  // ne jamais afficher "Échec" sans preuve réelle d'échec.
+  syncBadge(record, storeName, failedStoreNames) {
+    if (!record || record._synced === undefined) return ''; // enregistrement antérieur au suivi — aucun état fabriqué
+    if (record._synced === true) {
+      return '<span class="badge badge-success" title="Synchronisé avec le Cloud">Synchronisé</span>';
+    }
+    if (failedStoreNames && failedStoreNames.has && failedStoreNames.has(storeName)) {
+      return '<span class="badge badge-danger" title="La synchronisation de ce module échoue actuellement — voir Diagnostic du Poste">Échec sync</span>';
+    }
+    return '<span class="badge badge-warning" title="Enregistré localement, en attente d\'envoi au Cloud">En attente</span>';
+  },
+
   stockBadge(qty, minStock, product = null) {
     let displayStr = qty;
     if (product && product.allowUnitSale && product.unitsPerBox > 1) {

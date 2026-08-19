@@ -111,6 +111,17 @@ async function renderSales(container) {
 
   window._salesData = sorted;
   window._saleItemsData = saleItems;
+  // Lot 7 hardening : quels stores ont une opération de synchro en échec
+  // définitif MAINTENANT (pas une supposition) — sert au badge de sync par
+  // vente (UI.syncBadge). Best-effort : une erreur ici ne doit pas bloquer
+  // l'affichage des ventes, juste dégrader vers "En attente" au pire.
+  window._salesFailedStores = new Set();
+  if (window.OperationQueue) {
+    try {
+      const failedOps = await window.OperationQueue.getFailed();
+      failedOps.forEach(op => { if (op.payload && op.payload.store) window._salesFailedStores.add(op.payload.store); });
+    } catch (e) { /* best-effort */ }
+  }
   filterSales();
   if (window.lucide) lucide.createIcons();
 }
@@ -210,6 +221,7 @@ function renderSalesTable(data) {
         return `<span class="badge ${cls}">${label}</span>`;
       }
     },
+    { label: 'Sync', render: r => UI.syncBadge(r, 'sales', window._salesFailedStores) },
     {
       label: 'Actions', render: r => {
         const isPending = r.status === 'pending' && ['credit', 'assurance'].includes(r.paymentMethod);

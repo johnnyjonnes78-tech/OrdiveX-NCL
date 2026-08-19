@@ -1,5 +1,5 @@
 {
-  "version": "9.10.5",
+  "version": "9.10.6",
   "date": "2026-08-19",
-  "changelog": "v9.10.5 : [Hardening Lot 6] Nouvelle page \"Diagnostic du Poste\" (reservee aux administrateurs) : etat reel de la connexion Supabase et sa latence, conformite du schema, file de synchronisation en attente/en echec avec bouton de reessai, stockage local utilise, service worker, et erreurs recentes — pour diagnostiquer un poste sans devoir ouvrir la console technique."
+  "changelog": "v9.10.6 : [Hardening Lot 7] L'indicateur de synchronisation de la barre laterale affiche desormais l'heure de la derniere synchro reussie et distingue une vraie coupure reseau d'un serveur OrdiveX momentanement indisponible. Nouveau badge d'etat de synchronisation (Synchronise / En attente / Echec sync) sur l'historique des ventes."
 }

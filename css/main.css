@@ -389,6 +389,13 @@ a {
   background: var(--warning);
 }
 
+/* Lot 7 hardening : réseau réel OK mais Supabase en erreur serveur (état
+   NetworkManager DEGRADED) — distinct d'offline pour ne pas faire croire à
+   une coupure réseau alors que c'est le serveur qui est en cause. */
+.sync-dot.degraded {
+  background: var(--info);
+}
+
 .sync-text {
   color: rgba(255, 255, 255, 0.6);
 }
