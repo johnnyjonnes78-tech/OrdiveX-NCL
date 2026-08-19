@@ -2609,7 +2609,7 @@ async function _validerVenteLogic() {
     // propre vente au même instant — l'un écraserait l'autre côté Supabase
     // (upsert onConflict:'id'), silencieusement. sales est le store le plus
     // fréquemment écrit de toute l'app sur des postes multiples simultanés.
-    const saleId = DB._generateSyncSafeId();
+    const saleId = await DB._generateSyncSafeId();
     const saleData = {
       ...assurData,
       id: saleId,
@@ -2708,7 +2708,7 @@ async function _validerVenteLogic() {
         store: 'saleItems',
         type: 'add',
         data: {
-          id: DB._generateSyncSafeId(),
+          id: await DB._generateSyncSafeId(),
           saleId, productId: item.productId, productName: item.name,
           quantity: item.qty, unitPrice: item.unitPrice,
           purchasePrice: item.purchasePrice, total: item.total,
@@ -2738,7 +2738,7 @@ async function _validerVenteLogic() {
         store: 'movements',
         type: 'add',
         data: {
-          id: DB._generateSyncSafeId(),
+          id: await DB._generateSyncSafeId(),
           productId: item.productId, type: 'EXIT', subType: 'SALE',
           quantity: -deductQty, date: new Date().toISOString(),
           userId: DB.AppState.currentUser?.id,

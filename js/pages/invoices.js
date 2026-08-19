@@ -528,7 +528,7 @@ async function _submitInvoiceImpl(status) {
     // ID résistant aux collisions inter-appareils (voir audit factures) —
     // ignoré côté dbPut en cas d'édition (l'id existant est réappliqué juste
     // après), utilisé tel quel côté dbAdd pour une nouvelle facture.
-    id: DB._generateSyncSafeId(),
+    id: await DB._generateSyncSafeId(),
     invoiceNumber: formData.invoiceNumber,
     supplierId,
     supplierName: supplier ? supplier.name : 'Inconnu',
@@ -612,7 +612,7 @@ async function _submitInvoiceImpl(status) {
           store: 'movements',
           type: 'add',
           data: {
-            id: DB._generateSyncSafeId(),
+            id: await DB._generateSyncSafeId(),
             productId: item.productId,
             type: 'ENTRY',
             subType: 'PURCHASE',
@@ -804,7 +804,7 @@ async function validateInvoice(invoiceId) {
       } catch(e) {}
       
       await DB.dbAdd('movements', {
-        id: DB._generateSyncSafeId(),
+        id: await DB._generateSyncSafeId(),
         productId: item.productId,
         type: 'ENTRY',
         subType: 'PURCHASE',
@@ -1383,7 +1383,7 @@ async function _unvalidateInvoiceImpl(invoiceId) {
         store: 'movements',
         type: 'add',
         data: {
-          id: DB._generateSyncSafeId(),
+          id: await DB._generateSyncSafeId(),
           productId: item.productId,
           type: 'EXIT',
           subType: 'PURCHASE_CANCEL',

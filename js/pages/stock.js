@@ -397,7 +397,7 @@ window.submitTransferLot = async function(lotId, btn) {
 
     // Traçabilité mouvement
     await DB.dbAdd('movements', {
-      id: DB._generateSyncSafeId(),
+      id: await DB._generateSyncSafeId(),
       productId: lot.productId,
       type: 'TRANSFER',
       quantity: 0,
@@ -643,7 +643,7 @@ async function submitStockEntry() {
             if (existSup) supId = existSup.id;
           }
           await DB.dbAdd('invoices', {
-            id: DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
+            id: await DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
             invoiceNumber: invNum,
             supplierId: supId,
             supplierName: data.supplier || 'Inconnu (Saisie Libre)',
@@ -672,7 +672,7 @@ async function submitStockEntry() {
 
     // Movement
     await DB.dbAdd('movements', {
-      id: DB._generateSyncSafeId(),
+      id: await DB._generateSyncSafeId(),
       productId,
       type: 'ENTRY',
       subType: 'PURCHASE',
@@ -853,7 +853,7 @@ async function submitAdjustStock(productId, oldQty) {
 
     // Enregistrer le mouvement
     await DB.dbAdd('movements', {
-      id: DB._generateSyncSafeId(),
+      id: await DB._generateSyncSafeId(),
       productId: productId,
       type: diff > 0 ? 'ENTRY' : 'EXIT',
       subType: 'ADMIN_ADJUSTMENT',
@@ -1052,7 +1052,7 @@ window.importStockCsv = async function(event) {
               if (sup) supId = sup.id;
             }
             inv = {
-              id: DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
+              id: await DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
               invoiceNumber: invoiceNum,
               supplierId: supId,
               supplierName: supplierName || 'Import CSV',
@@ -1095,7 +1095,7 @@ window.importStockCsv = async function(event) {
 
         // 5. Mouvement
         await DB.dbAdd('movements', {
-          id: DB._generateSyncSafeId(),
+          id: await DB._generateSyncSafeId(),
           productId: prod.id,
           type: 'ENTRY',
           subType: 'PURCHASE',

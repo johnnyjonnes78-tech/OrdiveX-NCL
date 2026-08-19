@@ -1457,7 +1457,7 @@ async function _confirmReceiveOrderImpl(orderId) {
     }
 
     invoiceId = await DB.dbAdd('invoices', {
-      id: DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
+      id: await DB._generateSyncSafeId(), // évite les collisions d'id inter-appareils (voir audit factures)
       invoiceNumber: invoiceNum,
       supplierId: order.supplierId,
       supplierName: supplierName,
@@ -1543,7 +1543,7 @@ async function _confirmReceiveOrderImpl(orderId) {
         store: 'movements',
         type: 'add',
         data: {
-          id: DB._generateSyncSafeId(),
+          id: await DB._generateSyncSafeId(),
           productId: pid, type: 'ENTRY', subType: 'PURCHASE',
           quantity: qtyReceived, lotNumber, date: new Date().toISOString(),
           userId: DB.AppState.currentUser?.id, reference: order.orderNumber,
@@ -1995,7 +1995,7 @@ async function importOrdersFile(file) {
                 var existing = stockAll.find(function(s) { return s.productId === ri.productId; });
                 if (existing) { await DB.dbPut('stock', Object.assign({}, existing, { quantity: existing.quantity + qtyR })); }
                 else { await DB.dbAdd('stock', { productId: ri.productId, quantity: qtyR, reservedQuantity: 0 }); }
-                await DB.dbAdd('movements', { id: DB._generateSyncSafeId(), productId: ri.productId, type: 'ENTRY', subType: 'PURCHASE_IMPORT', quantity: qtyR, lotNumber: lotNum, date: new Date().toISOString(), userId: DB.AppState.currentUser ? DB.AppState.currentUser.id : null, reference: newOrder.orderNumber + ' (Import)' });
+                await DB.dbAdd('movements', { id: await DB._generateSyncSafeId(), productId: ri.productId, type: 'ENTRY', subType: 'PURCHASE_IMPORT', quantity: qtyR, lotNumber: lotNum, date: new Date().toISOString(), userId: DB.AppState.currentUser ? DB.AppState.currentUser.id : null, reference: newOrder.orderNumber + ' (Import)' });
                 stockUpdated++;
               } catch (se) { errors.push('Stock ' + ri.productName + ': ' + (se.message || se)); }
             }

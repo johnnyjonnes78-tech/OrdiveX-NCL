@@ -187,36 +187,113 @@ function _generateStableDeviceId() {
   return 'DEV_' + hash.toString(36).toUpperCase();
 }
 
-// ── Générateur d'ID résistant aux collisions inter-appareils ──
+// ── Générateur d'ID résistant aux collisions inter-appareils ET inter-onglets ──
+// (Lot 1, étendu Lot 4 hardening — F10, F11)
+//
 // Les stores IndexedDB utilisent un compteur autoIncrement LOCAL à chaque
 // appareil (voir createObjectStore plus bas). Deux appareils différents
 // peuvent donc générer le même id pour deux enregistrements différents ;
 // comme la synchro pousse via upsert(onConflict:'id'), l'un écrase
 // silencieusement l'autre côté serveur (cause racine confirmée sur les
 // factures — audit "AUDIT PRIORITAIRE" v9.9.x, ids dupliqués/manquants
-// constatés en production).
-// Utilisé pour les stores où une collision est jugée trop coûteuse à
-// laisser au hasard : id = timestamp_ms * 1000 + empreinte_appareil (0-999).
-// Reste un BIGINT compatible avec les colonnes existantes (pas de migration
-// de schéma), et ne collisionne jamais avec les anciens id séquentiels
-// (bien plus petits) — les enregistrements historiques restent intacts.
-var _lastSyncSafeId = 0;
-function _generateSyncSafeId() {
-  var devId = (typeof AppState !== 'undefined' && AppState.deviceId) || localStorage.getItem('pharma_device_id') || String(Math.random());
-  var h = 0;
-  for (var i = 0; i < devId.length; i++) {
-    h = (h * 31 + devId.charCodeAt(i)) >>> 0;
+// constatés en production). id = timestamp_ms * 1000 + empreinte_appareil
+// (0-999). Reste un BIGINT compatible avec les colonnes existantes (pas de
+// migration de schéma), et ne collisionne jamais avec les anciens id
+// séquentiels (bien plus petits) — les enregistrements historiques restent
+// intacts. Vérifié : 1.79e12(2026)*1000 ≈ 1.79e15, bien sous
+// Number.MAX_SAFE_INTEGER (9.007e15) et sous la limite BIGINT Postgres
+// (9.2e18) — marge valable jusqu'à l'an ~2255.
+//
+// Horloge système incorrecte (F11) : une horloge remise à l'epoch Unix
+// (pile CMOS morte — panne réelle et documentée sur du matériel de bureau
+// vieillissant) ferait remonter Date.now() près de 1970, produisant un id
+// proche des anciens id séquentiels historiques — collision réintroduite.
+// ID_EPOCH_FLOOR ancre le calcul à une date fixe post-déploiement : même
+// une horloge à zéro ne peut plus produire un id dans la zone historique.
+// Une horloge dans le FUTUR reste inoffensive (id juste "en avance", jamais
+// de collision) — limitation documentée, pas un risque de collision.
+const ID_EPOCH_FLOOR = 1735689600000; // 2025-01-01T00:00:00Z
+
+// Multi-onglets (F10) : le compteur anti-collision était une variable de
+// module — donc propre à CHAQUE ONGLET. Deux onglets du même appareil
+// partagent pourtant la même empreinte (même navigator.userAgent, même
+// écran, etc.) : deux ventes créées dans la même milliseconde sur 2 onglets
+// du même poste pouvaient collisionner sans qu'aucun des deux ne le sache.
+// Le compteur est donc désormais partagé via localStorage (synchrone,
+// commun à tous les onglets de la même origine), protégé par la Web Locks
+// API quand disponible pour une exclusion mutuelle réelle entre onglets.
+//
+// "Ne stocke jamais une information critique uniquement dans localStorage
+// si sa perte peut compromettre l'unicité" : localStorage n'est ici QUE
+// pour la coordination MULTI-ONGLETS — la protection contre l'auto-
+// collision reste portée par _memLastSyncSafeId (variable de module,
+// jamais perdue en cours de session) et par ID_EPOCH_FLOOR. Si localStorage
+// est vidé, corrompu ou totalement indisponible (mode privé strict, quota),
+// _safeLocalStorageGet/_safeLocalStorageSet échouent silencieusement sans
+// jamais lever d'exception : le générateur continue de fonctionner et de
+// garantir l'unicité PAR ONGLET (le seul mécanisme qui redevient
+// indisponible est la coordination ENTRE onglets — dégradation gracieuse,
+// jamais un crash, documenté explicitement ici plutôt que supposé).
+const _ID_STORAGE_KEY = 'pharma_last_sync_id';
+const _ID_LOCK_NAME = 'ordivex_id_gen';
+var _memLastSyncSafeId = 0;
+var _sessionFallbackDeviceId = null; // si ni AppState.deviceId ni localStorage ne sont disponibles
+
+function _safeLocalStorageGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function _safeLocalStorageSet(key, val) {
+  try { localStorage.setItem(key, val); } catch (e) { /* best effort — quota plein, mode prive, etc. */ }
+}
+function _deviceIdSuffixForId() {
+  var devId = (typeof AppState !== 'undefined' && AppState.deviceId) || _safeLocalStorageGet('pharma_device_id');
+  if (!devId) {
+    // Dernier repli : identifiant aléatoire figé pour la durée de l'onglet.
+    // Ne dégrade QUE la disambiguïsation entre appareils dans ce cas extrême
+    // (ni AppState ni localStorage disponibles) — l'unicité par onglet reste
+    // garantie par _memLastSyncSafeId quel que soit ce repli.
+    if (!_sessionFallbackDeviceId) _sessionFallbackDeviceId = 'NOLS_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    devId = _sessionFallbackDeviceId;
   }
-  var base = Date.now() * 1000 + (h % 1000);
-  // Strictement croissant PAR SESSION : garantit qu'aucun appel, même
-  // rapproché dans la même milliseconde sur le MÊME appareil (ex: import
-  // CSV en boucle créant plusieurs factures différentes), ne peut jamais
-  // reproduire un id déjà émis par cette session — quel que soit le rythme
-  // des appels. La disambiguïsation ENTRE appareils reste portée par
-  // l'empreinte (h % 1000) intégrée dans 'base'.
-  if (base <= _lastSyncSafeId) base = _lastSyncSafeId + 1;
-  _lastSyncSafeId = base;
-  return base;
+  var h = 0;
+  for (var i = 0; i < devId.length; i++) { h = (h * 31 + devId.charCodeAt(i)) >>> 0; }
+  return h % 1000;
+}
+
+function _computeNextSyncSafeId() {
+  var ts = Math.max(Date.now(), ID_EPOCH_FLOOR);
+  var base = ts * 1000 + _deviceIdSuffixForId();
+  var lastRaw = _safeLocalStorageGet(_ID_STORAGE_KEY);
+  var lastLS = lastRaw ? parseInt(lastRaw, 10) : 0;
+  if (!Number.isFinite(lastLS) || lastLS < 0) lastLS = 0; // valeur corrompue -> ignorée, jamais une exception
+  var last = Math.max(lastLS, _memLastSyncSafeId);
+  var id = base <= last ? last + 1 : base;
+  _memLastSyncSafeId = id; // toujours à jour, même si localStorage échoue juste après
+  _safeLocalStorageSet(_ID_STORAGE_KEY, String(id));
+  return id;
+}
+
+// Asynchrone : Web Locks (navigator.locks.request) n'a pas d'équivalent
+// synchrone — c'est une contrainte de la plateforme, pas un choix. Chaque
+// site d'appel se trouve déjà dans une fonction async (immédiatement suivi
+// d'un `await DB.dbAdd/dbPut/dbTransactionBulk`), donc `await
+// DB._generateSyncSafeId()` s'intègre sans changement d'architecture.
+async function _generateSyncSafeId() {
+  if (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function') {
+    try {
+      return await navigator.locks.request(_ID_LOCK_NAME, function () { return _computeNextSyncSafeId(); });
+    } catch (e) {
+      // Verrou refusé/indisponible (rare) : repli direct. L'unicité par
+      // onglet reste garantie (_memLastSyncSafeId) ; seule l'exclusion
+      // mutuelle STRICTE entre onglets pour la même milliseconde exacte
+      // redevient "best effort" via le partage localStorage seul.
+      return _computeNextSyncSafeId();
+    }
+  }
+  // Navigateur sans Web Locks API (ancien / non-Chromium) : le partage par
+  // localStorage reste actif, seule l'atomicité stricte n'est plus garantie
+  // — fenêtre de course résiduelle documentée ci-dessus, pas un crash.
+  return _computeNextSyncSafeId();
 }
 
 // ── Classification centralisée des erreurs IndexedDB (Lot 2 hardening — F28) ──
