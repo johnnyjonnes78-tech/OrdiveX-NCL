@@ -1,5 +1,5 @@
 {
-  "version": "9.10.11",
+  "version": "9.10.12",
   "date": "2026-08-19",
-  "changelog": "v9.10.11 : [Fiabilisation Lot 12] Le terme technique interne \"Supabase\" n'apparait plus dans l'interface destinee au personnel de pharmacie (Diagnostic, Parametres, messages de statut, assistant Naomie) — remplace par \"serveur\" ou \"Cloud\" selon le contexte."
+  "changelog": "v9.10.12 : Correction du bouton \"Recharger pour mettre a jour\" du Diagnostic du Poste, qui ne produisait visiblement aucun effet — il rechargeait la page sans forcer au prealable la verification du Service Worker, donc re-servait la meme version deja en cache. Le bouton declenche desormais une vraie verification de mise a jour."
 }

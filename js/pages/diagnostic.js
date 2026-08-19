@@ -330,7 +330,7 @@ function _diagRenderHTML(s) {
   if (s.failed.length > 0) actions.push({ label: s.failed.length + ' synchronisation(s) en échec', action: 'Voir les opérations', onclick: "document.getElementById('diag-failed-ops')?.scrollIntoView({behavior:'smooth'})" });
   if (serverDown) actions.push({ label: 'Serveur inaccessible', action: 'Voir le détail', onclick: "document.getElementById('diag-server-card')?.scrollIntoView({behavior:'smooth'})" });
   if (!schemaOk) actions.push({ label: 'Schéma serveur non conforme', action: 'Réparer la synchro', onclick: "if (typeof repairSync === 'function') repairSync(); else UI.toast('Ouvrez Paramètres > Cloud', 'info')" });
-  if (versionOutdated) actions.push({ label: 'Version v' + s.serverVersion.version + ' disponible', action: 'Recharger pour mettre à jour', onclick: 'window.location.reload()' });
+  if (versionOutdated) actions.push({ label: 'Version v' + s.serverVersion.version + ' disponible', action: 'Vérifier et mettre à jour', onclick: '_diagTriggerUpdate()' });
   if (swWaiting) actions.push({ label: 'Mise à jour déjà téléchargée', action: 'Appliquer la mise à jour', onclick: "if (typeof window._applyUpdate === 'function') window._applyUpdate()" });
   if (s.pending.length > 0) actions.push({ label: s.pending.length + ' opération(s) en attente', action: 'Synchroniser maintenant', onclick: "if (window.NM) window.NM.requestSync(true); UI.toast('Synchronisation lancée', 'info')" });
   if (storageAlmostFull) actions.push({ label: 'Stockage à ' + s.storage.percentUsed + '%', action: 'Voir le stockage', onclick: "document.getElementById('diag-storage-kpi')?.scrollIntoView({behavior:'smooth'})" });
@@ -533,6 +533,48 @@ function _diagOpenSale(saleId) {
   }
 }
 window._diagOpenSale = _diagOpenSale;
+
+// Correctif (signalé par l'utilisateur après le Lot 9) : le bouton "Recharger
+// pour mettre à jour" appelait un simple window.location.reload(). OrdiveX
+// est servi en cache-first par le Service Worker (sw.js) — un reload seul
+// ne fait que re-servir la MÊME page déjà en cache tant que le SW n'a pas
+// lui-même détecté, installé et activé la nouvelle version. version.json
+// peut annoncer une version plus récente AVANT que le SW ait fini son propre
+// cycle de mise à jour (déclenché par reg.update(), pas par ce bouton) — le
+// clic ne produisait donc visiblement rien. Corrigé en déclenchant
+// explicitement une vérification du Service Worker (reg.update()) plutôt
+// qu'un reload aveugle : self.skipWaiting() est inconditionnel (sw.js,
+// Lot 5) — si une mise à jour est trouvée, elle s'installe et s'active
+// automatiquement, ce qui déclenche controllerchange -> _reloadWhenSafe
+// (index.html) -> le vrai rechargement sûr, sans action supplémentaire.
+// S'il n'y a en réalité rien de nouveau à installer côté Service Worker
+// (ex. version.json déployé légèrement en avance sur sw.js — propagation
+// CDN), le message reste honnête plutôt que de prétendre à un succès qui
+// n'a pas eu lieu (règle absolue du hardening : pas de faux "succès").
+function _diagTriggerUpdate() {
+  if (!('serviceWorker' in navigator)) {
+    window.location.reload();
+    return;
+  }
+  UI.toast('Vérification de la mise à jour en cours…', 'info', 4000);
+  navigator.serviceWorker.getRegistration()
+    .then(function (reg) {
+      if (!reg) throw new Error('no_registration');
+      return reg.update();
+    })
+    .then(function () {
+      setTimeout(function () {
+        UI.toast('Si une nouvelle version a été trouvée, elle s\'installe et s\'appliquera automatiquement dans les prochaines secondes.', 'info', 7000);
+      }, 1200);
+    })
+    .catch(function () {
+      // Aucun Service Worker enregistré ou vérification impossible : le
+      // seul recours honnête reste un reload direct (repli, pas une
+      // affirmation de succès).
+      window.location.reload();
+    });
+}
+window._diagTriggerUpdate = _diagTriggerUpdate;
 
 async function _diagRetryOp(id) {
   if (!window.OperationQueue) return;
