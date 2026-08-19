@@ -7,10 +7,21 @@
 (function () {
   const NetworkState = {
     OFFLINE: 'OFFLINE',
+    // Réservé — jamais assigné à this.state aujourd'hui (audit F23). Ni
+    // supprimé ni "corrigé" artificiellement pour lui inventer un usage :
+    // aucune section du code actuel a une phase de connexion distincte de
+    // OFFLINE/RETRYING qui le justifierait. Laissé en place au cas où du
+    // code externe le référencerait déjà défensivement (aucune trouvée à
+    // l'audit), documenté pour qu'un futur lecteur ne le suppose pas actif.
     CONNECTING: 'CONNECTING',
     ONLINE: 'ONLINE',
     SYNCING: 'SYNCING',
-    RETRYING: 'RETRYING'
+    RETRYING: 'RETRYING',
+    // Réseau confirmé fonctionnel MAIS Supabase répond en erreur serveur
+    // (502/503) — distinct d'ONLINE (ne pas mentir sur un succès qui n'a
+    // pas eu lieu) et distinct d'OFFLINE/RETRYING (le réseau, lui, va bien ;
+    // pas de backoff long ni de coupure Supabase complète). Lot 3 hardening — F24.
+    DEGRADED: 'DEGRADED'
   };
 
   // ─── Mutex async (Exclusion Mutuelle) ───────────────────────────────────────
@@ -92,6 +103,7 @@
       this.lastError = '';
       this._retryTimer = null;
       this._reconnectAttempts = 0;
+      this._degradedAttempts = 0; // Compteur de backoff dédié à DEGRADED (F24) — séparé de _reconnectAttempts pour ne pas mélanger deux causes différentes (coupure réseau vs erreur serveur)
       this._probing = false; // Verrou anti-probes concurrents
       this._mutex = new Mutex();
       this._syncCoalescePending = false;
@@ -316,7 +328,8 @@
       this.lastCommunicationTime = Date.now();
       const wasProblematic = this.consecutiveFailures > 0 ||
         this.state === NetworkState.RETRYING ||
-        this.state === NetworkState.OFFLINE;
+        this.state === NetworkState.OFFLINE ||
+        this.state === NetworkState.DEGRADED;
 
       this.consecutiveFailures = 0;
       this._offlineLogged = false;
@@ -324,9 +337,10 @@
       if (wasProblematic) {
         this._logOnce('log', '[NM] ✅ Connectivité restaurée.');
         this._reconnectAttempts = 0;
+        this._degradedAttempts = 0;
       }
 
-      if (this.state === NetworkState.CONNECTING || this.state === NetworkState.RETRYING || this.state === NetworkState.OFFLINE) {
+      if (this.state === NetworkState.CONNECTING || this.state === NetworkState.RETRYING || this.state === NetworkState.OFFLINE || this.state === NetworkState.DEGRADED) {
         this.transition(NetworkState.ONLINE);
       }
     }
@@ -523,16 +537,32 @@
 
       setTimeout(() => {
         this._syncCoalescePending = false;
+        // Lot 3 hardening (F20) : navigator.onLine reste vérifié MÊME en
+        // mode manuel. Avant, `isManual` contournait entièrement cette
+        // garde (elle ne testait que `!isManual && !this.isOnline()`) :
+        // un clic "Synchroniser" pendant une vraie coupure lançait quand
+        // même la tentative, et comme getSupabaseClient() renvoie null
+        // sans lever d'exception si !navigator.onLine, _internalSyncToSupabase
+        // se terminait "normalement" — le code transitionnait alors vers
+        // ONLINE en croyant à un succès, alors que rien n'avait été vérifié.
+        // isManual continue de contourner les gardes internes au NM (état
+        // OFFLINE/RETRYING, coalescing) : lui seul doit être court-circuité,
+        // pas la réalité de la connexion.
+        if (!navigator.onLine) return;
         if (!isManual && !this.isOnline()) return;
 
         this._mutex.run(async () => {
           // Garde : si le NM a basculé offline pendant l'attente en file, ne rien lancer
+          if (!navigator.onLine) return;
           if (!isManual && !this.isOnline()) return;
           this.transition(NetworkState.SYNCING);
           try {
             if (window.OperationQueue?.process) await window.OperationQueue.process();
             if (window.DB?._internalSyncToSupabase) await window.DB._internalSyncToSupabase();
-            if (this.state === NetworkState.SYNCING) {
+            // Revalider la connectivité réelle avant d'affirmer ONLINE : une
+            // absence d'exception ne prouve pas qu'un échange a réellement
+            // eu lieu avec le serveur (cf. getSupabaseClient() ci-dessus).
+            if (this.state === NetworkState.SYNCING && navigator.onLine) {
               this.lastSuccessTime = Date.now();
               this.consecutiveFailures = 0;
               this.transition(NetworkState.ONLINE);
@@ -564,15 +594,19 @@
 
       setTimeout(() => {
         this._pullCoalescePending = false;
+        // Lot 3 hardening (F20) — même correctif que requestSync : ne jamais
+        // contourner la vérification de connectivité réelle, même en manuel.
+        if (!navigator.onLine) return;
         if (!isManual && !this.isOnline()) return;
 
         this._mutex.run(async () => {
           // Garde : si le NM a basculé offline pendant l'attente en file, ne rien lancer
+          if (!navigator.onLine) return;
           if (!isManual && !this.isOnline()) return;
           this.transition(NetworkState.SYNCING);
           try {
             if (window.DB?._internalPullFromSupabase) await window.DB._internalPullFromSupabase(isManual);
-            if (this.state === NetworkState.SYNCING) {
+            if (this.state === NetworkState.SYNCING && navigator.onLine) {
               this.lastSuccessTime = Date.now();
               this.consecutiveFailures = 0;
               this.transition(NetworkState.ONLINE);
@@ -590,6 +624,33 @@
       const errStr = err?.message || String(err || '');
       if (errStr === 'network_offline' || _isNetworkError(errStr)) {
         this._goOfflineFromNetworkError(errStr);
+      } else if (_isServerError(errStr)) {
+        // Lot 3 hardening (F24) : avant, une erreur serveur (502/503) tombait
+        // dans le cas générique ci-dessous — le code affichait ONLINE comme
+        // si la synchronisation avait réussi, alors qu'elle avait échoué.
+        // Le réseau va bien (c'est Supabase qui est temporairement en
+        // erreur) : DEGRADED plutôt qu'OFFLINE, avec un retry programmé
+        // (backoff dédié, plus court que celui des vraies coupures réseau —
+        // un 502/503 se résorbe généralement vite).
+        this._logOnce('warn', `[NM] ${label} — Supabase répond en erreur serveur (502/503), réseau fonctionnel.`);
+        // Message distinct d'"En ligne" (Objectif Connectivité) : le réseau
+        // fonctionne réellement, seul Supabase est momentanément en cause —
+        // navigator.onLine seul, ou même ONLINE côté NM, ne suffit pas à le
+        // dire. Une seule fois par épisode (pas à chaque retry en échec).
+        if (this.state !== NetworkState.DEGRADED && window.UI && typeof window.UI.toast === 'function') {
+          window.UI.toast('Connexion Internet disponible, mais serveur OrdiveX momentanément inaccessible.', 'warning', 6000);
+        }
+        this.transition(NetworkState.DEGRADED);
+        const delay = this._backoffDelays[Math.min(this._degradedAttempts, this._backoffDelays.length - 1)];
+        this._degradedAttempts++;
+        setTimeout(() => {
+          if (this.state !== NetworkState.DEGRADED) return; // état changé entretemps (reconnecté, ou passé offline)
+          // isManual=true : contourne la garde interne basée sur isOnline()
+          // (qui bloquerait puisqu'on est en DEGRADED, pas ONLINE/SYNCING) —
+          // reste protégé par la vérification navigator.onLine (F20 ci-dessus).
+          if (label === 'PUSH') this.requestSync(true);
+          else this.requestPull(true);
+        }, delay);
       } else {
         this._logOnce('warn', `[NM] Erreur ${label}: ${errStr.substring(0, 100)}`);
         if (this.state === NetworkState.SYNCING) {

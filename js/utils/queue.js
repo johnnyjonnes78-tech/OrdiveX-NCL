@@ -48,7 +48,8 @@ const OperationQueue = (function () {
     });
   }
 
-  // Lire toutes les operations en attente ou en erreur
+  // Lire toutes les operations en attente ou en erreur (PAS les 'failed' —
+  // celles-ci ont epuise leurs tentatives automatiques, voir getFailed()).
   async function getPending() {
     const db = await _getDB();
     return new Promise(function (resolve, reject) {
@@ -69,7 +70,57 @@ const OperationQueue = (function () {
     });
   }
 
-  // Mettre a jour le statut d une operation
+  // Lire les operations definitivement en echec (Lot 3 hardening — F22).
+  // Ces operations ne sont JAMAIS supprimees automatiquement : elles restent
+  // visibles (futur module Diagnostic, Lot 6) jusqu'a resolution explicite
+  // (retry manuel via retryFailed(), ou nettoyage manuel assume par un humain).
+  async function getFailed() {
+    const db = await _getDB();
+    return new Promise(function (resolve, reject) {
+      var results = [];
+      var tx = db.transaction([STORE_NAME], 'readonly');
+      var store = tx.objectStore(STORE_NAME);
+      var req = store.openCursor();
+      req.onsuccess = function (e) {
+        var cursor = e.target.result;
+        if (!cursor) { resolve(results); return; }
+        var op = cursor.value;
+        if (op.status === 'failed') results.push(op);
+        cursor.continue();
+      };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  // Remettre manuellement une operation 'failed' dans la file (Lot 3 — F22).
+  // Reinitialise le compteur de tentatives : un retry manuel merite un
+  // nouveau cycle complet de backoff, pas de repartir immediatement au max.
+  async function retryFailed(id) {
+    const db = await _getDB();
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction([STORE_NAME], 'readwrite');
+      var store = tx.objectStore(STORE_NAME);
+      var getReq = store.get(id);
+      getReq.onsuccess = function () {
+        var op = getReq.result;
+        if (!op || op.status !== 'failed') { resolve(false); return; }
+        op.status = 'pending';
+        op.retries = 0;
+        op.updatedAt = Date.now();
+        var putReq = store.put(op);
+        putReq.onsuccess = function () { resolve(true); };
+        putReq.onerror = function () { reject(putReq.error); };
+      };
+      getReq.onerror = function () { reject(getReq.error); };
+    });
+  }
+
+  // Mettre a jour le statut d une operation.
+  // Lot 3 hardening (F22) : une operation qui epuise ses tentatives passe
+  // desormais explicitement a 'failed' (etat terminal, jamais supprime
+  // automatiquement) au lieu de rester indefiniment en 'error' — un statut
+  // qui, avant, la rendait juste invisible de getPending() sans jamais
+  // rien signaler nulle part.
   async function updateStatus(id, status, error) {
     const db = await _getDB();
     return new Promise(function (resolve, reject) {
@@ -79,10 +130,18 @@ const OperationQueue = (function () {
       getReq.onsuccess = function () {
         var op = getReq.result;
         if (!op) { resolve(); return; }
-        op.status = status;
         op.updatedAt = Date.now();
         if (error) op.lastError = String(error);
-        if (status === 'error') op.retries = (op.retries || 0) + 1;
+        if (status === 'error') {
+          op.retries = (op.retries || 0) + 1;
+          op.status = op.retries >= MAX_RETRIES ? 'failed' : 'error';
+          if (op.status === 'failed') {
+            op.failedAt = Date.now();
+            console.error('[Queue] Operation definitivement en echec apres ' + op.retries + ' tentatives : ' + op.type + ' (' + op.id + ') — ' + (op.lastError || 'erreur inconnue'));
+          }
+        } else {
+          op.status = status;
+        }
         var putReq = store.put(op);
         putReq.onsuccess = function () { resolve(); };
         putReq.onerror = function () { reject(putReq.error); };
@@ -102,11 +161,20 @@ const OperationQueue = (function () {
         var cursor = e.target.result;
         if (!cursor) { resolve(); return; }
         var op = cursor.value;
-        // Supprimer les done (garder les 24h de securite) et les error definitives
+        // Supprimer UNIQUEMENT les operations reellement terminees avec
+        // succes, apres 24h de securite. Lot 3 hardening (F22) : les
+        // operations en echec definitif ('failed', ou d'anciens 'error'
+        // ayant deja epuise MAX_RETRIES avant ce correctif) ne sont PLUS
+        // JAMAIS supprimees automatiquement — elles sont migrees vers
+        // 'failed' si besoin (jamais effacees) pour rester visibles et
+        // retentables manuellement (retryFailed) via le futur Diagnostic.
         var isDone = op.status === 'done' && (Date.now() - op.updatedAt > 86400000);
-        var isDeadLetter = op.status === 'error' && op.retries >= MAX_RETRIES;
-        if (isDone || isDeadLetter) {
+        if (isDone) {
           cursor.delete();
+        } else if (op.status === 'error' && op.retries >= MAX_RETRIES) {
+          op.status = 'failed';
+          op.failedAt = op.failedAt || Date.now();
+          cursor.update(op);
         }
         cursor.continue();
       };
@@ -220,6 +288,8 @@ const OperationQueue = (function () {
   return {
     enqueue: enqueue,
     getPending: getPending,
+    getFailed: getFailed,
+    retryFailed: retryFailed,
     updateStatus: updateStatus,
     countPending: countPending,
     process: process,
