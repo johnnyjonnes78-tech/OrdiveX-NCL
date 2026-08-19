@@ -1,5 +1,5 @@
 {
-  "version": "9.9.14",
-  "date": "2026-08-11",
-  "changelog": "v9.9.14 : Correction urgente - le detecteur de table Supabase absente (v9.9.10) classait a tort les erreurs de colonne manquante (ex: invoices.subtotal/tvaAmount sur un schema pas a jour) comme table entiere absente, desactivant toute la synchro de la table concernee. Apres mise a jour, recliquer 'Reparer l'envoi Cloud' sur les postes concernes."
+  "version": "9.10.0",
+  "date": "2026-08-19",
+  "changelog": "v9.10.0 : [Hardening Lot 1] IDs resistants aux collisions inter-appareils etendus a sales/saleItems/movements (meme mecanisme deja valide sur invoices) - corrige la cause racine des ventes/mouvements perdus entre postes. Detection en lecture seule des ventes fantomes (vente enregistree sans mise a jour de stock associee suite a une coupure) avec alerte admin, sans reparation automatique."
 }
