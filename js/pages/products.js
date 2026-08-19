@@ -1747,7 +1747,7 @@ async function processImportCSV(content) {
     const health = await DB.checkStorageHealth();
     if (health.available && health.percentUsed !== null && health.percentUsed >= 90) {
       const proceed = await UI.confirm(
-        `⚠ Stockage local presque plein (${health.percentUsed}% utilisé, ${health.quotaMB - health.usageMB} Mo restants).\n\n` +
+        `⚠ Stockage local presque plein (${UI.formatPercent(health.percentUsed)} utilisé, ${health.quotaMB - health.usageMB} Mo restants).\n\n` +
         `L'import de ${lines.length - 1} produits peut échouer en cours de route. Continuer quand même ?`
       );
       if (!proceed) return;

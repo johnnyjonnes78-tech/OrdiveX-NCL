@@ -333,7 +333,7 @@ function _diagRenderHTML(s) {
   if (versionOutdated) actions.push({ label: 'Version v' + s.serverVersion.version + ' disponible', action: 'Vérifier et mettre à jour', onclick: '_diagTriggerUpdate()' });
   if (swWaiting) actions.push({ label: 'Mise à jour déjà téléchargée', action: 'Appliquer la mise à jour', onclick: "if (typeof window._applyUpdate === 'function') window._applyUpdate()" });
   if (s.pending.length > 0) actions.push({ label: s.pending.length + ' opération(s) en attente', action: 'Synchroniser maintenant', onclick: "if (window.NM) window.NM.requestSync(true); UI.toast('Synchronisation lancée', 'info')" });
-  if (storageAlmostFull) actions.push({ label: 'Stockage à ' + s.storage.percentUsed + '%', action: 'Voir le stockage', onclick: "document.getElementById('diag-storage-kpi')?.scrollIntoView({behavior:'smooth'})" });
+  if (storageAlmostFull) actions.push({ label: 'Stockage à ' + UI.formatPercent(s.storage.percentUsed), action: 'Voir le stockage', onclick: "document.getElementById('diag-storage-kpi')?.scrollIntoView({behavior:'smooth'})" });
 
   return `
     <div class="page-header">
@@ -395,7 +395,7 @@ function _diagRenderHTML(s) {
       <div id="diag-storage-kpi" class="kpi-card ${storageAlmostFull ? 'kpi-red kpi-alert' : 'kpi-blue'}">
         <div class="kpi-icon"><i data-lucide="hard-drive"></i></div>
         <div class="kpi-content">
-          <div class="kpi-value">${s.storage.available ? s.storage.percentUsed + '%' : 'Inconnu'}</div>
+          <div class="kpi-value">${s.storage.available ? UI.formatPercent(s.storage.percentUsed) : 'Inconnu'}</div>
           <div class="kpi-label">Stockage local utilisé</div>
           <div class="kpi-sub">${s.storage.available ? s.storage.usageMB + ' Mo / ' + s.storage.quotaMB + ' Mo' : 'Non supporté par ce navigateur'}</div>
         </div>

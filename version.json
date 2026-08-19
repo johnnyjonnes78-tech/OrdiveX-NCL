@@ -1,5 +1,5 @@
 {
-  "version": "9.10.15",
+  "version": "9.10.16",
   "date": "2026-08-19",
-  "changelog": "v9.10.15 : Le module Reapprovisionnement du Pilotage & Controle comptait les ventes annulees dans le calcul de consommation moyenne, recommandant parfois de racheter des produits qui n'avaient en realite jamais quitte la pharmacie (stock deja restaure par l'annulation). Corrige a l'ecran et dans l'export PDF/CSV."
+  "changelog": "v9.10.16 : Le pourcentage de \"Stockage local utilise\" du Diagnostic du Poste restait fige a 0% en permanence, meme apres des mois d'usage reel. Cause : l'arrondi a l'entier ecrasait toute valeur inferieure a 0.5% (frequent, le quota navigateur etant souvent tres superieur a l'usage reel de l'app). Le pourcentage affiche desormais 2 decimales en dessous de 1% pour rester visible."
 }

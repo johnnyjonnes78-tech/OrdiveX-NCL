@@ -14,6 +14,17 @@ const UI = {
     return `${formatted} ${this.getCurrency()}`;
   },
 
+  // Fiabilisation — un pourcentage arrondi à l'entier écrase toute valeur
+  // sous 0.5% à "0%" en permanence (ex: stockage local utilisé, souvent une
+  // fraction de pourcent d'un quota navigateur de plusieurs dizaines de Go).
+  // Sous 1%, on affiche 2 décimales pour que la progression réelle reste
+  // visible ; au-delà, un entier reste plus lisible et suffisant.
+  formatPercent(pct) {
+    if (pct === null || pct === undefined || !Number.isFinite(pct)) return '—';
+    if (pct > 0 && pct < 1) return pct.toFixed(2) + '%';
+    return Math.round(pct) + '%';
+  },
+
   normalizeText(str) {
     if (!str) return '';
     const trimmed = str.trim();

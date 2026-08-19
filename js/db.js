@@ -3364,7 +3364,16 @@ async function checkStorageHealth() {
       return { available: false, percentUsed: null, usageMB: null, quotaMB: null };
     }
     const { usage, quota } = await navigator.storage.estimate();
-    const percentUsed = quota > 0 ? Math.round((usage / quota) * 100) : null;
+    // Fiabilisation (signalé par l'utilisateur) : arrondir ici à l'entier
+    // faisait afficher "0%" en PERMANENCE, quelle que soit la croissance
+    // réelle des données. Sur desktop, navigator.storage.estimate() rapporte
+    // souvent un quota proche de l'espace disque libre (dizaines de Go) —
+    // même après des mois d'usage réel, un usage de quelques dizaines/
+    // centaines de Mo reste largement sous 0.5% du quota et
+    // Math.round(...) l'écrase systématiquement à 0. On garde ici la valeur
+    // PRÉCISE (non arrondie) ; c'est à l'affichage de décider la précision
+    // (voir UI.formatPercent, js/ui.js).
+    const percentUsed = quota > 0 ? (usage / quota) * 100 : null;
     return {
       available: true,
       percentUsed,

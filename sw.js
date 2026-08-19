@@ -3,7 +3,7 @@
  * Cache-first PWA strategy pour fonctionnement 100% offline
  */
 
-const CACHE_NAME = 'pharma-cache-v9.10.15';
+const CACHE_NAME = 'pharma-cache-v9.10.16';
 // Lot 5 hardening (F13) : dérivé de CACHE_NAME plutôt qu'une constante
 // séparée, pour ne pas ajouter un 3e endroit à synchroniser manuellement à
 // chaque version (déjà CACHE_NAME + index.html ?v= + version.json).
