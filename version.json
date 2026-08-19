@@ -1,5 +1,5 @@
 {
-  "version": "9.10.2",
+  "version": "9.10.3",
   "date": "2026-08-19",
-  "changelog": "v9.10.2 : [Hardening Lot 3] Corrige un faux 'En ligne' possible en cliquant Synchroniser pendant une vraie coupure reseau. Nouveau statut 'serveur momentanement inaccessible' distinct de 'hors ligne' quand Supabase repond en erreur (reseau fonctionnel). Les operations de synchro qui echouent definitivement restent visibles et peuvent etre relancees manuellement au lieu de disparaitre silencieusement."
+  "changelog": "v9.10.3 : [Hardening Lot 4] Generation d'identifiants desormais coordonnee entre plusieurs onglets OrdiveX ouverts sur le meme poste (Web Locks), et protegee contre une horloge systeme incorrecte (pile CMOS morte) qui aurait pu recreer une collision avec d'anciennes donnees."
 }
