@@ -340,6 +340,7 @@ const Auth = {
     { key: 'patients_credit_limit',    label: 'Modifier le plafond de crédit patient',        cat: 'patients' },
     { key: 'patients_debt_settle',     label: 'Encaisser le remboursement d\'une dette',      cat: 'patients' },
     { key: 'patients_debt_print',      label: 'Imprimer les relevés de dettes clients',       cat: 'patients' },
+    { key: 'patients_export',          label: 'Exporter la liste des patients (PDF/CSV)',     cat: 'patients' },
     { key: 'claims_view',              label: 'Consulter le module des créances mutuelles',   cat: 'patients' },
     { key: 'claims_export',            label: 'Exporter les récapitulatifs des créances',     cat: 'patients' },
 

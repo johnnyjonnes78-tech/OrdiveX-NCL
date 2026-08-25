@@ -1145,6 +1145,7 @@ function refreshGrid() {
         ${!rupt && p.allowUnitSale && p.subUnitsPerBox > 1 ? `<button class="btn btn-xs btn-secondary" style="flex:1;min-width:28%;padding:3px 4px;font-size:10px" onclick="event.stopPropagation(); addToCart(${p.id}, 'subunit')"><i data-lucide="layout-grid" style="width:11px;height:11px"></i> Plaq.</button>` : ''}
         ${!rupt && p.allowUnitSale ? `<button class="btn btn-xs btn-secondary" style="flex:1;min-width:28%;padding:3px 4px;font-size:10px" onclick="event.stopPropagation(); addToCart(${p.id}, 'unit')"><i data-lucide="pill" style="width:11px;height:11px"></i> Unité</button>` : ''}
         <button class="btn btn-xs btn-ghost" style="min-width:26px;padding:3px;color:var(--info);border:1px solid var(--border)" onclick="event.stopPropagation(); showProductNotice(${p.id})" title="Notice"><i data-lucide="info" style="width:11px;height:11px"></i></button>
+        <button class="btn btn-xs btn-ghost" style="min-width:26px;padding:3px;color:var(--warning);border:1px solid var(--border)" onclick="event.stopPropagation(); reportStockIssue(${p.id})" title="Signaler un problème de stock"><i data-lucide="flag" style="width:11px;height:11px"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -3712,6 +3713,62 @@ async function showProductNotice(productId) {
   if (window.lucide) lucide.createIcons();
 }
 window.showProductNotice = showProductNotice;
+
+// ── Signalement d'un problème de stock (accessible à TOUS les rôles,
+// y compris Caissier — aucun mécanisme n'existait pour qu'un caissier
+// remonte une incohérence de stock constatée, hors signalement oral) ──
+async function reportStockIssue(productId) {
+  const p = posProductsCache.get(productId) || posProducts.find(x => x.id === productId);
+  if (!p) return;
+
+  UI.modal(`<i data-lucide="flag" class="modal-icon-inline"></i> Signaler un problème — ${p.name}`, `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <p style="font-size:13px;color:var(--text-muted);margin:0">Décrivez ce que vous avez constaté (stock affiché incorrect, produit introuvable en rayon, etc.). Un responsable sera notifié dans le module Alertes.</p>
+      <div class="form-group" style="margin:0">
+        <label style="font-size:12px">Qu'avez-vous constaté ? *</label>
+        <textarea id="stock-report-message" class="form-control" rows="3" placeholder="Ex : le stock affiché ne correspond pas à ce qu'il y a en rayon..." maxlength="300"></textarea>
+      </div>
+    </div>
+  `, {
+    size: 'medium',
+    footer: `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitStockIssueReport(${productId})"><i data-lucide="send"></i> Envoyer le signalement</button>
+    `
+  });
+  if (window.lucide) lucide.createIcons();
+  setTimeout(() => document.getElementById('stock-report-message')?.focus(), 100);
+}
+window.reportStockIssue = reportStockIssue;
+
+async function submitStockIssueReport(productId) {
+  const textarea = document.getElementById('stock-report-message');
+  const message = (textarea?.value || '').trim();
+  if (!message) {
+    UI.toast('Veuillez décrire ce que vous avez constaté.', 'warning');
+    return;
+  }
+  const p = posProductsCache.get(productId) || posProducts.find(x => x.id === productId);
+  const productName = p?.name || ('Produit #' + productId);
+  try {
+    await DB.dbAdd('alerts', {
+      type: 'STOCK_REPORT',
+      productId,
+      productName,
+      message: `Signalement stock — ${productName} : ${message}`,
+      status: 'unread',
+      date: Date.now(),
+      priority: 'medium',
+      reportedBy: DB.AppState.currentUser?.name || 'Utilisateur',
+    });
+    UI.closeModal();
+    UI.toast('Signalement envoyé — un responsable pourra le consulter dans les Alertes.', 'success', 5000);
+  } catch (e) {
+    console.error('[POS] Erreur signalement stock:', e);
+    UI.toast("Impossible d'envoyer le signalement. Réessayez.", 'error');
+  }
+}
+window.submitStockIssueReport = submitStockIssueReport;
 
 // ═══════════════════════════════════════════════════════════════════
 // MOBILE — Navigation 3 vues (Produits | Panier | Menu)

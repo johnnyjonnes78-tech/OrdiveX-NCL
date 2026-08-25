@@ -23,6 +23,7 @@ const AlertsPage = {
     CAISSE_REMINDER:    { icon: 'banknote',       label: 'Rappel caisse',       color: '#4A9FD9', cls: 'badge-info' },
     NON_CONFORMITY:     { icon: 'shield-alert',   label: 'Non-conformité',      color: '#D63B3B', cls: 'badge-danger' },
     PHARMACOVIGILANCE:  { icon: 'microscope',     label: 'Pharmacovigilance',   color: '#8B5CF6', cls: 'badge-purple' },
+    STOCK_REPORT:       { icon: 'flag',           label: 'Signalement stock',   color: '#4A9FD9', cls: 'badge-info' },
   },
 
   priorityMap: {
