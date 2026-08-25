@@ -30,11 +30,28 @@ async function renderStock(container) {
   // actifs/bloqués), hasAnyLotSet sert à savoir si le POS traite ce produit
   // comme "à lots" pour la vente (donc non filtré).
   const hasAnyLotSet = new Set();
+  // Correctif (signalé — "Réparer tout" répond "déjà correct" sur des
+  // produits que la carte affiche comme incohérents) : lotsMap ci-dessus
+  // inclut DÉLIBÉRÉMENT les lots 'blocked' (expirés non détruits) — utile
+  // pour qtyRayon/qtyReserve, la quantité physique réellement présente
+  // affichée dans le tableau. Mais la détection d'incohérence doit
+  // correspondre EXACTEMENT à ce que le POS utilise pour décider si une
+  // vente est possible (addToCart, pos.js), qui ne compte QUE les lots
+  // 'active' (jamais 'blocked' — un lot expiré n'est pas vendable). Sans
+  // cette distinction, un produit avec du stock expiré non détruit pouvait
+  // être signalé "incohérent" par la carte alors que ses lots actifs
+  // couvraient déjà parfaitement le total affiché — et "Réparer tout"
+  // (qui, lui, compte juste comme le POS) le trouvait à raison déjà
+  // correct. Les deux utilisent maintenant la MÊME base de calcul.
+  const activeLotSumMap = {};
   lots.forEach(l => {
     hasAnyLotSet.add(l.productId);
     if (l.status === 'active' || l.status === 'blocked') {
       if (!lotsMap[l.productId]) lotsMap[l.productId] = [];
       lotsMap[l.productId].push(l);
+    }
+    if (l.status === 'active') {
+      activeLotSumMap[l.productId] = (activeLotSumMap[l.productId] || 0) + (l.quantity || 0);
     }
   });
 
@@ -47,17 +64,20 @@ async function renderStock(container) {
     });
     const minVal = (p.minStock !== undefined && p.minStock !== null && p.minStock !== '') ? parseInt(p.minStock, 10) : defaultThreshold;
     const currentStock = stockMap[p.id]?.quantity || 0;
+    const activeLotSum = activeLotSumMap[p.id] || 0;
     // Détection de cohérence stock<->lots (signalé par un client — un produit
     // "à lots" (au moins un lot a existé un jour, MÊME détruit/expiré — voir
     // hasAnyLotSet ci-dessus, pour matcher exactement isLotTracked du POS)
-    // dont le total affiché ne correspond à aucun lot réel DISPONIBLE bloque
-    // la vente au POS avec un message "Stock incohérent". Cause connue et
-    // corrigée pour les nouveaux cas (import CSV, v9.10.19) mais ne répare
-    // pas rétroactivement les produits déjà affectés avant ce correctif.
-    // Lecture seule ici — aucune correction automatique de donnée métier
-    // ambiguë (voir "Ajuster le Stock", seul chemin de correction, avec
-    // confirmation humaine du chiffre réel).
-    const stockMismatch = hasAnyLotSet.has(p.id) && (qtyRayon + qtyReserve) !== currentStock;
+    // dont le total affiché ne correspond à aucun lot ACTIF réel bloque
+    // la vente au POS avec un message "Stock incohérent". Basé sur les
+    // lots ACTIFS uniquement (activeLotSum), pas qtyRayon+qtyReserve
+    // (qui inclut les lots bloqués/expirés) — voir commentaire ci-dessus.
+    // Cause connue et corrigée pour les nouveaux cas (import CSV, v9.10.19)
+    // mais ne répare pas rétroactivement les produits déjà affectés avant
+    // ce correctif. Lecture seule ici — aucune correction automatique de
+    // donnée métier ambiguë (voir "Ajuster le Stock", seul chemin de
+    // correction, avec confirmation humaine du chiffre réel).
+    const stockMismatch = hasAnyLotSet.has(p.id) && activeLotSum !== currentStock;
     return {
       ...p,
       currentStock,
@@ -67,7 +87,7 @@ async function renderStock(container) {
       qtyReserve,
       minStock: minVal,
       stockMismatch,
-      lotSum: qtyRayon + qtyReserve,
+      lotSum: activeLotSum,
     };
   });
   const mismatchCount = stockData.filter(p => p.stockMismatch).length;

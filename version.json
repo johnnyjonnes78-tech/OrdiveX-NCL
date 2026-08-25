@@ -1,5 +1,5 @@
 {
-  "version": "9.10.24",
-  "date": "2026-08-19",
-  "changelog": "v9.10.24 : Corrige l'instabilite du bouton \"Reparer tout\" (Gestion des Stocks) sur de gros volumes - le calcul se basait parfois sur des donnees perimees. Il relit desormais l'etat reel juste avant chaque correction et ignore les produits deja corrects (plus de double correction). Toutes les cartes statistiques du module Stock sont maintenant cliquables pour filtrer, pas seulement celle des incoherences."
+  "version": "9.10.25",
+  "date": "2026-08-25",
+  "changelog": "v9.10.25 : Corrige un desaccord entre l'affichage \"Incoherences\" (Gestion des Stocks) et le bouton \"Reparer tout\" - un produit avec un lot perime non encore detruit pouvait etre compte comme incoherent a l'affichage alors que la reparation le trouvait deja correct (message \"0 repare, X deja corrects\" malgre X incoherences affichees). Les deux se basent desormais exactement sur la meme regle (lots actifs uniquement, comme au point de vente), sans toucher a l'affichage Rayon/Reserve du tableau qui continue d'inclure le stock perime non detruit."
 }
