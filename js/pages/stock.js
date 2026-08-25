@@ -100,11 +100,11 @@ async function renderStock(container) {
     </div>
 
     <div class="stats-bar">
-      <div class="stat-chip stat-blue"><span class="stat-val">${totalProducts}</span><span class="stat-label">Produits</span></div>
-      <div class="stat-chip stat-green"><span class="stat-val">${inStock}</span><span class="stat-label">En Stock</span></div>
-      <div class="stat-chip stat-orange"><span class="stat-val">${lowStock}</span><span class="stat-label">Stock Bas</span></div>
-      <div class="stat-chip stat-red"><span class="stat-val">${ruptures}</span><span class="stat-label">Ruptures</span></div>
-      <div class="stat-chip stat-purple"><span class="stat-val">${alertExpiry}</span><span class="stat-label">Exp. < 90j</span></div>
+      <div class="stat-chip stat-blue" style="cursor:pointer" title="Tous les produits — clic pour retirer les filtres" onclick="resetStockFilters()"><span class="stat-val">${totalProducts}</span><span class="stat-label">Produits</span></div>
+      <div class="stat-chip stat-green" style="cursor:pointer" title="Produits avec du stock — clic pour filtrer" onclick="document.getElementById('stock-filter-status').value='instock';filterStock()"><span class="stat-val">${inStock}</span><span class="stat-label">En Stock</span></div>
+      <div class="stat-chip stat-orange" style="cursor:pointer" title="Stock bas — clic pour filtrer" onclick="document.getElementById('stock-filter-status').value='low';filterStock()"><span class="stat-val">${lowStock}</span><span class="stat-label">Stock Bas</span></div>
+      <div class="stat-chip stat-red" style="cursor:pointer" title="Ruptures — clic pour filtrer" onclick="document.getElementById('stock-filter-status').value='rupture';filterStock()"><span class="stat-val">${ruptures}</span><span class="stat-label">Ruptures</span></div>
+      <div class="stat-chip stat-purple" style="cursor:pointer" title="Expiration proche (<90j) — clic pour filtrer" onclick="document.getElementById('stock-filter-status').value='expiry';filterStock()"><span class="stat-val">${alertExpiry}</span><span class="stat-label">Exp. < 90j</span></div>
       ${mismatchCount > 0 ? `<div class="stat-chip stat-red" style="cursor:pointer" title="Le total affiché ne correspond à aucun lot réel — clic pour filtrer" onclick="document.getElementById('stock-filter-status').value='mismatch';filterStock()"><span class="stat-val">${mismatchCount}</span><span class="stat-label">⚠ Incohérences</span></div>` : ''}
     </div>
 
@@ -113,6 +113,7 @@ async function renderStock(container) {
       <input type="text" id="stock-search" placeholder="Chercher un produit..." class="filter-input" oninput="filterStock()">
       <select id="stock-filter-status" class="filter-select" onchange="filterStock()">
         <option value="">Tous les états</option>
+        <option value="instock">En stock (tout niveau)</option>
         <option value="ok">En stock normal</option>
         <option value="low">Stock bas</option>
         <option value="rupture">Rupture</option>
@@ -198,6 +199,7 @@ function filterStock() {
   if (status === 'rupture') data = data.filter(p => p.currentStock === 0);
   else if (status === 'low') data = data.filter(p => p.currentStock > 0 && p.currentStock <= p.minStock);
   else if (status === 'ok') data = data.filter(p => p.currentStock > p.minStock);
+  else if (status === 'instock') data = data.filter(p => p.currentStock > 0);
   else if (status === 'mismatch') data = data.filter(p => p.stockMismatch);
   else if (status === 'expiry') {
     data = data.filter(p => {
@@ -227,6 +229,23 @@ function filterStock() {
 
   renderStockTable(data);
 }
+
+// Réinitialise tous les filtres de la page Stock (clic sur la puce
+// "Produits") — remet la vue sur le catalogue complet.
+function resetStockFilters() {
+  const searchEl = document.getElementById('stock-search');
+  const statusEl = document.getElementById('stock-filter-status');
+  const locationEl = document.getElementById('stock-filter-location');
+  const categoryEl = document.getElementById('stock-filter-category');
+  const formEl = document.getElementById('stock-filter-form');
+  if (searchEl) searchEl.value = '';
+  if (statusEl) statusEl.value = '';
+  if (locationEl) locationEl.value = '';
+  if (categoryEl) categoryEl.value = '';
+  if (formEl) formEl.value = '';
+  filterStock();
+}
+window.resetStockFilters = resetStockFilters;
 
 function renderStockTable(data) {
   const container = document.getElementById('stock-table-container');
@@ -938,33 +957,74 @@ async function bulkRepairStockLots() {
   }
 
   const data = window._stockData || [];
-  const affected = data.filter(p => p.stockMismatch);
-  if (affected.length === 0) {
+  const candidates = data.filter(p => p.stockMismatch);
+  if (candidates.length === 0) {
     UI.toast('Aucune incohérence à corriger.', 'info');
     return;
   }
 
   const ok = await UI.confirm(
-    `Réparer ${affected.length} produit(s) ?\n\n` +
+    `Réparer ${candidates.length} produit(s) ?\n\n` +
     `Le total AFFICHÉ de chaque produit reste exactement le même qu'actuellement — ` +
     `aucune quantité n'est perdue ni changée. Seuls les lots manquants en rayon seront recréés/ajustés ` +
     `pour que ces produits redeviennent vendables au Point de Vente.\n\nContinuer ?`
   );
   if (!ok) return;
 
-  UI.showLoader(`Réparation de ${affected.length} produit(s)...`, 120000);
-  let repaired = 0, errors = 0;
+  // Correctif (signalé — compte instable après une réparation, "parfois 2,
+  // parfois 7", certains produits pas vraiment corrigés) : la version
+  // précédente calculait l'écart à partir de p.currentStock/p.lotSum, un
+  // INSTANTANÉ pris au dernier chargement/rafraîchissement de la page — pas
+  // forcément l'état réel au moment exact de la réparation (un rafraîchissement
+  // en arrière-plan se déclenche à chaque écriture de lot pendant la boucle
+  // elle-même, voir _softRefreshStock plus bas). Cause du calcul faux :
+  // écart calculé sur une base déjà obsolète. Corrigé : plus aucune lecture
+  // ne vient de window._stockData au-delà de la LISTE des produits à
+  // vérifier — la quantité réelle (stock ET lots) est relue UNE FOIS, fraîche,
+  // juste avant la boucle, et le diff est recalculé pour CHAQUE produit à
+  // partir de cette lecture fraîche unique (jamais depuis l'instantané
+  // affiché). Un produit déjà correct au moment de la vérification fraîche
+  // (ex: déjà réparé par une tentative précédente) est ignoré sans écriture.
+  //
+  // Empêche aussi les rafraîchissements en arrière-plan concurrents de
+  // recalculer/afficher un compte fluctuant PENDANT la réparation — un seul
+  // rafraîchissement final, cohérent, après la fin complète de l'opération.
+  window._bulkRepairInProgress = true;
+
+  UI.showLoader(`Réparation de ${candidates.length} produit(s)...`, 120000);
+  let repaired = 0, skipped = 0, errors = 0;
   try {
-    // Un seul chargement des lots pour tout le lot de réparation (pas une
-    // lecture par produit) — garde l'opération rapide même sur des
-    // centaines de produits, comme demandé explicitement.
-    const allLots = await DB.dbGetAll('lots');
+    // Un seul chargement de stock et lots pour tout le lot de réparation
+    // (pas une lecture par produit) — garde l'opération rapide même sur des
+    // centaines de produits, comme demandé explicitement. Cette lecture
+    // UNIQUE fait foi pour tous les calculs qui suivent dans cette fonction.
+    const [allStock, allLots] = await Promise.all([
+      DB.dbGetAll('stock'),
+      DB.dbGetAll('lots'),
+    ]);
+    const freshStockMap = new Map(allStock.map(s => [s.productId, s.quantity || 0]));
     const dateStr = new Date().toISOString().split('T')[0];
 
-    for (let i = 0; i < affected.length; i++) {
-      const p = affected[i];
+    for (let i = 0; i < candidates.length; i++) {
+      const p = candidates[i];
       try {
-        const diff = p.currentStock - p.lotSum;
+        // Recalcul FRAIS à partir de la lecture unique ci-dessus — jamais
+        // depuis p.currentStock/p.lotSum (instantané potentiellement
+        // obsolète, cause du bug signalé).
+        const freshCurrentStock = freshStockMap.has(p.id) ? freshStockMap.get(p.id) : 0;
+        const freshLotSum = allLots
+          .filter(l => l.productId === p.id && l.status === 'active')
+          .reduce((s, l) => s + (l.quantity || 0), 0);
+        const diff = freshCurrentStock - freshLotSum;
+
+        if (diff === 0) {
+          // Déjà cohérent au moment de la vérification fraîche (réparé par
+          // une tentative précédente, ou jamais réellement incohérent) —
+          // ignoré sans écriture, jamais de double correction.
+          skipped++;
+          continue;
+        }
+
         if (diff > 0) {
           const rayonLot = allLots.find(l => l.productId === p.id && l.status === 'active' && (!l.location || l.location === 'rayon'));
           if (rayonLot) {
@@ -997,7 +1057,7 @@ async function bulkRepairStockLots() {
           }
         }
         await DB.writeAudit('BULK_STOCK_REPAIR', 'stock', p.id, {
-          productName: p.name, previousLotSum: p.lotSum, targetQuantity: p.currentStock, diff,
+          productName: p.name, previousLotSum: freshLotSum, targetQuantity: freshCurrentStock, diff,
           repairedBy: DB.AppState.currentUser?.name || DB.AppState.currentUser?.username,
         });
         repaired++;
@@ -1011,10 +1071,13 @@ async function bulkRepairStockLots() {
     }
   } finally {
     UI.hideLoader();
+    window._bulkRepairInProgress = false;
   }
 
   UI.toast(
-    `${repaired} produit(s) réparé(s)` + (errors > 0 ? `, ${errors} erreur(s) — voir la console` : '') + '.',
+    `${repaired} produit(s) réparé(s)` +
+    (skipped > 0 ? `, ${skipped} déjà correct(s) (ignoré(s))` : '') +
+    (errors > 0 ? `, ${errors} erreur(s) — voir la console` : '') + '.',
     errors > 0 ? 'warning' : 'success', 6000
   );
 
@@ -1375,6 +1438,15 @@ window.selectStockEntryProduct = async function(id, label) {
 };
 
 window._softRefreshStock = async function() {
+  // Correctif (signalé — compte d'incohérences instable pendant une
+  // réparation groupée) : chaque écriture de lot pendant
+  // bulkRepairStockLots() déclenche normalement ce rafraîchissement
+  // (notifyMutation -> _uiRefreshTimer, db.js), recalculant
+  // window._stockData à partir d'un état PARTIELLEMENT réparé — d'où un
+  // compte qui semblait fluctuer sans raison pendant l'opération. Suspendu
+  // le temps de la réparation groupée ; un seul rafraîchissement cohérent
+  // a lieu à la fin (Router.navigate('stock') dans bulkRepairStockLots).
+  if (window._bulkRepairInProgress) return;
   if (document.getElementById('stock-table-container')) {
     const [products, stockAll, lots] = await Promise.all([
       DB.dbGetAll('products'),

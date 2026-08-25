@@ -1,5 +1,5 @@
 {
-  "version": "9.10.23",
+  "version": "9.10.24",
   "date": "2026-08-19",
-  "changelog": "v9.10.23 : Nouveau bouton \"Reparer tout\" dans Gestion des Stocks pour corriger en un clic tous les produits en incoherence stock/lots detectee, sans les selectionner un par un. Les quantites actuellement affichees ne changent jamais - seuls les lots manquants sont recrees derriere. Teste jusqu'a 500 produits simultanes sans ralentissement."
+  "changelog": "v9.10.24 : Corrige l'instabilite du bouton \"Reparer tout\" (Gestion des Stocks) sur de gros volumes - le calcul se basait parfois sur des donnees perimees. Il relit desormais l'etat reel juste avant chaque correction et ignore les produits deja corrects (plus de double correction). Toutes les cartes statistiques du module Stock sont maintenant cliquables pour filtrer, pas seulement celle des incoherences."
 }
