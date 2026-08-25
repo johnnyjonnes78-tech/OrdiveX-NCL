@@ -2168,9 +2168,22 @@ async function _internalSyncToSupabase() {
 
     // Cache des colonnes invalides : éviter les 400 inutiles
     // Colonnes CONNUES comme inexistantes dans Supabase (fallback hardcodé)
+    //
+    // saleItems.lotNumber et sales.paymentDetails NE sont PLUS ici (retirés —
+    // signalé par un client, confirmé par un audit de code) : ces deux champs
+    // étaient jusqu'ici systématiquement supprimés avant l'envoi, alors qu'ils
+    // sont indispensables à plusieurs fonctions qui s'exécutent depuis un
+    // AUTRE poste que celui de la vente d'origine — annulerVente (sales.js)
+    // et le traitement des retours (returns.js) ont besoin de lotNumber pour
+    // recréditer le BON lot ; la Caisse Journalière (caisse.js) a besoin de
+    // paymentDetails pour ventiler correctement un paiement fractionné
+    // espèces/Mobile Money/assurance. Colonnes ajoutées côté Supabase via
+    // reparer_ventes_paiements_lots.sql. Si ce script n'a pas encore été
+    // exécuté sur une pharmacie donnée, le mécanisme d'auto-apprentissage
+    // existant plus bas (colMatch) réapprend et cache cette même exclusion
+    // dynamiquement — comportement identique à avant pour cette pharmacie
+    // précise, jusqu'à exécution du script.
     var _knownBadCols = {
-      saleItems: ['lotNumber'],
-      sales: ['paymentDetails'],
       cashRegister: ['category', 'subCategory', 'description', 'employeeId', 'createdAt', 'updatedAt'],
       // 'coverage'/'refPerson' NE sont plus ici : remappés vers
       // 'coveragePercent'/'referent' juste avant l'envoi (voir plus bas),

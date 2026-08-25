@@ -1,5 +1,5 @@
 {
-  "version": "9.10.17",
+  "version": "9.10.18",
   "date": "2026-08-19",
-  "changelog": "v9.10.17 : Le pourcentage de couverture et la personne de reference des assurances n'etaient jamais synchronises vers le Cloud (nom de colonne different entre l'app et Supabase, champ silencieusement supprime a chaque envoi) sur AUCUNE pharmacie. Corrige. Le bouton \"Reparer l'envoi Cloud\" ne relancait pas non plus les factures, assurances et equipes deja existantes apres une correction de schema Supabase — corrige egalement."
+  "changelog": "v9.10.18 : Le numero de lot d'une vente et le detail des paiements fractionnes n'etaient jamais synchronises vers le Cloud. Consequence corrigee : l'annulation d'une vente ou le traitement d'un retour depuis un autre poste recredite desormais le bon lot, et la Cloture de Caisse ventile correctement les paiements mixtes (especes/Mobile Money/assurance) meme pour les ventes faites sur un autre poste."
 }
