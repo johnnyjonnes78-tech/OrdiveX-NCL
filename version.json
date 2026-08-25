@@ -1,5 +1,5 @@
 {
-  "version": "9.10.19",
+  "version": "9.10.20",
   "date": "2026-08-19",
-  "changelog": "v9.10.19 : Corrige les medicaments qui restaient bloques a 0 apres un import CSV (le stock total etait mis a jour mais pas les lots, invisibles au Point de Vente) ; avertit desormais le caissier pendant la vente si le stock rayon a change entre-temps (vendu sur un autre poste) au lieu de laisser decouvrir l'ecart apres coup ; la recherche au Point de Vente ne reste plus filtree silencieusement par une categorie choisie plus tot."
+  "changelog": "v9.10.20 : La recherche au Point de Vente ne renvoie plus les medicaments qui contiennent juste la lettre tapee n'importe ou dans le nom (ex: chercher \"s\" ne ramenait que des mots finissant par s) ; elle ne reste plus non plus filtree en arriere-plan quand on quitte puis revient sur la page."
 }

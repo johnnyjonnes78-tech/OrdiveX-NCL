@@ -243,6 +243,16 @@ async function renderPOS(container) {
   posCurrentPatient = null;
   posCurrentRx = null;
   posMobilePayState = 'idle';
+  // Correctif (signalé — "quand je quitte la page, la recherche reste
+  // toujours") : posCart/posCurrentPatient/posCurrentRx étaient déjà
+  // réinitialisés à chaque entrée sur le POS, mais pas posSearch ni
+  // posActiveCategory. Le champ de recherche est réaffiché visuellement
+  // vide (nouveau <input>, aucun value défini plus bas) — mais posSearch,
+  // la variable qui filtre réellement la grille, restait sur l'ancienne
+  // requête : un filtre invisible continuait de s'appliquer même quand la
+  // barre de recherche semblait vide.
+  posSearch = '';
+  posActiveCategory = '';
 
   // 1. Rendu immédiat du squelette HTML (Instantané)
   container.innerHTML = `
@@ -861,6 +871,20 @@ function _scoreProduct(product, query) {
   // 3. Le nom commence par la requête
   if (name.startsWith(q)) return 800;
   if (dci.startsWith(q))  return 780;
+
+  // Correctif (signalé — "rechercher avec s ramène des médicaments qui se
+  // terminent juste par s") : name.includes(q)/cat.includes(q) plus bas
+  // n'avaient aucune longueur minimale — une requête d'1 seul caractère
+  // matchait N'IMPORTE QUEL produit contenant cette lettre n'importe où
+  // dans son nom, noyant les résultats pertinents sous des centaines de
+  // faux positifs (fréquent en français : "Comprimés", "Gélules",
+  // "Sachets" contiennent tous un "s"). En dessous de 2 caractères, seules
+  // les correspondances EXACTES et "commence par" (tiers 1-3 ci-dessus,
+  // déjà fiables même pour 1 caractère — ex: taper "d" montre les produits
+  // dont le nom commence par d, un comportement de navigation utile) restent
+  // actives ; les tiers plus permissifs (inclusion, multi-mots, tolérance
+  // aux fautes, catégorie) exigent au moins 2 caractères.
+  if (q.length < 2) return -1;
 
   // 4. La requête est contenue dans le nom ou DCI
   if (name.includes(q)) return 700;
