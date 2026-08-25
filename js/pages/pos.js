@@ -713,8 +713,59 @@ async function refreshPOSData() {
     posProductsCache.set(p.id, p);
   });
   _posDataTime = window._posDataTime = Date.now();
-  
+
   if (typeof refreshGrid === 'function') refreshGrid();
+  _warnIfCartExceedsFreshStock();
+}
+
+// Correctif (signalé par des clients — vente validée avec le toast a
+// posteriori "stock rayon ne couvrait pas tout" malgré une facture/un
+// réajustement déjà faits) : _softRefreshPOS (db.js) recharge posLots en
+// arrière-plan après tout changement de stock/lots (ex: une vente conclue
+// sur un AUTRE poste, synchronisée) SANS jamais toucher au panier déjà
+// constitué — par design, pour ne pas perturber une vente en cours. Le
+// panier peut donc contenir une quantité qui n'est plus couverte par le
+// rayon réel au moment de la validation ; l'écart n'était visible
+// qu'APRÈS l'enregistrement de la vente. Avertit désormais PROACTIVEMENT
+// dès que ce rafraîchissement détecte l'écart, pour que le caissier puisse
+// ajuster AVANT de valider — n'écrit rien, ne modifie ni ne bloque le
+// panier, uniquement un avertissement (mêmes règles que le toast déjà
+// existant en fin de vente).
+let _lastCartShortfallKey = '';
+function _warnIfCartExceedsFreshStock() {
+  if (!posCart || posCart.length === 0) { _lastCartShortfallKey = ''; return; }
+  const shortfalls = [];
+  const seen = new Set();
+  for (const item of posCart) {
+    if (seen.has(item.productId)) continue;
+    seen.add(item.productId);
+    const p = posProductsCache.get(item.productId);
+    if (!p) continue;
+    const isLotTracked = p.hasLots || p._hasLots;
+    if (!isLotTracked) continue;
+    const totU = (p.unitsPerBox || 1) * (p.subUnitsPerBox || 1);
+    const rayonAvail = posLots
+      .filter(l => l.productId === item.productId && l.status === 'active' && (!l.location || l.location === 'rayon'))
+      .reduce((s, l) => s + (l.quantity || 0), 0);
+    const inCart = posCart.filter(c => c.productId === item.productId).reduce((sum, c) => {
+      let f = 1;
+      if (p.allowUnitSale) {
+        if (c.saleMode === 'box') f = totU;
+        else if (c.saleMode === 'subunit') f = p.unitsPerBox || 1;
+        else f = 1;
+      }
+      return sum + (c.qty * f);
+    }, 0);
+    if (inCart > rayonAvail) shortfalls.push(p.name);
+  }
+
+  const key = shortfalls.sort().join('|');
+  if (shortfalls.length > 0 && key !== _lastCartShortfallKey && typeof UI !== 'undefined' && UI.toast) {
+    _lastCartShortfallKey = key;
+    UI.toast(`⚠️ Le stock rayon a changé pendant cette vente (probablement vendu sur un autre poste) : ${shortfalls.join(', ')}. Vérifiez les quantités avant de valider.`, 'error', 9000);
+  } else if (shortfalls.length === 0) {
+    _lastCartShortfallKey = '';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -889,6 +940,25 @@ function initPosSearch() {
     const normalized = _normalizeSearch(posSearch);
     document.getElementById('pos-clearsearch').style.display = posSearch ? 'flex' : 'none';
     posCurrentPage = 0;
+
+    // Amélioration UX (signalé — "parfois la recherche est difficile") :
+    // un filtre de catégorie cliqué plus tôt restait actif en arrière-plan
+    // pendant une recherche — le pharmacien tapait un nom de produit d'une
+    // AUTRE catégorie et obtenait "Aucun médicament trouvé" sans qu'aucun
+    // indice évident n'explique pourquoi (le seul signal était une pastille
+    // de catégorie surlignée, facile à manquer au comptoir). La recherche
+    // porte désormais toujours sur tout le catalogue, comme la plupart des
+    // moteurs de recherche : taper une requête réinitialise silencieusement
+    // le filtre de catégorie (jamais l'inverse — choisir une catégorie
+    // n'efface pas la recherche en cours).
+    if (posSearch && posActiveCategory) {
+      posActiveCategory = '';
+      document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+      document.querySelector('.cat-pill')?.classList.add('active'); // "Tous" est toujours le premier pill
+      const catSelect = document.querySelector('.pos-sort-select');
+      if (catSelect) catSelect.value = '';
+    }
+
     clearTimeout(_posSearchTimer);
     _posSearchTimer = setTimeout(async () => {
       const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);

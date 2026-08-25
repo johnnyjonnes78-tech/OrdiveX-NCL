@@ -1,5 +1,5 @@
 {
-  "version": "9.10.18",
+  "version": "9.10.19",
   "date": "2026-08-19",
-  "changelog": "v9.10.18 : Le numero de lot d'une vente et le detail des paiements fractionnes n'etaient jamais synchronises vers le Cloud. Consequence corrigee : l'annulation d'une vente ou le traitement d'un retour depuis un autre poste recredite desormais le bon lot, et la Cloture de Caisse ventile correctement les paiements mixtes (especes/Mobile Money/assurance) meme pour les ventes faites sur un autre poste."
+  "changelog": "v9.10.19 : Corrige les medicaments qui restaient bloques a 0 apres un import CSV (le stock total etait mis a jour mais pas les lots, invisibles au Point de Vente) ; avertit desormais le caissier pendant la vente si le stock rayon a change entre-temps (vendu sur un autre poste) au lieu de laisser decouvrir l'ecart apres coup ; la recherche au Point de Vente ne reste plus filtree silencieusement par une categorie choisie plus tot."
 }

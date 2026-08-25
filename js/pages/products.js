@@ -1882,22 +1882,70 @@ async function processImportCSV(content) {
       var stockMap = {};
       allStock.forEach(function(s) { stockMap[s.productId] = s; });
 
+      // Correctif (signalé par des clients — "certains médicaments affichent
+      // toujours 0 au Point de Vente") : cette phase ÉCRASAIT stock.quantity
+      // (le TOTAL agrégé) sans jamais toucher aux lots. Pour un produit à
+      // lots, le POS plafonne la vente sur le total des lots RAYON actifs
+      // (addToCart/checkStockCart, voir v9.9.6) — PAS sur ce total agrégé.
+      // Un ré-import CSV pouvait donc remonter le total affiché sans jamais
+      // rendre le produit réellement vendable : aucun lot rayon ne reflétait
+      // la nouvelle quantité. Même logique de synchronisation que
+      // submitAdjustStock (stock.js) et confirmValidation (inventory.js).
+      var allLots = await DB.dbGetAll('lots');
+      var dateStr = new Date().toISOString().split('T')[0];
+
       for (var qi = 0; qi < parsedProducts.length; qi++) {
         var prod = parsedProducts[qi];
         var qty = prod._importQty || 0;
         if (qty <= 0 || !prod.id) continue;
         try {
           var existingStock = stockMap[prod.id];
+          var oldQty = existingStock ? (existingStock.quantity || 0) : 0;
+          var diff = qty - oldQty;
+
           if (existingStock) {
             await DB.dbPut('stock', Object.assign({}, existingStock, { quantity: qty }));
           } else {
             await DB.dbAdd('stock', { productId: prod.id, quantity: qty, reservedQuantity: 0 });
           }
           stockCreated++;
+
+          if (diff > 0) {
+            var rayonLot = allLots.find(function(l) { return l.productId === prod.id && l.status === 'active' && (!l.location || l.location === 'rayon'); });
+            if (rayonLot) {
+              rayonLot.quantity = (rayonLot.quantity || 0) + diff;
+              await DB.dbPut('lots', rayonLot);
+            } else {
+              var newLotId = await DB.dbAdd('lots', {
+                productId: prod.id,
+                lotNumber: 'IMPORT-' + dateStr + '-' + prod.id,
+                expiryDate: prod.expiryDate || null,
+                quantity: diff,
+                initialQuantity: diff,
+                location: 'rayon',
+                status: 'active',
+              });
+              allLots.push({ id: newLotId, productId: prod.id, quantity: diff, status: 'active', location: 'rayon' });
+            }
+          } else if (diff < 0) {
+            var rem = Math.abs(diff);
+            var prodLots = allLots
+              .filter(function(l) { return l.productId === prod.id && l.status === 'active'; })
+              .sort(function(a, b) { return (a.location === 'reserve' ? 1 : 0) - (b.location === 'reserve' ? 1 : 0); });
+            for (var li = 0; li < prodLots.length; li++) {
+              if (rem <= 0) break;
+              var lot = prodLots[li];
+              var take = Math.min(rem, lot.quantity || 0);
+              if (take <= 0) continue;
+              lot.quantity = (lot.quantity || 0) - take;
+              rem -= take;
+              await DB.dbPut('lots', lot);
+            }
+          }
         } catch (se) { console.warn('[Import] Stock error:', prod.code, se); }
       }
       if (stockCreated > 0 && results) {
-        results.innerHTML += '<br><small>📦 ' + stockCreated + ' entrée(s) de stock créées/mises à jour.</small>';
+        results.innerHTML += '<br><small>📦 ' + stockCreated + ' entrée(s) de stock créées/mises à jour (lots synchronisés).</small>';
       }
     } catch (stockErr) { console.warn('[Import] Stock phase error:', stockErr); }
   }
