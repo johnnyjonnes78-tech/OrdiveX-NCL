@@ -22,7 +22,16 @@ async function renderStock(container) {
 
   // Indexer les lots par productId pour éviter un O(n²) - Inclure les lots bloqués (expirés)
   const lotsMap = {};
+  // Produits ayant EU un lot un jour, quel que soit son statut actuel (y
+  // compris détruit/expiré) — c'est CE signal, pas lotsMap ci-dessus, qui
+  // correspond à isLotTracked côté POS (pos.js: hasAnyLotMap compte TOUT lot,
+  // sans filtrer par statut). Les deux ensembles divergent volontairement :
+  // lotsMap sert à calculer une quantité DISPONIBLE (donc filtré aux lots
+  // actifs/bloqués), hasAnyLotSet sert à savoir si le POS traite ce produit
+  // comme "à lots" pour la vente (donc non filtré).
+  const hasAnyLotSet = new Set();
   lots.forEach(l => {
+    hasAnyLotSet.add(l.productId);
     if (l.status === 'active' || l.status === 'blocked') {
       if (!lotsMap[l.productId]) lotsMap[l.productId] = [];
       lotsMap[l.productId].push(l);
@@ -37,16 +46,31 @@ async function renderStock(container) {
       else qtyReserve += (l.quantity || 0);
     });
     const minVal = (p.minStock !== undefined && p.minStock !== null && p.minStock !== '') ? parseInt(p.minStock, 10) : defaultThreshold;
+    const currentStock = stockMap[p.id]?.quantity || 0;
+    // Détection de cohérence stock<->lots (signalé par un client — un produit
+    // "à lots" (au moins un lot a existé un jour, MÊME détruit/expiré — voir
+    // hasAnyLotSet ci-dessus, pour matcher exactement isLotTracked du POS)
+    // dont le total affiché ne correspond à aucun lot réel DISPONIBLE bloque
+    // la vente au POS avec un message "Stock incohérent". Cause connue et
+    // corrigée pour les nouveaux cas (import CSV, v9.10.19) mais ne répare
+    // pas rétroactivement les produits déjà affectés avant ce correctif.
+    // Lecture seule ici — aucune correction automatique de donnée métier
+    // ambiguë (voir "Ajuster le Stock", seul chemin de correction, avec
+    // confirmation humaine du chiffre réel).
+    const stockMismatch = hasAnyLotSet.has(p.id) && (qtyRayon + qtyReserve) !== currentStock;
     return {
       ...p,
-      currentStock: stockMap[p.id]?.quantity || 0,
+      currentStock,
       reservedQty: stockMap[p.id]?.reservedQuantity || 0,
       lots: pLots,
       qtyRayon,
       qtyReserve,
-      minStock: minVal
+      minStock: minVal,
+      stockMismatch,
+      lotSum: qtyRayon + qtyReserve,
     };
   });
+  const mismatchCount = stockData.filter(p => p.stockMismatch).length;
 
   // Stats
   const totalProducts = products.length;
@@ -80,6 +104,7 @@ async function renderStock(container) {
       <div class="stat-chip stat-orange"><span class="stat-val">${lowStock}</span><span class="stat-label">Stock Bas</span></div>
       <div class="stat-chip stat-red"><span class="stat-val">${ruptures}</span><span class="stat-label">Ruptures</span></div>
       <div class="stat-chip stat-purple"><span class="stat-val">${alertExpiry}</span><span class="stat-label">Exp. < 90j</span></div>
+      ${mismatchCount > 0 ? `<div class="stat-chip stat-red" style="cursor:pointer" title="Le total affiché ne correspond à aucun lot réel — clic pour filtrer" onclick="document.getElementById('stock-filter-status').value='mismatch';filterStock()"><span class="stat-val">${mismatchCount}</span><span class="stat-label">⚠ Incohérences</span></div>` : ''}
     </div>
 
     <!-- Filters -->
@@ -92,6 +117,7 @@ async function renderStock(container) {
         <option value="rupture">Rupture</option>
         <option value="expiry">Expiration proche</option>
         <option value="expired">Déjà expiré</option>
+        ${mismatchCount > 0 ? `<option value="mismatch">⚠ Incohérence stock/lots</option>` : ''}
       </select>
       <select id="stock-filter-location" class="filter-select" onchange="filterStock()">
         <option value="">Tous les emplacements</option>
@@ -171,6 +197,7 @@ function filterStock() {
   if (status === 'rupture') data = data.filter(p => p.currentStock === 0);
   else if (status === 'low') data = data.filter(p => p.currentStock > 0 && p.currentStock <= p.minStock);
   else if (status === 'ok') data = data.filter(p => p.currentStock > p.minStock);
+  else if (status === 'mismatch') data = data.filter(p => p.stockMismatch);
   else if (status === 'expiry') {
     data = data.filter(p => {
       const lotExpiry = p.lots.some(l => { const d = UI.daysUntilExpiry(l.expiryDate); return d !== null && d > 0 && d <= 90 && (l.quantity || 0) > 0; });
@@ -1248,7 +1275,9 @@ window._softRefreshStock = async function() {
     const stockMap = {};
     stockAll.forEach(s => { stockMap[s.productId] = s; });
     const lotsMap = {};
+    const hasAnyLotSet = new Set(); // voir renderStock() — même distinction
     lots.forEach(l => {
+      hasAnyLotSet.add(l.productId);
       if (l.status === 'active') {
         if (!lotsMap[l.productId]) lotsMap[l.productId] = [];
         lotsMap[l.productId].push(l);
@@ -1261,13 +1290,19 @@ window._softRefreshStock = async function() {
         if (!l.location || l.location === 'rayon') qtyRayon += (l.quantity || 0);
         else qtyReserve += (l.quantity || 0);
       });
+      const currentStock = stockMap[p.id]?.quantity || 0;
       return {
         ...p,
-        currentStock: stockMap[p.id]?.quantity || 0,
+        currentStock,
         reservedQty: stockMap[p.id]?.reservedQuantity || 0,
         lots: pLots,
         qtyRayon,
-        qtyReserve
+        qtyReserve,
+        // Garde le même calcul que renderStock() (voir plus haut) pour que
+        // le filtre "Incohérence stock/lots" reste cohérent après ce
+        // rafraîchissement léger, pas seulement au premier chargement.
+        stockMismatch: hasAnyLotSet.has(p.id) && (qtyRayon + qtyReserve) !== currentStock,
+        lotSum: qtyRayon + qtyReserve,
       };
     });
     window._stockData = stockData;

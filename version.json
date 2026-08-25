@@ -1,5 +1,5 @@
 {
-  "version": "9.10.21",
+  "version": "9.10.22",
   "date": "2026-08-19",
-  "changelog": "v9.10.21 : Nouveau bouton \"Signaler un probleme\" sur chaque produit au Point de Vente, accessible a tous les roles (y compris Caissier), qui cree une alerte consultable par les responsables. Corrige aussi une permission (export des patients) qui ne pouvait jamais etre accordee a un non-admin faute d'etre listee dans les Parametres."
+  "changelog": "v9.10.22 : Le module Stock detecte desormais les produits dont le total affiche ne correspond a aucun lot reel (cause du blocage \"Stock incoherent\" au Point de Vente) et les signale clairement, avec un raccourci direct vers l'ajustement pour corriger. Detection instantanee (donnees deja chargees, aucun nouveau scan), sans repetition ni blocage."
 }

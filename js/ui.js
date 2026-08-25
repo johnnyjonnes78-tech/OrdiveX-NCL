@@ -98,9 +98,18 @@ const UI = {
       displayStr = `${Math.floor(qty / product.unitsPerBox)} bt ${qty % product.unitsPerBox} u`;
       minStock = minStock * product.unitsPerBox; // Optionnel : ajuster le test bas/rupture selon le seuil si exprimé en boîtes
     }
-    if (qty === 0) return `<span class="badge badge-danger">Rupture</span>`;
-    if (qty <= minStock) return `<span class="badge badge-warning">${displayStr} (bas)</span>`;
-    return `<span class="badge badge-success">${displayStr}</span>`;
+    // Marqueur de cohérence stock<->lots (signalé par un client) : le total
+    // agrégé ne correspond à aucun lot réel — ce produit bloquera la vente
+    // au POS. Purement informatif ici (lecture seule) ; clic renvoie vers
+    // "Ajuster le Stock", seul chemin de correction avec confirmation
+    // humaine du chiffre réel (jamais de correction automatique silencieuse
+    // d'une donnée métier ambiguë).
+    const mismatchIcon = (product && product.stockMismatch)
+      ? ` <i data-lucide="alert-triangle" title="Total affiché sans lot réel correspondant — cliquez pour ajuster" style="width:12px;height:12px;color:var(--danger);cursor:pointer;vertical-align:middle" onclick="event.stopPropagation(); showAdjustStock(${product.id})"></i>`
+      : '';
+    if (qty === 0) return `<span class="badge badge-danger">Rupture</span>${mismatchIcon}`;
+    if (qty <= minStock) return `<span class="badge badge-warning">${displayStr} (bas)</span>${mismatchIcon}`;
+    return `<span class="badge badge-success">${displayStr}</span>${mismatchIcon}`;
   },
 
   toast(message, type = 'info', duration = 3500) {
