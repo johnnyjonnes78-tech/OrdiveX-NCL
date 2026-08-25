@@ -2172,9 +2172,11 @@ async function _internalSyncToSupabase() {
       saleItems: ['lotNumber'],
       sales: ['paymentDetails'],
       cashRegister: ['category', 'subCategory', 'description', 'employeeId', 'createdAt', 'updatedAt'],
-      // Colonnes locales des assurances non présentes dans Supabase :
-      // 'coverage' (local) → 'coveragePercent' (Supabase), 'refPerson' (local) → 'referent' (Supabase)
-      insurances: ['coverage', 'refPerson', '_updatedAt', '_localOnly'],
+      // 'coverage'/'refPerson' NE sont plus ici : remappés vers
+      // 'coveragePercent'/'referent' juste avant l'envoi (voir plus bas),
+      // au lieu d'être silencieusement supprimés — ces deux champs
+      // n'avaient donc jamais été synchronisés vers le cloud depuis
+      // l'introduction du module Assurances, sur AUCUNE pharmacie.
       insurancePayments: ['_updatedAt', '_localOnly']
     };
     var _colCache = {};
@@ -2278,6 +2280,25 @@ async function _internalSyncToSupabase() {
           // Exclure les clés settings qui contiennent du JSON complexe non-compatible Supabase
           if (storeName === 'settings' && payload.key === 'held_carts') {
             return null;
+          }
+
+          // Fiabilisation (signalé par un client — diagnostic en production) :
+          // le nom du champ local diffère du nom de la colonne Supabase pour
+          // ces deux champs d'assurance. Avant, ils étaient simplement
+          // SUPPRIMÉS du payload (voir _knownBadCols) — jamais synchronisés
+          // vers le cloud, sur aucune pharmacie, depuis l'introduction du
+          // module. 'coveragePercent' peut déjà être présent localement
+          // (ancien enregistrements migrés — voir dbMigrateAssurances) : on
+          // ne l'écrase alors pas avec 'coverage'.
+          if (storeName === 'insurances') {
+            if (payload.coveragePercent === undefined && payload.coverage !== undefined) {
+              payload.coveragePercent = payload.coverage;
+            }
+            delete payload.coverage;
+            if (payload.refPerson !== undefined) {
+              payload.referent = payload.refPerson;
+              delete payload.refPerson;
+            }
           }
 
           // Filtrer les colonnes invalides DANS le payload (via auto-apprentissage du cache)
@@ -3037,10 +3058,19 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
  * FORCE SYNC: Re-mark everything as pending and push to cloud
  */
 async function forceSyncAll() {
+  // Fiabilisation (signalé par un client) : cette liste avait pris du retard
+  // sur storesToSync (_internalSyncToSupabase) — invoices, insurances,
+  // insurancePayments et shifts en étaient absents. Conséquence concrète :
+  // "Réparer l'envoi Cloud" videt bien le cache de tables/colonnes
+  // "absentes", mais ne remarquait PAS ces 4 stores comme non-synchronisés —
+  // un admin corrigeant le schéma Supabase puis cliquant "Réparer" ne
+  // relançait donc jamais l'envoi des enregistrements déjà existants dans
+  // ces 4 tables (seuls les futurs enregistrements en bénéficiaient).
   const stores = [
     'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
     'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
-    'cashRegister', 'auditLog', 'users', 'settings', 'returns', 'prep_transfers'
+    'cashRegister', 'auditLog', 'users', 'settings', 'returns', 'prep_transfers',
+    'invoices', 'insurances', 'insurancePayments', 'shifts'
   ];
 
   // Un forceSync manuel signifie souvent qu'un admin vient de corriger le schéma

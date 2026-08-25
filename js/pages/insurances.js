@@ -269,7 +269,7 @@ async function selectInsurance(id) {
             <i data-lucide="settings" style="width:14px;height:14px;"></i> Paramètres Tiers Payant
           </h4>
           <div style="display:flex; flex-direction:column; gap:4px;">
-            <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Réf. Interne</span> <code>${ins.refPerson || '—'}</code></div>
+            <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Réf. Interne</span> <code>${ins.refPerson || ins.referent || '—'}</code></div>
             <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Couverture</span> <span class="badge badge-info" style="font-size:12px; font-weight:700;">${ins.coveragePercent || ins.coverage || 70}%</span></div>
             <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Règlement</span> <span>${ins.paymentMode === 'integral' ? 'Paiement Intégral' : 'Paiement Échelonné'}</span></div>
             <div><span style="color:var(--text-muted); min-width:100px; display:inline-block;">Statut</span> <span class="badge badge-${ins.status === 'active' ? 'success' : 'danger'}">${ins.status === 'active' ? 'Active' : 'Inactive'}</span></div>
@@ -642,11 +642,11 @@ window.showEditInsuranceModal = function(id) {
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
         <div class="form-group">
           <label class="form-label">Personne de référence</label>
-          <input type="text" name="refPerson" class="form-control" value="${ins.refPerson || ''}">
+          <input type="text" name="refPerson" class="form-control" value="${ins.refPerson || ins.referent || ''}">
         </div>
         <div class="form-group">
           <label class="form-label">Couverture par défaut (%)</label>
-          <input type="number" name="coverage" class="form-control" min="1" max="100" value="${ins.coverage || 80}" required>
+          <input type="number" name="coverage" class="form-control" min="1" max="100" value="${ins.coverage || ins.coveragePercent || 80}" required>
         </div>
         <div class="form-group">
           <label class="form-label">Mode de règlement <span class="text-danger">*</span></label>
