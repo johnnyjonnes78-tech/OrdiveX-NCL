@@ -95,6 +95,7 @@ async function renderStock(container) {
         ${Auth.can('stock_import') ? `<button class="btn btn-secondary" onclick="showImportStockModal()"><i data-lucide="upload"></i> Importer Stock (CSV)</button>` : ''}
         <input type="file" id="import-stock-file" accept=".csv" style="display:none" onchange="importStockCsv(event)">
         ${Auth.can('po_receive') || Auth.can('stock_adjust') ? `<button class="btn btn-primary" onclick="renderStockEntry()"><i data-lucide="plus"></i> Entrée Stock</button>` : ''}
+        ${mismatchCount > 0 && (Auth.can('stock_adjust') || DB.AppState.currentUser?.role === 'admin') ? `<button class="btn btn-danger" onclick="bulkRepairStockLots()"><i data-lucide="wrench"></i> Réparer tout (${mismatchCount})</button>` : ''}
       </div>
     </div>
 
@@ -916,6 +917,114 @@ async function submitAdjustStock(productId, oldQty) {
     UI.toast('Erreur ajustement : ' + (err.message || err), 'error');
   }
 }
+
+// ── Réparation groupée des incohérences stock<->lots ──
+// Demandé par un client après avoir constaté des centaines de produits
+// affectés (voir stockMismatch dans renderStock) : corriger un par un via
+// "Ajuster le Stock" fait perdre le chiffre affiché (il faut le noter à
+// part, remettre à 0, puis le ressaisir) — impraticable à cette échelle.
+//
+// RÈGLE MÉTIER EXPLICITEMENT CONFIRMÉE PAR L'UTILISATEUR : le total
+// actuellement AFFICHÉ (stock.quantity) est celui à conserver tel quel —
+// on ne fait que recréer/ajuster les lots qui manquent derrière, jamais
+// l'inverse. Ce n'est PAS une décision arbitraire de ma part sur laquelle
+// de deux valeurs ambiguës est "la bonne" (ce que le hardening précédent
+// interdit explicitement) : c'est la règle que l'utilisateur a lui-même
+// donnée. stock.quantity n'est JAMAIS modifié par cette fonction.
+async function bulkRepairStockLots() {
+  if (!DB.AppState.currentUser || (!Auth.can('stock_adjust') && DB.AppState.currentUser.role !== 'admin')) {
+    UI.toast('⛔ Permission refusée — Vous n\'avez pas le droit d\'ajuster le stock.', 'error');
+    return;
+  }
+
+  const data = window._stockData || [];
+  const affected = data.filter(p => p.stockMismatch);
+  if (affected.length === 0) {
+    UI.toast('Aucune incohérence à corriger.', 'info');
+    return;
+  }
+
+  const ok = await UI.confirm(
+    `Réparer ${affected.length} produit(s) ?\n\n` +
+    `Le total AFFICHÉ de chaque produit reste exactement le même qu'actuellement — ` +
+    `aucune quantité n'est perdue ni changée. Seuls les lots manquants en rayon seront recréés/ajustés ` +
+    `pour que ces produits redeviennent vendables au Point de Vente.\n\nContinuer ?`
+  );
+  if (!ok) return;
+
+  UI.showLoader(`Réparation de ${affected.length} produit(s)...`, 120000);
+  let repaired = 0, errors = 0;
+  try {
+    // Un seul chargement des lots pour tout le lot de réparation (pas une
+    // lecture par produit) — garde l'opération rapide même sur des
+    // centaines de produits, comme demandé explicitement.
+    const allLots = await DB.dbGetAll('lots');
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    for (let i = 0; i < affected.length; i++) {
+      const p = affected[i];
+      try {
+        const diff = p.currentStock - p.lotSum;
+        if (diff > 0) {
+          const rayonLot = allLots.find(l => l.productId === p.id && l.status === 'active' && (!l.location || l.location === 'rayon'));
+          if (rayonLot) {
+            rayonLot.quantity = (rayonLot.quantity || 0) + diff;
+            await DB.dbPut('lots', rayonLot);
+          } else {
+            const newLotId = await DB.dbAdd('lots', {
+              productId: p.id,
+              lotNumber: 'REPAIR-' + dateStr + '-' + p.id,
+              expiryDate: p.expiryDate || null,
+              quantity: diff,
+              initialQuantity: diff,
+              location: 'rayon',
+              status: 'active',
+            });
+            allLots.push({ id: newLotId, productId: p.id, quantity: diff, status: 'active', location: 'rayon' });
+          }
+        } else if (diff < 0) {
+          let rem = Math.abs(diff);
+          const prodLots = allLots
+            .filter(l => l.productId === p.id && l.status === 'active')
+            .sort((a, b) => (a.location === 'reserve' ? 1 : 0) - (b.location === 'reserve' ? 1 : 0));
+          for (const lot of prodLots) {
+            if (rem <= 0) break;
+            const take = Math.min(rem, lot.quantity || 0);
+            if (take <= 0) continue;
+            lot.quantity -= take;
+            rem -= take;
+            await DB.dbPut('lots', lot);
+          }
+        }
+        await DB.writeAudit('BULK_STOCK_REPAIR', 'stock', p.id, {
+          productName: p.name, previousLotSum: p.lotSum, targetQuantity: p.currentStock, diff,
+          repairedBy: DB.AppState.currentUser?.name || DB.AppState.currentUser?.username,
+        });
+        repaired++;
+      } catch (e) {
+        console.warn('[BulkRepair] Erreur produit ' + p.id + ':', e);
+        errors++;
+      }
+      // Laisse respirer l'UI toutes les 20 itérations — évite tout blocage
+      // visible sur des centaines de produits (signalé explicitement).
+      if (i % 20 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+  } finally {
+    UI.hideLoader();
+  }
+
+  UI.toast(
+    `${repaired} produit(s) réparé(s)` + (errors > 0 ? `, ${errors} erreur(s) — voir la console` : '') + '.',
+    errors > 0 ? 'warning' : 'success', 6000
+  );
+
+  if (navigator.onLine && typeof DB.syncToSupabase === 'function') {
+    DB.syncToSupabase().catch(() => {});
+  }
+
+  Router.navigate('stock');
+}
+window.bulkRepairStockLots = bulkRepairStockLots;
 
 window.filterStock = filterStock;
 window.viewProductLots = viewProductLots;

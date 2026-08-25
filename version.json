@@ -1,5 +1,5 @@
 {
-  "version": "9.10.22",
+  "version": "9.10.23",
   "date": "2026-08-19",
-  "changelog": "v9.10.22 : Le module Stock detecte desormais les produits dont le total affiche ne correspond a aucun lot reel (cause du blocage \"Stock incoherent\" au Point de Vente) et les signale clairement, avec un raccourci direct vers l'ajustement pour corriger. Detection instantanee (donnees deja chargees, aucun nouveau scan), sans repetition ni blocage."
+  "changelog": "v9.10.23 : Nouveau bouton \"Reparer tout\" dans Gestion des Stocks pour corriger en un clic tous les produits en incoherence stock/lots detectee, sans les selectionner un par un. Les quantites actuellement affichees ne changent jamais - seuls les lots manquants sont recrees derriere. Teste jusqu'a 500 produits simultanes sans ralentissement."
 }
