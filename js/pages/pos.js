@@ -3248,8 +3248,10 @@ function imprimerTicket() {
     .tag-rx-print{font-size:7px;background:#fee;color:#c00;padding:0 2px;border-radius:2px;border:1px solid #f00}
     .ta-c{text-align:center}.ta-r{text-align:right}
     .recu-totaux-block{display:flex;justify-content:flex-end}
-    .recu-totaux{width:60%;font-size:10px}
-    .recu-tot-row{display:flex;justify-content:space-between;padding:2px 0}
+    .recu-totaux{width:100%;font-size:10px}
+    .recu-tot-row{display:flex;flex-wrap:wrap;justify-content:space-between;padding:2px 0;gap:1px 8px}
+    .recu-tot-row>span{overflow-wrap:break-word;min-width:0}
+    .recu-tot-row>span:last-child{margin-left:auto;text-align:right}
     .recu-remise{color:#c00}
     .recu-tot-main{font-size:13px;font-weight:bold;border-top:2px solid #000;margin-top:3px;padding-top:3px}
     .recu-monnaie{color:#060;font-weight:bold}
@@ -3976,8 +3978,10 @@ async function printProformaReceipt() {
     .ta-c{text-align:center}.ta-r{text-align:right}
 
     .recu-totaux-block{display:flex;justify-content:flex-end}
-    .recu-totaux{width:70%;font-size:10px}
-    .recu-tot-row{display:flex;justify-content:space-between;padding:2px 0}
+    .recu-totaux{width:100%;font-size:10px}
+    .recu-tot-row{display:flex;flex-wrap:wrap;justify-content:space-between;padding:2px 0;gap:1px 8px}
+    .recu-tot-row>span{overflow-wrap:break-word;min-width:0}
+    .recu-tot-row>span:last-child{margin-left:auto;text-align:right}
     .recu-remise{color:#c00}
     .recu-tot-main{font-size:13px;font-weight:bold;border-top:2px solid #000;margin-top:3px;padding-top:3px}
 

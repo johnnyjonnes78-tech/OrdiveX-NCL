@@ -1,5 +1,5 @@
 {
-  "version": "9.10.25",
-  "date": "2026-08-25",
-  "changelog": "v9.10.25 : Corrige un desaccord entre l'affichage \"Incoherences\" (Gestion des Stocks) et le bouton \"Reparer tout\" - un produit avec un lot perime non encore detruit pouvait etre compte comme incoherent a l'affichage alors que la reparation le trouvait deja correct (message \"0 repare, X deja corrects\" malgre X incoherences affichees). Les deux se basent desormais exactement sur la meme regle (lots actifs uniquement, comme au point de vente), sans toucher a l'affichage Rayon/Reserve du tableau qui continue d'inclure le stock perime non detruit."
+  "version": "9.10.26",
+  "date": "2026-09-01",
+  "changelog": "v9.10.26 : Corrige le devis proforma et le reçu de vente (impression thermique 80mm) dont les totaux (montants, \"GNF\") pouvaient etre coupes net sur le bord droit du papier. Cause : le bloc des totaux etait retreci a 60-70% de la largeur du ticket au lieu des 100% deja utilises par le tableau des produits, ce qui poussait les lignes trop longues au-dela du bord physique. Le bloc utilise desormais toute la largeur, et une ligne qui reste trop longue (libelle tres long) passe proprement sur 2 lignes au lieu de deborder - garantie valable quelle que soit la longueur du texte (nom d'assurance, mode de paiement, etc.)."
 }
