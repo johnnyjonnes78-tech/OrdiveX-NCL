@@ -692,8 +692,25 @@ function _setupRealtime(sbClient) {
           if (storeName === 'settings' && item.status === 'DELETED') {
             await dbDelete(storeName, item.id);
           } else {
-            await _dbPutRaw(storeName, item);
-            _updateCacheInPlace(storeName, [item]);
+            // Même garde que writeBatchToIDB (pull) : un évènement realtime
+            // peut arriver alors qu'une modification locale de ce même
+            // enregistrement est encore en attente de push (_synced:false —
+            // ex. dette qu'on vient de régler, stock qu'on vient de
+            // réceptionner). Sans cette vérification, _dbPutRaw écrivait
+            // l'évènement realtime sans condition et pouvait faire régresser
+            // IndexedDB lui-même (pas seulement le cache) vers une valeur
+            // plus ancienne pendant la petite fenêtre avant que le push
+            // local n'aboutisse.
+            let _skipRealtimeWrite = false;
+            try {
+              const _existingLocal = await dbGet(storeName, item[_itemKeyField]);
+              if (_existingLocal && _existingLocal._synced === false) _skipRealtimeWrite = true;
+            } catch (e) { /* lecture impossible : on applique comme avant (comportement historique) */ }
+
+            if (!_skipRealtimeWrite) {
+              await _dbPutRaw(storeName, item);
+              _updateCacheInPlace(storeName, [item]);
+            }
           }
           _notifyUIChange(storeName);
         }
@@ -1288,6 +1305,21 @@ function _invalidateCache(storeName) { _dbCache.delete(storeName); _dbCacheTime.
 // ── Mise à jour chirurgicale du cache mémoire (sans le vider) ──
 // Utilisé par le pull incrémental pour fusionner les nouvelles données
 // Le dashboard/POS reste instantané car le cache n'est JAMAIS vidé
+//
+// Correctif critique — divergence cache/IndexedDB (stock catalogue "figé",
+// dettes réglées qui "reviennent") : writeBatchToIDB() (écriture réelle en
+// IndexedDB, juste au-dessus) protège déjà un enregistrement local pas
+// encore poussé (`_synced === false`) contre un écrasement par une donnée
+// pull plus ancienne, et ignore un enregistrement en attente de suppression
+// locale (_isPendingDelete). Cette fonction-ci, qui met à jour le CACHE
+// MÉMOIRE que dbGetAll() sert en priorité pendant tout le TTL (jusqu'à 10
+// min sur PC), n'avait AUCUNE de ces deux protections : un pull incrémental
+// pouvait silencieusement écraser dans le cache une modification locale pas
+// encore synchronisée (ex. dette qu'on vient de régler, stock qu'on vient
+// de réceptionner) par l'ancienne valeur encore présente côté serveur —
+// IndexedDB restait correct, mais l'écran (qui lit le cache) montrait la
+// valeur périmée pendant toute la durée du TTL, donnant l'impression que le
+// montant ne s'incrémente jamais ou que la dette "revient".
 function _updateCacheInPlace(storeName, newItems) {
   if (!_dbCache.has(storeName) || !newItems || newItems.length === 0) return;
   const cached = _dbCache.get(storeName);
@@ -1297,7 +1329,13 @@ function _updateCacheInPlace(storeName, newItems) {
   cached.forEach((item, i) => { if (item[keyField] != null) idxMap.set(item[keyField], i); });
   for (const item of newItems) {
     const k = item[keyField];
+    if (k != null && _isPendingDelete(storeName, k)) continue; // même garde que writeBatchToIDB
     if (k != null && idxMap.has(k)) {
+      const existing = cached[idxMap.get(k)];
+      // Même garde que writeBatchToIDB : ne jamais faire régresser le cache
+      // avec une donnée pull qui prédate une modification locale pas
+      // encore poussée.
+      if (existing && existing._synced === false) continue;
       cached[idxMap.get(k)] = item; // Mise à jour en place
     } else {
       cached.push(item); // Nouvel élément

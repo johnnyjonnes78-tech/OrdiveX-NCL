@@ -1,5 +1,5 @@
 {
-  "version": "9.10.26",
-  "date": "2026-09-01",
-  "changelog": "v9.10.26 : Corrige le devis proforma et le reçu de vente (impression thermique 80mm) dont les totaux (montants, \"GNF\") pouvaient etre coupes net sur le bord droit du papier. Cause : le bloc des totaux etait retreci a 60-70% de la largeur du ticket au lieu des 100% deja utilises par le tableau des produits, ce qui poussait les lignes trop longues au-dela du bord physique. Le bloc utilise desormais toute la largeur, et une ligne qui reste trop longue (libelle tres long) passe proprement sur 2 lignes au lieu de deborder - garantie valable quelle que soit la longueur du texte (nom d'assurance, mode de paiement, etc.)."
+  "version": "9.10.27",
+  "date": "2026-09-04",
+  "changelog": "v9.10.27 : Corrige un bug de synchronisation multi-appareils qui pouvait faire revenir en arriere des donnees deja a jour localement (valeur totale du stock au Catalogue qui semblait figee malgre une reception, dette reglee qui reapparaissait sur la fiche patient). Cause : la reception en arriere-plan des mises a jour venant d'un autre appareil (pull et temps reel) pouvait ecraser une modification locale pas encore envoyee au serveur par une version plus ancienne. Desormais, toute modification locale en attente d'envoi est protegee tant qu'elle n'a pas ete confirmee envoyee, exactement comme c'etait deja le cas pour l'ecriture principale."
 }
