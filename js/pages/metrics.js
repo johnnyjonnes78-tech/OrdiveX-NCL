@@ -3,6 +3,18 @@
  * Tableau de Bord Exécutif — Business Intelligence
  */
 
+// Correctif — carte "Valorisation du stock" (et les autres KPI de cette
+// page) figée jusqu'à 2 minutes après un changement réel (réception de
+// stock, vente, etc.) : window._metricsCache ci-dessous ne se vidait que
+// par expiration du délai, jamais quand une donnée pertinente changeait
+// réellement. dashboard.js résout déjà ce même problème via
+// window._invalidateDashCache, appelé par js/db.js à chaque écriture
+// locale ou synchronisation reçue — on branche ici exactement le même
+// mécanisme pour le cache de cette page.
+window._invalidateMetricsCache = function() {
+  window._metricsCache = null;
+};
+
 async function renderMetrics(container) {
   if (window.Auth && !Auth.can('module_metrics') && DB.AppState.currentUser?.role !== 'admin') {
     container.innerHTML = `

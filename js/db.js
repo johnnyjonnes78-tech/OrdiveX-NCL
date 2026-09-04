@@ -487,6 +487,7 @@ function _notifyUIChange(storeName) {
     _pendingUIStores.clear();
     try {
       if (window._invalidateDashCache) window._invalidateDashCache();
+      if (window._invalidateMetricsCache) window._invalidateMetricsCache();
       const page = window.Router?.currentPage;
       if (!page || page === 'login' || page === 'onboarding') return;
 
@@ -1300,7 +1301,7 @@ const _dbCache = new Map();
 const _dbCacheTime = new Map(); // Timestamp du dernier cache
 // Sur mobile : ne PAS cacher les gros stores (products, movements, lots) pour éviter l'OOM
 const _mobileNoCacheStores = new Set(['products', 'movements', 'lots', 'auditLog', 'saleItems']);
-function _invalidateCache(storeName) { _dbCache.delete(storeName); _dbCacheTime.delete(storeName); if (window._invalidateDashCache) window._invalidateDashCache(); }
+function _invalidateCache(storeName) { _dbCache.delete(storeName); _dbCacheTime.delete(storeName); if (window._invalidateDashCache) window._invalidateDashCache(); if (window._invalidateMetricsCache) window._invalidateMetricsCache(); }
 
 // ── Mise à jour chirurgicale du cache mémoire (sans le vider) ──
 // Utilisé par le pull incrémental pour fusionner les nouvelles données
@@ -1343,6 +1344,7 @@ function _updateCacheInPlace(storeName, newItems) {
   }
   _dbCacheTime.set(storeName, Date.now()); // Rafraîchir le TTL
   if (window._invalidateDashCache) window._invalidateDashCache();
+  if (window._invalidateMetricsCache) window._invalidateMetricsCache();
 }
 
 const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -2649,14 +2651,32 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
         console.warn('[Flash] ⚠️ Table absente sur ce projet Supabase — ignorée désormais : ' + sn);
       }
     }
+    // Symétrique de _markTableMissing — un admin qui corrige le schéma
+    // Supabase (crée la table manquante) puis relance un pull manuel doit
+    // voir la table réapparaître d'elle-même, sans devoir passer par
+    // "Réparer la synchro" (forceSyncAll, qui remarque TOUT comme non
+    // synchronisé). Sans cette fonction, le diagnostic ("Tables absentes
+    // côté serveur") continuait d'afficher une table pourtant déjà créée,
+    // car pharma_missing_tables n'était jamais nettoyé individuellement.
+    function _unmarkTableMissing(sn) {
+      if (_missingTables[sn]) {
+        delete _missingTables[sn];
+        localStorage.setItem('pharma_missing_tables', JSON.stringify(_missingTables));
+        console.log('[Flash] ✅ Table de nouveau disponible sur ce projet Supabase : ' + sn);
+      }
+    }
 
+    // Un pull MANUEL redonne sa chance aux tables précédemment marquées
+    // absentes (l'utilisateur vient probablement de corriger le schéma) —
+    // un pull automatique/silencieux, lui, continue de les ignorer pour ne
+    // pas spammer de requêtes vouées à échouer en arrière-plan.
     const storesToPull = [
       'users', 'settings',
       'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
       'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
       'cashRegister', 'auditLog', 'returns', 'invoices', 'shifts', 'prep_transfers',
       'insurances', 'insurancePayments'
-    ].filter(function (sn) { return !_missingTables[sn]; });
+    ].filter(function (sn) { return isManual || !_missingTables[sn]; });
 
     // ── PULL INCRÉMENTAL (Delta Sync) ──
     // Auto-pull : ne récupérer que les données modifiées depuis le dernier pull
@@ -2940,6 +2960,10 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
             if (ceMsg && !ceMsg.includes('null')) console.warn(`[Flash] Count échoué ${storeName}:`, ceMsg);
             continue; // Passer au store suivant
           }
+          // Le COUNT a réussi : la table existe bel et bien sur ce projet
+          // Supabase (même si elle est vide) — si elle était marquée absente
+          // avant (schéma corrigé depuis), on lui redonne sa place ici.
+          _unmarkTableMissing(storeName);
           const totalCount = countRes.count || 0;
 
           if (totalCount > 0) {
@@ -3067,6 +3091,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
         const page = window.Router?.currentPage;
         if (page && page !== 'login' && page !== 'onboarding' && page !== 'pos' && page !== 'settings') {
           if (window._invalidateDashCache) window._invalidateDashCache();
+          if (window._invalidateMetricsCache) window._invalidateMetricsCache();
           _silentRefreshPage(page, []);
         }
       } catch (e) { /* silencieux */ }
