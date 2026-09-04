@@ -157,11 +157,18 @@ async function renderProducts(container) {
     }
   });
 
-  // KPIs Inventaire — calcul local
+  // KPIs Inventaire — calcul local. Exclut les produits "inactifs" : le
+  // filtre du tableau juste en dessous (#prod-status) les libelle lui-même
+  // "Inactifs (Supprimés)" et les exclut par défaut — sans ce même filtre
+  // ici, ces cartes comptaient la valeur de produits que cette page traite
+  // partout ailleurs (tableau, import/export) comme supprimés, gonflant
+  // Achat/Vente/Profit au-dessus de la réalité (écart constaté avec la
+  // carte équivalente de Métriques, qui exclut déjà les inactifs).
+  const activeProducts = products.filter(p => p.status !== 'inactive');
   const stockMap = {};
   stockData.forEach(s => { stockMap[s.productId] = s.quantity || 0; });
   let valAchat = 0, valVente = 0, rupture = 0;
-  products.forEach(p => {
+  activeProducts.forEach(p => {
     const qty = stockMap[p.id] || 0;
     const pa = parseFloat(p.purchasePrice || p.prixAchat || 0);
     const pv = parseFloat(p.salePrice || p.price || p.prixVente || 0);
@@ -175,7 +182,7 @@ async function renderProducts(container) {
     <div class="page-header">
       <div>
         <h1 class="page-title">Catalogue Produits</h1>
-        <p class="page-subtitle">${products.length} produits référencés</p>
+        <p class="page-subtitle">${activeProducts.length} produits référencés</p>
       </div>
       <div class="header-actions">
         ${Auth.can('products_import') ? `<button class="btn btn-secondary" onclick="showImportModal()"><i data-lucide="upload"></i> Importer</button>` : ''}

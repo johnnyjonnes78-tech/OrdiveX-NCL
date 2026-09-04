@@ -1,5 +1,5 @@
 {
-  "version": "9.10.28",
+  "version": "9.10.29",
   "date": "2026-09-04",
-  "changelog": "v9.10.28 : Corrige la carte \"Valorisation du stock\" dans Metriques qui restait figee jusqu'a 2 minutes apres un changement reel (reception, vente...) - elle se met desormais a jour des qu'une donnee pertinente change, comme le Tableau de bord. Corrige aussi le diagnostic \"Tables absentes cote serveur\" qui restait bloque meme apres creation des tables manquantes sur Supabase : une recuperation manuelle des donnees redonne desormais leur chance aux tables precedemment signalees et les retire automatiquement de la liste des qu'elles repondent. Verification (tests dedies) qu'un medicament reconcilie stock/lots ne peut plus jamais redevenir incoherent apres une nouvelle reception, quel que soit le nombre de reapprovisionnements."
+  "changelog": "v9.10.29 : Corrige les cartes du Catalogue Produits (Valeur Stock Achat/Vente, Profit Potentiel, En Rupture, nombre de produits references) qui comptaient a tort les produits inactifs (retires/supprimes du catalogue) - le tableau juste en dessous, sur la meme page, les exclut deja par defaut. Ces cartes sont desormais coherentes avec le tableau et avec la carte equivalente de Metriques."
 }
