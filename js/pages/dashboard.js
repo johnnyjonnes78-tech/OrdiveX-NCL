@@ -54,6 +54,14 @@ async function _refreshDashboard(container) {
       // de bord (un produit supprimé du catalogue ne doit plus fausser les KPI).
       products = (await DB.dbGetAll('products')).filter(p => p.status !== 'inactive');
     }
+    // La carte "Produits Actifs" doit compter des produits ACTIFS, pas le
+    // total brut de la table (productCount, DB.dbCount('products') ci-dessus
+    // n'exclut aucun statut) — sans ce correctif elle affichait un nombre
+    // plus élevé que le Catalogue et le Stock, qui excluent déjà les
+    // produits inactifs. En mode "léger" (>50k, pseudo-produits sans champ
+    // status), impossible de filtrer sans tout charger : on garde alors le
+    // total brut par approximation, comme avant.
+    const activeProductCount = productCount > 50000 ? productCount : products.length;
 
     // Compute KPIs
     const today = new Date();
@@ -174,7 +182,7 @@ async function _refreshDashboard(container) {
         <div class="kpi-card kpi-orange ${lowStockProducts.length > 0 ? 'kpi-alert' : ''}">
           <div class="kpi-icon"><i data-lucide="package"></i></div>
           <div class="kpi-content">
-            <div class="kpi-value">${productCount.toLocaleString('fr-FR')}</div>
+            <div class="kpi-value">${activeProductCount.toLocaleString('fr-FR')}</div>
             <div class="kpi-label">Produits Actifs</div>
             <div class="kpi-sub">${lowStockProducts.length} en stock bas</div>
           </div>

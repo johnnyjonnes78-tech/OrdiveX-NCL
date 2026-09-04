@@ -1,5 +1,5 @@
 {
-  "version": "9.10.29",
+  "version": "9.10.30",
   "date": "2026-09-04",
-  "changelog": "v9.10.29 : Corrige les cartes du Catalogue Produits (Valeur Stock Achat/Vente, Profit Potentiel, En Rupture, nombre de produits references) qui comptaient a tort les produits inactifs (retires/supprimes du catalogue) - le tableau juste en dessous, sur la meme page, les exclut deja par defaut. Ces cartes sont desormais coherentes avec le tableau et avec la carte equivalente de Metriques."
+  "changelog": "v9.10.30 : Corrige la carte \"Produits Actifs\" du Tableau de bord qui affichait le nombre total de produits references (y compris les inactifs/supprimes) au lieu du nombre reellement actif - elle affiche desormais le meme chiffre que Catalogue Produits et Stock."
 }
