@@ -3203,13 +3203,21 @@ function imprimerTicket() {
       --text:#1E293B; --text-color:#1E293B; --text-muted:#64748B;
       --radius-sm:8px;
     }
-    /* Format thermique 80mm : sans cette règle, l'imprimante/le navigateur
+    /* Format thermique : sans cette règle, l'imprimante/le navigateur
        utilise la taille de page par défaut (A4/Lettre), et la longueur
        restante du "papier" au-delà du contenu réel s'imprime blanche —
-       plusieurs dizaines de cm gaspillés à chaque ticket. */
-    @page{size:80mm auto;margin:0}
+       plusieurs dizaines de cm gaspillés à chaque ticket.
+       Largeur 72mm (pas 80mm) : le rouleau de papier fait bien 80mm, mais
+       la zone RÉELLEMENT imprimable d'une thermique 80mm (ex. Epson
+       TM-T20X, specs constructeur confirmées sur site) ne fait que 72mm en
+       mode standard — le reste est une marge morte de chaque côté que la
+       tête d'impression ne peut pas marquer. Demander 80mm au pilote
+       pouvait pousser une partie du contenu (colonnes Désignation/Qté/
+       Prix, totaux) hors de cette zone imprimable, la faisant disparaître
+       silencieusement au lieu de simplement être recadrée. */
+    @page{size:72mm auto;margin:0}
     @media print{
-      html,body{width:80mm}
+      html,body{width:72mm}
       /* Écriture volontairement très appuyée : les imprimantes thermiques
          rendent le texte normal beaucoup trop pâle pour rester lisible. */
       *{
@@ -3221,7 +3229,7 @@ function imprimerTicket() {
       }
     }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Courier New',monospace;font-size:11px;width:80mm;margin:0 auto;padding:4px;color:#000;background:#fff}
+    body{font-family:'Courier New',monospace;font-size:11px;width:72mm;margin:0 auto;padding:4px;color:#000;background:#fff}
     .recu-header{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:6px}
     .recu-logo{font-size:24px;margin-bottom:2px}
     .recu-orgname{font-size:13px;font-weight:bold;margin:2px 0}
@@ -3930,18 +3938,22 @@ async function printProformaReceipt() {
     </tr>
   `).join('');
 
-  // Format 80mm thermique — même imprimante que le ticket de caisse.
+  // Format thermique — même imprimante que le ticket de caisse.
   // Les anciennes dimensions A4 (watermark rotatif 72px, colonnes cote-a-cote)
   // n'ont physiquement pas de sens sur un rouleau de 80mm : c'était la cause
   // du même symptôme "ticket très long / illisible" que sur le reçu de vente,
   // avant correction de imprimerTicket() (v9.9.8). Même traitement ici :
-  // @page 80mm continu + renforcement d'encre pour imprimante thermique.
+  // @page 72mm continu + renforcement d'encre pour imprimante thermique.
+  // 72mm (pas 80mm) : le rouleau fait 80mm mais la zone réellement
+  // imprimable d'une thermique 80mm standard (ex. Epson TM-T20X, specs
+  // constructeur confirmées sur site) ne fait que 72mm — même correctif
+  // que imprimerTicket() ci-dessus, pour la même raison.
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
   <title>Devis Proforma — ${proformaId}</title>
   <style>
-    @page{size:80mm auto;margin:0}
+    @page{size:72mm auto;margin:0}
     @media print{
-      html,body{width:80mm}
+      html,body{width:72mm}
       *{
         color:#000!important;
         font-weight:900!important;
@@ -3951,7 +3963,7 @@ async function printProformaReceipt() {
       }
     }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Courier New',monospace;font-size:11px;width:80mm;margin:0 auto;padding:4px;color:#000;background:#fff}
+    body{font-family:'Courier New',monospace;font-size:11px;width:72mm;margin:0 auto;padding:4px;color:#000;background:#fff}
 
     .dev-band{border:2px solid #000;border-radius:4px;padding:4px;margin-bottom:6px;text-align:center}
     .dev-band-title{font-size:11px;font-weight:bold;letter-spacing:.5px}
