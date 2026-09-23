@@ -1,5 +1,5 @@
 {
-  "version": "9.10.31",
+  "version": "9.10.32",
   "date": "2026-09-04",
-  "changelog": "v9.10.31 : Corrige la largeur d'impression des tickets thermiques (reçu de vente et devis proforma) - le code demandait 80mm au pilote d'impression alors que la zone reellement imprimable d'une thermique 80mm standard (specs constructeur Epson TM-T20X confirmees sur site) ne fait que 72mm. Du contenu (colonnes, totaux) pouvait etre physiquement hors de la zone imprimable et disparaitre a l'impression au lieu d'etre simplement recadre."
+  "changelog": "v9.10.32 : Etend le correctif de largeur d'impression thermique (80mm -> 72mm) au chemin d'impression de print.js (PrintEngine.printSaleReceipt) par coherence/precaution - ce chemin n'est actuellement appele nulle part dans l'app, mais aurait reintroduit le meme bug si jamais reutilise plus tard."
 }

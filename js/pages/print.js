@@ -629,6 +629,12 @@ const PrintEngine = {
 
   _printStyles(isTicket = false) {
     if (isTicket) {
+      // Largeur 72mm (pas 80mm) : le rouleau thermique fait bien 80mm, mais
+      // la zone RÉELLEMENT imprimable d'une thermique 80mm standard (ex.
+      // Epson TM-T20X, specs constructeur confirmées sur site) ne fait que
+      // 72mm — même correctif que imprimerTicket()/printProformaReceipt()
+      // dans js/pages/pos.js, pour la même raison (contenu au-delà de 72mm
+      // hors de portée physique de la tête d'impression).
       return `<style>
         * {
           margin:0; padding:0; box-sizing:border-box;
@@ -639,7 +645,7 @@ const PrintEngine = {
         html, body {
           margin: 0 !important;
           padding: 0 !important;
-          width: 80mm;
+          width: 72mm;
           height: auto !important;
           min-height: 0 !important;
           color: #000;
@@ -652,11 +658,11 @@ const PrintEngine = {
           print-color-adjust: exact;
         }
         @page {
-          size: 80mm auto;
+          size: 72mm auto;
           margin: 0 !important;
         }
         .ticket-container {
-          width: 80mm;
+          width: 72mm;
           margin: 0 !important;
           padding: 5px 7px 4px 7px !important;
           height: auto !important;
@@ -686,7 +692,7 @@ const PrintEngine = {
 
         @media print {
           html, body {
-            width: 80mm;
+            width: 72mm;
             height: auto !important;
             min-height: 0 !important;
             margin: 0 !important;
@@ -694,7 +700,7 @@ const PrintEngine = {
             font-weight: 900 !important;
           }
           .ticket-container {
-            width: 80mm;
+            width: 72mm;
             height: auto !important;
             min-height: 0 !important;
             margin: 0 !important;
