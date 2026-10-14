@@ -1096,6 +1096,7 @@ CREATE INDEX IF NOT EXISTS idx_shifts_date ON public.shifts (date);
 -- Politique RLS : accès total pour les clés anon/service (comme les autres tables OrdiveX)
 ALTER TABLE public.shifts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "shifts_full_access" ON public.shifts;
 CREATE POLICY "shifts_full_access" ON public.shifts
   FOR ALL
   USING (true)

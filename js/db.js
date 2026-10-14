@@ -2484,10 +2484,13 @@ async function _internalSyncToSupabase() {
         }
 
         if (lastError && navigator.onLine) {
-          // Ignorer les erreurs RLS connues (settings upsert en anon mode)
-          if (!lastError.message?.includes('row-level security')) {
-            console.error(`[Flash] ❌ ${storeName}:`, lastError.message || lastError);
-          }
+          // Toujours logger l'erreur réelle, y compris les refus RLS — une
+          // pharmacie a eu un échec de push silencieux (settings/users
+          // jamais synchronisés) sans AUCUN message nulle part, car ce cas
+          // précis était explicitement masqué ici. Un refus RLS est un
+          // signal utile (ex: connexion anonyme qui échoue réellement) et
+          // ne doit jamais être caché à l'utilisateur qui diagnostique.
+          console.error(`[Flash] ❌ ${storeName}:`, lastError.message || lastError);
         }
       } catch (storeError) {
         // Garde null-safe : storeError peut être null si une promesse rejette avec null

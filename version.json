@@ -1,5 +1,5 @@
 {
-  "version": "9.10.32",
-  "date": "2026-09-04",
-  "changelog": "v9.10.32 : Etend le correctif de largeur d'impression thermique (80mm -> 72mm) au chemin d'impression de print.js (PrintEngine.printSaleReceipt) par coherence/precaution - ce chemin n'est actuellement appele nulle part dans l'app, mais aurait reintroduit le meme bug si jamais reutilise plus tard."
+  "version": "9.10.33",
+  "date": "2026-10-14",
+  "changelog": "v9.10.33 : La synchronisation Cloud (push) n'affiche plus jamais un echec en silence. Une erreur de type \"row-level security\" (ex: refus du serveur quand la session de l'appareil n'est pas valide) etait auparavant volontairement masquee de la console, rendant certains echecs de synchronisation (parametres/compte utilisateur jamais envoyes vers le cloud) impossibles a diagnostiquer. Corrige egalement un script SQL de reference (supabase_schema.sql) qui pouvait echouer a la re-execution sur la politique de securite de la table shifts."
 }
