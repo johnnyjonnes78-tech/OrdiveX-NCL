@@ -1,5 +1,5 @@
 {
-  "version": "9.10.35",
+  "version": "9.10.36",
   "date": "2026-10-14",
-  "changelog": "v9.10.35 : Ajoute \"Transferer tout vers le rayon\" dans Gestion des Stocks - transfert groupe de tous les lots en reserve vers le rayon en un clic (utile notamment apres un import Stock CSV sans colonne Emplacement, qui met tout en reserve par defaut). Chaque lot garde sa quantite et son numero de lot, seul l'emplacement change."
+  "changelog": "v9.10.36 : Inventaire - en plus du stock, la date de peremption et le prix de vente peuvent desormais etre corriges directement pendant le comptage (appliques meme si la quantite physique est correcte). Ressources Humaines - la fiche de paie ouverte via \"Modifier\" calcule desormais automatiquement la deduction des avances en cours de l'employe, comme le fait deja la generation groupee des fiches."
 }

@@ -433,6 +433,13 @@ function startInventorySetup(event) {
     scope: scopeLabel,
     products: filtered.map(p => {
       const theory = state.stockMap[p.id] || 0;
+      // originalSalePrice/originalExpiryDate servent de référence pour ne
+      // réécrire en base QUE ce qui a réellement changé pendant le comptage
+      // (voir confirmValidation) — indépendamment de l'écart de quantité,
+      // qui peut être nul alors que le prix/la date doivent quand même être
+      // corrigés (ex: juste une étiquette de prix fautive constatée au comptage).
+      const originalSalePrice = parseFloat(p.salePrice || 0);
+      const originalExpiryDate = p.expiryDate || '';
       return {
         id: p.id,
         code: p.code || 'N/A',
@@ -445,7 +452,11 @@ function startInventorySetup(event) {
         physicalQty: theory, // Initialisé à la qté théorique pour simplifier
         gap: 0,
         gapValue: 0,
-        observation: ''
+        observation: '',
+        originalSalePrice,
+        newSalePrice: originalSalePrice,
+        originalExpiryDate,
+        newExpiryDate: originalExpiryDate
       };
     })
   };
@@ -503,6 +514,8 @@ function renderEntryView(container) {
               <th class="ta-c" style="min-width:110px; width:110px;">Stock Physique</th>
               <th class="ta-c" style="min-width:80px;">Écart</th>
               <th class="ta-r" style="min-width:110px;">Valeur Écart</th>
+              <th class="ta-c" style="min-width:150px;">Péremption</th>
+              <th class="ta-c" style="min-width:110px;">Prix Vente</th>
               <th style="min-width:150px;">Observation</th>
             </tr>
           </thead>
@@ -552,6 +565,14 @@ window.renderEntryPage = function(page = 1) {
       </td>
       <td class="ta-c" id="phys-gap-cell-${it.id}"><span class="badge badge-success">0</span></td>
       <td class="ta-r" id="phys-val-cell-${it.id}" style="font-weight:600;">0 GNF</td>
+      <td class="ta-c">
+        <input type="date" class="form-control ta-c" id="phys-exp-${it.id}" value="${it.newExpiryDate || ''}" style="width: 150px;"
+          oninput="onExpiryChange(${it.id}, this.value)">
+      </td>
+      <td class="ta-c">
+        <input type="number" class="form-control ta-c" id="phys-price-${it.id}" value="${it.newSalePrice}" min="0" step="1" style="width: 110px;"
+          oninput="onSalePriceChange(${it.id}, this.value)">
+      </td>
       <td>
         <input type="text" class="form-control" placeholder="Obs..." id="phys-obs-${it.id}" value="${it.observation || ''}" style="width: 140px;"
           oninput="onObservationChange(${it.id}, this.value)">
@@ -628,6 +649,22 @@ window.onObservationChange = function(itemId, val) {
   const it = state.currentInventory.products.find(p => p.id === itemId);
   if (it) {
     it.observation = val;
+  }
+};
+
+window.onExpiryChange = function(itemId, val) {
+  const state = window._inventoryPageState;
+  const it = state.currentInventory.products.find(p => p.id === itemId);
+  if (it) {
+    it.newExpiryDate = val || '';
+  }
+};
+
+window.onSalePriceChange = function(itemId, val) {
+  const state = window._inventoryPageState;
+  const it = state.currentInventory.products.find(p => p.id === itemId);
+  if (it) {
+    it.newSalePrice = parseFloat(val) || 0;
   }
 };
 
@@ -896,6 +933,52 @@ async function confirmValidation() {
       }
     }
 
+    // 2bis. Appliquer les corrections de prix de vente / péremption saisies
+    // pendant le comptage — INDÉPENDANT de l'écart de quantité (gaps) : un
+    // produit peut avoir un stock physique correct mais un prix ou une date
+    // fautifs à corriger. On ne réécrit que ce qui a réellement changé par
+    // rapport à la valeur de départ, pour ne jamais toucher aux produits non
+    // modifiés pendant ce comptage.
+    let priceExpiryUpdates = 0;
+    for (const p of inv.products) {
+      const priceChanged = p.newSalePrice !== p.originalSalePrice;
+      const expiryChanged = (p.newExpiryDate || '') !== (p.originalExpiryDate || '') && !!p.newExpiryDate;
+      if (!priceChanged && !expiryChanged) continue;
+
+      try {
+        if (priceChanged) {
+          const prod = await DB.dbGet('products', p.id);
+          if (prod) {
+            await DB.dbPut('products', { ...prod, salePrice: p.newSalePrice });
+            // Cascade sur les lots actifs — même convention que l'édition
+            // groupée de produits (js/pages/products.js, lotCascadeFields).
+            const prodLots = (await DB.dbGetAll('lots')).filter(l => l.productId === p.id && l.status === 'active');
+            for (const lot of prodLots) {
+              await DB.dbPut('lots', { ...lot, salePrice: p.newSalePrice });
+            }
+          }
+        }
+        if (expiryChanged) {
+          // Écrit directement sur les lots actifs : products.expiryDate se
+          // resynchronise automatiquement ensuite (voir db.js,
+          // _syncLotExpiryToProduct, déclenché par dbPut sur 'lots').
+          const prodLots = (await DB.dbGetAll('lots')).filter(l => l.productId === p.id && l.status === 'active');
+          for (const lot of prodLots) {
+            await DB.dbPut('lots', { ...lot, expiryDate: p.newExpiryDate });
+          }
+        }
+        await DB.writeAudit('INVENTORY_PRICE_EXPIRY_UPDATE', 'products', p.id, {
+          productName: p.name,
+          priceChanged, expiryChanged,
+          oldSalePrice: p.originalSalePrice, newSalePrice: p.newSalePrice,
+          oldExpiryDate: p.originalExpiryDate, newExpiryDate: p.newExpiryDate,
+        });
+        priceExpiryUpdates++;
+      } catch (e) {
+        console.warn('[Inventory] Erreur mise à jour prix/péremption produit ' + p.id + ':', e);
+      }
+    }
+
     // 3. Enregistrer la fiche d'inventaire
     const newInventoryDoc = {
       date: dateStr,
@@ -918,7 +1001,11 @@ async function confirmValidation() {
         physicalQty: p.physicalQty,
         gap: p.gap,
         gapValue: p.gapValue,
-        observation: p.observation
+        observation: p.observation,
+        salePrice: p.newSalePrice,
+        priceChanged: p.newSalePrice !== p.originalSalePrice,
+        expiryDate: p.newExpiryDate,
+        expiryChanged: (p.newExpiryDate || '') !== (p.originalExpiryDate || '') && !!p.newExpiryDate
       }))
     };
 
@@ -946,7 +1033,11 @@ async function confirmValidation() {
     }
 
     UI.hideLoader();
-    UI.toast("L'inventaire a été validé avec succès !", "success");
+    UI.toast(
+      "L'inventaire a été validé avec succès !" +
+      (priceExpiryUpdates > 0 ? ` ${priceExpiryUpdates} prix/péremption corrigé(s).` : ''),
+      "success"
+    );
 
     // Stocker la fiche validée en state pour l'écran de synthèse final
     state.lastSavedInventory = {

@@ -1298,7 +1298,18 @@
       let rawEmp = await DB.dbGet('users', empId);
       const emp = rawEmp ? { ...rawEmp, nom: rawEmp.nom || rawEmp.name || rawEmp.username || '' } : null;
       const fiches = await DB.dbGetAll('hr_payroll');
-      const fiche = fiches.find(f => f.employeeId === empId && f.period === period) || { salaire: emp?.salaire||0, primes:0, heuresSup:0, retenues:0, avancesDed:0 };
+      let fiche = fiches.find(f => f.employeeId === empId && f.period === period);
+      if (!fiche) {
+        // Pas encore de fiche pour cet employé/période (ouverture directe de
+        // "Modifier" sans être passé par "Générer les fiches") : calculer la
+        // déduction d'avances automatiquement, comme hrGenerateFiches/
+        // hrPayerEmploye le font déjà — sans ça, une fiche créée depuis cet
+        // écran démarrait toujours à 0 de déduction même si l'employé avait
+        // une avance en cours.
+        const empAdvs = (await DB.dbGetAll('hr_advances')).filter(a => a.employeeId === empId && a.status === 'approuvee' && a.solde > 0);
+        const advDed = empAdvs.reduce((s, a) => s + Math.min(a.mensualite || a.solde, a.solde), 0);
+        fiche = { salaire: emp?.salaire||0, primes:0, heuresSup:0, retenues:0, avancesDed: advDed };
+      }
       UI.openModal({
         title: `Fiche de paie — ${emp?.nom||''} (${period})`,
         body: `
