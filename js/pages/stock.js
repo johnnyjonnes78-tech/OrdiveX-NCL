@@ -91,6 +91,10 @@ async function renderStock(container) {
     };
   });
   const mismatchCount = stockData.filter(p => p.stockMismatch).length;
+  // Compte les LOTS (pas les produits) en réserve avec du stock réel — sert
+  // au bouton de transfert groupé vers le rayon (ex: après un import stock
+  // CSV sans colonne Emplacement, qui met tout en réserve par défaut).
+  const reserveLotsCount = lots.filter(l => l.status === 'active' && l.location === 'reserve' && (l.quantity || 0) > 0).length;
 
   // Stats
   const totalProducts = products.length;
@@ -116,6 +120,7 @@ async function renderStock(container) {
         <input type="file" id="import-stock-file" accept=".csv" style="display:none" onchange="importStockCsv(event)">
         ${Auth.can('po_receive') || Auth.can('stock_adjust') ? `<button class="btn btn-primary" onclick="renderStockEntry()"><i data-lucide="plus"></i> Entrée Stock</button>` : ''}
         ${mismatchCount > 0 && (Auth.can('stock_adjust') || DB.AppState.currentUser?.role === 'admin') ? `<button class="btn btn-danger" onclick="bulkRepairStockLots()"><i data-lucide="wrench"></i> Réparer tout (${mismatchCount})</button>` : ''}
+        ${reserveLotsCount > 0 && (Auth.can('stock_adjust') || DB.AppState.currentUser?.role === 'admin') ? `<button class="btn btn-secondary" onclick="bulkTransferAllToRayon()"><i data-lucide="arrow-right-left"></i> Transférer tout vers le rayon (${reserveLotsCount})</button>` : ''}
       </div>
     </div>
 
@@ -421,6 +426,76 @@ window.initTransferLot = async function(lotId) {
     `
   });
   if (window.lucide) lucide.createIcons();
+};
+
+// Transfert groupé de TOUS les lots actifs en réserve vers le rayon — même
+// principe que submitTransferLot() (transfert total, flip location, pas de
+// fusion entre lots pour garder la traçabilité par lot), appliqué à tous les
+// lots en une seule opération. Utile notamment après un import Stock CSV
+// sans colonne Emplacement/Location, qui place tout en réserve par défaut
+// (des centaines de lots à transférer un par un sinon).
+window.bulkTransferAllToRayon = async function() {
+  if (window.Auth && !Auth.can('stock_adjust') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de transférer du stock.', 'error', 4000);
+    return;
+  }
+
+  const allLots = await DB.dbGetAll('lots');
+  const candidates = allLots.filter(l => l.status === 'active' && l.location === 'reserve' && (l.quantity || 0) > 0);
+  if (candidates.length === 0) {
+    UI.toast('Aucun lot en réserve à transférer.', 'info');
+    return;
+  }
+
+  const ok = await UI.confirm(
+    `Transférer ${candidates.length} lot(s) de la réserve vers le rayon ?\n\n` +
+    `Chaque lot garde sa quantité et son numéro de lot — seul son emplacement change. ` +
+    `Le stock total affiché pour chaque produit ne change pas.\n\nContinuer ?`
+  );
+  if (!ok) return;
+
+  window._bulkRepairInProgress = true; // pause aussi _softRefreshStock pendant l'opération
+  UI.showLoader(`Transfert de ${candidates.length} lot(s)...`, 120000);
+  let transferred = 0, errors = 0;
+  try {
+    for (let i = 0; i < candidates.length; i++) {
+      const lot = candidates[i];
+      try {
+        lot.location = 'rayon';
+        await DB.dbPut('lots', lot);
+        await DB.dbAdd('movements', {
+          id: await DB._generateSyncSafeId(),
+          productId: lot.productId,
+          type: 'TRANSFER',
+          quantity: 0,
+          date: new Date().toISOString(),
+          reference: lot.lotNumber,
+          note: `Transfert groupé de ${lot.quantity} unités de la réserve vers le rayon`,
+          userId: DB.AppState.currentUser?.id
+        });
+        transferred++;
+      } catch (e) {
+        console.warn('[BulkTransfer] Erreur lot ' + lot.id + ':', e);
+        errors++;
+      }
+      if (i % 20 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+  } finally {
+    UI.hideLoader();
+    window._bulkRepairInProgress = false;
+  }
+
+  UI.toast(
+    `${transferred} lot(s) transféré(s) vers le rayon` +
+    (errors > 0 ? `, ${errors} erreur(s) — voir la console` : '') + '.',
+    errors > 0 ? 'warning' : 'success', 6000
+  );
+
+  if (navigator.onLine && typeof DB.syncToSupabase === 'function') {
+    DB.syncToSupabase().catch(() => {});
+  }
+
+  Router.navigate('stock');
 };
 
 window.submitTransferLot = async function(lotId, btn) {

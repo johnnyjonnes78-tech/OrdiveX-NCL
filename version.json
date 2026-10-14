@@ -1,5 +1,5 @@
 {
-  "version": "9.10.34",
+  "version": "9.10.35",
   "date": "2026-10-14",
-  "changelog": "v9.10.34 : Corrige \"Reparer la synchro\" et le bouton \"Envoyer vers le Cloud (PUSH)\" qui pouvaient abandonner silencieusement (aucune requete reseau, aucune erreur) si l'etat de connexion interne de l'application etait transitoirement instable au moment du clic. Ces deux actions, etant des clics manuels et delibere, forcent desormais une vraie tentative de synchronisation au lieu de se comporter comme une synchro automatique silencieuse."
+  "changelog": "v9.10.35 : Ajoute \"Transferer tout vers le rayon\" dans Gestion des Stocks - transfert groupe de tous les lots en reserve vers le rayon en un clic (utile notamment apres un import Stock CSV sans colonne Emplacement, qui met tout en reserve par defaut). Chaque lot garde sa quantite et son numero de lot, seul l'emplacement change."
 }
