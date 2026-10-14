@@ -1,5 +1,5 @@
 {
-  "version": "9.10.33",
+  "version": "9.10.34",
   "date": "2026-10-14",
-  "changelog": "v9.10.33 : La synchronisation Cloud (push) n'affiche plus jamais un echec en silence. Une erreur de type \"row-level security\" (ex: refus du serveur quand la session de l'appareil n'est pas valide) etait auparavant volontairement masquee de la console, rendant certains echecs de synchronisation (parametres/compte utilisateur jamais envoyes vers le cloud) impossibles a diagnostiquer. Corrige egalement un script SQL de reference (supabase_schema.sql) qui pouvait echouer a la re-execution sur la politique de securite de la table shifts."
+  "changelog": "v9.10.34 : Corrige \"Reparer la synchro\" et le bouton \"Envoyer vers le Cloud (PUSH)\" qui pouvaient abandonner silencieusement (aucune requete reseau, aucune erreur) si l'etat de connexion interne de l'application etait transitoirement instable au moment du clic. Ces deux actions, etant des clics manuels et delibere, forcent desormais une vraie tentative de synchronisation au lieu de se comporter comme une synchro automatique silencieuse."
 }

@@ -768,7 +768,7 @@ async function renderSettings(container) {
             </div>
             <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
               <button class="btn btn-sm btn-primary" onclick="triggerPull()"><i data-lucide="cloud-download"></i> Récupérer depuis le Cloud (PULL)</button>
-              <button class="btn btn-sm btn-secondary" onclick="DB.syncToSupabase()"><i data-lucide="cloud-lightning"></i> Envoyer vers le Cloud (PUSH)</button>
+              <button class="btn btn-sm btn-secondary" onclick="DB.syncToSupabase(true)"><i data-lucide="cloud-lightning"></i> Envoyer vers le Cloud (PUSH)</button>
               <button class="btn btn-xs btn-outline-danger" onclick="repairSync()"><i data-lucide="wrench"></i> Réparer l'envoi Cloud</button>
             </div>
           </div>

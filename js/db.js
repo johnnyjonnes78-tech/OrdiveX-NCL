@@ -3176,7 +3176,17 @@ async function forceSyncAll() {
   }
 
   console.log(`[Flash] 🚀 ${totalMarked} items au total, lancement du push...`);
-  return syncToSupabase();
+  // isManual=true impératif ici : forceSyncAll() est déclenché par une action
+  // humaine délibérée ("Réparer la synchro"). Sans ce flag, NM.requestSync()
+  // abandonne EN SILENCE si son état interne est OFFLINE/RETRYING au moment
+  // exact de l'appel (ex: état transitoire après un signal matériel de
+  // connexion, navigator.onLine pourtant à true) — aucune requête réseau
+  // n'est jamais tentée, sans la moindre erreur nulle part (pas même dans le
+  // correctif précédent de visibilité d'erreur, puisqu'on n'atteint jamais
+  // _internalSyncToSupabase). isManual=true fait exactement ce qu'un bouton
+  // "réparer" doit faire : forcer une tentative de reconnexion/sync au lieu
+  // de respecter un abandon automatique pensé pour la synchro silencieuse.
+  return syncToSupabase(true);
 }
 
 /**
