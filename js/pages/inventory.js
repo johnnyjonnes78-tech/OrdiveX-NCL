@@ -64,6 +64,20 @@ async function renderInventory(container) {
 
   window._inventoryPageState = state;
 
+  // Scanner physique (douchette USB/Bluetooth, toute marque) : actif pendant
+  // toute la durée de vie de la page, mais n'agit que sur la vue 'entry' (saisie
+  // du comptage) - sans effet sur les autres vues (historique, création...).
+  if (window.BarcodeScan) {
+    const _invScanWatcher = BarcodeScan.watchKeyboardWedge({
+      ignoreEditable: false,
+      onScan: (code) => {
+        if (state.view !== 'entry' || !state.currentInventory) return;
+        findAndIncrementByScan(code);
+      }
+    });
+    if (typeof Router !== 'undefined' && Router.onLeave) Router.onLeave(() => _invScanWatcher.stop());
+  }
+
   // Fonction de rendu principale
   const render = () => {
     if (state.view === 'history') {
@@ -481,6 +495,12 @@ function renderEntryView(container) {
       </div>
       <div class="header-actions">
         <button class="btn btn-secondary" onclick="cancelInventorySession()"><i data-lucide="x"></i> Annuler</button>
+        <button class="btn btn-secondary" onclick="openInventoryScan()"><i data-lucide="camera"></i> Scanner</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('inv-scan-batch-input').click()"
+          title="Importer un fichier .txt/.csv exporté par un lecteur de codes-barres autonome (une ligne par code, ex: CODE ou CODE,QUANTITE)">
+          <i data-lucide="upload"></i> Importer fichier scan
+        </button>
+        <input type="file" id="inv-scan-batch-input" accept=".txt,.csv" style="display:none" onchange="importScanBatchFile(this)">
         <button class="btn btn-primary" onclick="proceedToValidation()"><i data-lucide="check-square"></i> Valider l'inventaire</button>
       </div>
     </div>
@@ -677,6 +697,192 @@ function updateEntryGapsKPI() {
     el.className = `badge ${totalGaps > 0 ? 'badge-warning' : 'badge-success'}`;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// SCAN (camera ou douchette) : retrouve la ligne d'inventaire correspondant
+// au code scanné et incrémente sa quantité physique de 1 (comptage unité par
+// unité, comme en supermarché). Fonctionne même si la ligne n'est pas sur la
+// page affichée (grâce à onPhysicalQtyChange, dont les accès DOM sont
+// déjà protégés par des vérifications null).
+// ═══════════════════════════════════════════════════════════════════
+function _resolveInventoryItemByCode(code) {
+  const state = window._inventoryPageState;
+  if (!state || !state.currentInventory) return null;
+  const norm = (code || '').trim().toUpperCase();
+  if (!norm) return null;
+
+  let it = state.currentInventory.products.find(p => (p.code || '').toUpperCase() === norm);
+  if (!it) {
+    // Repli : le code scanné (EAN/CIP) ne correspond pas forcément au champ
+    // "code" interne affiché dans le tableau - on résout via le catalogue complet.
+    const prod = state.products.find(p =>
+      (p.code || '').toUpperCase() === norm ||
+      (p.ean || '').toUpperCase() === norm ||
+      (p.cip || '').toUpperCase() === norm
+    );
+    if (prod) it = state.currentInventory.products.find(p => p.id === prod.id);
+  }
+  return it || null;
+}
+
+function findAndIncrementByScan(code) {
+  const it = _resolveInventoryItemByCode(code);
+  if (!it) {
+    UI.toast(`❌ Aucun produit de cet inventaire ne correspond au code "${code}"`, 'error', 3000);
+    return;
+  }
+
+  const newQty = (it.physicalQty || 0) + 1;
+  const input = document.getElementById(`phys-qty-${it.id}`);
+  if (input) input.value = newQty;
+  window.onPhysicalQtyChange(it.id, newQty);
+
+  UI.toast(`📷 ${it.name} : quantité physique = ${newQty}`, 'success', 1500);
+}
+window.findAndIncrementByScan = findAndIncrementByScan;
+
+// ═══════════════════════════════════════════════════════════════════
+// NIVEAU 3 : import d'un fichier de scans en lot, produit par un lecteur de
+// codes-barres autonome ("data collector") qui scanne hors-ligne puis exporte
+// un fichier .txt/.csv une fois branché. Formats de ligne acceptés :
+// "CODE", "CODE,QTE", "CODE;QTE" ou "CODE<tab>QTE". Lignes vides ignorées.
+// Fonction pure (sans DOM) pour rester testable facilement.
+// ═══════════════════════════════════════════════════════════════════
+function parseScanBatchFile(text) {
+  const lines = (text || '').split(/\r?\n/);
+  const result = [];
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const parts = line.split(/[,;\t]/).map(s => s.trim()).filter(s => s !== '');
+    if (parts.length === 0) continue;
+    const code = parts[0];
+    let qty = 1;
+    if (parts.length > 1) {
+      const parsed = parseInt(parts[1], 10);
+      if (Number.isFinite(parsed) && parsed > 0) qty = parsed;
+    }
+    result.push({ code, qty });
+  }
+  return result;
+}
+window.parseScanBatchFile = parseScanBatchFile;
+
+function applyScanBatch(entries) {
+  const state = window._inventoryPageState;
+  if (!state || !state.currentInventory) return { recognized: 0, unrecognized: [], totalLines: entries.length };
+
+  const unrecognized = [];
+  let recognized = 0;
+  entries.forEach(({ code, qty }) => {
+    const it = _resolveInventoryItemByCode(code);
+    if (!it) { unrecognized.push(code); return; }
+    it.physicalQty = (it.physicalQty || 0) + qty;
+    it.gap = it.physicalQty - it.systemQty;
+    it.gapValue = it.gap * it.purchasePrice;
+    recognized++;
+  });
+
+  // Rafraîchir l'affichage en un seul passage (évite un re-rendu par ligne)
+  if (state.view === 'entry' && typeof window.renderEntryPage === 'function') {
+    window.renderEntryPage(state.entryCurrentPage || 1);
+  }
+
+  return { recognized, unrecognized, totalLines: entries.length };
+}
+window.applyScanBatch = applyScanBatch;
+
+function importScanBatchFile(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const entries = parseScanBatchFile(e.target.result);
+    if (entries.length === 0) {
+      UI.toast('Aucune ligne exploitable dans ce fichier.', 'warning');
+      return;
+    }
+    const { recognized, unrecognized, totalLines } = applyScanBatch(entries);
+    const uniqueUnrecognized = [...new Set(unrecognized)];
+    let msg = `✅ ${recognized}/${totalLines} ligne(s) appliquée(s) à l'inventaire.`;
+    if (uniqueUnrecognized.length > 0) {
+      msg += ` ${uniqueUnrecognized.length} code(s) non reconnu(s) : ${uniqueUnrecognized.slice(0, 5).join(', ')}${uniqueUnrecognized.length > 5 ? '…' : ''}`;
+    }
+    UI.toast(msg, uniqueUnrecognized.length > 0 ? 'warning' : 'success', 7000);
+  };
+  reader.onerror = () => UI.toast('Erreur de lecture du fichier.', 'error');
+  reader.readAsText(file);
+  fileInput.value = '';
+}
+window.importScanBatchFile = importScanBatchFile;
+
+// ═══════════════════════════════════════════════════════════════════
+// Scan caméra pour l'inventaire : boucle en continu (un scan incrémente,
+// puis repart automatiquement pour l'article suivant) avec un garde-fou de
+// temps strict - jamais de scan actif indéfiniment sans action de l'utilisateur.
+// ═══════════════════════════════════════════════════════════════════
+function _startInvCameraLoop() {
+  const video = document.getElementById('inv-barcode-video');
+  if (!video || !window.BarcodeScan) return;
+  window._invScannerCamera = BarcodeScan.scanWithCamera(video, {
+    timeoutMs: 25000,
+    onDetect: (code) => {
+      findAndIncrementByScan(code);
+      setTimeout(() => { if (document.getElementById('inv-barcode-video')) _startInvCameraLoop(); }, 500);
+    },
+    onError: (reason) => {
+      const status = document.getElementById('inv-scanner-status');
+      if (!status) return;
+      if (reason === 'timeout') {
+        status.innerHTML = '<span class="text-warning">⏱️ Scan en pause (25s sans activité). </span> <button type="button" class="btn btn-sm btn-secondary" onclick="_startInvCameraLoop()">Reprendre le scan</button>';
+      } else {
+        status.innerHTML = '<span class="text-warning">⚠️ Caméra non disponible</span>';
+      }
+    }
+  });
+}
+window._startInvCameraLoop = _startInvCameraLoop;
+
+function openInventoryScan() {
+  const hasBarcodeAPI = !!(window.BarcodeScan && BarcodeScan.hasBarcodeDetectorAPI());
+  const hasCamera = !!(window.BarcodeScan && BarcodeScan.hasCameraAPI());
+
+  if (!hasBarcodeAPI || !hasCamera) {
+    UI.toast(!hasBarcodeAPI
+      ? '📷 Le scan caméra n\'est pas supporté par ce navigateur (ex: Safari/iPhone). Utilisez un scanner physique (douchette) - il fonctionne directement, sans ouvrir ce module.'
+      : '📷 Caméra non disponible sur cet appareil. Utilisez un scanner physique (douchette) - il fonctionne directement, sans ouvrir ce module.', 'warning', 6000);
+    return;
+  }
+
+  UI.modal('📷 Scanner pour l\'Inventaire', `
+    <div class="barcode-scanner-module">
+      <div class="scanner-preview-wrap">
+        <video id="inv-barcode-video" autoplay playsinline muted style="width:100%;max-height:300px;border-radius:8px;background:#000"></video>
+        <div class="scanner-overlay">
+          <div class="scanner-line"></div>
+        </div>
+      </div>
+      <div class="scanner-status" id="inv-scanner-status">
+        <span class="scanner-status-dot"></span>
+        Scannez chaque unité : la quantité physique s'incrémente automatiquement.
+      </div>
+    </div>
+  `, { size: 'medium' });
+
+  _startInvCameraLoop();
+
+  const origClose = UI.closeModal;
+  UI.closeModal = function () {
+    if (window._invScannerCamera) {
+      window._invScannerCamera.stop();
+      window._invScannerCamera = null;
+    }
+    origClose.call(UI);
+    UI.closeModal = origClose;
+  };
+}
+window.openInventoryScan = openInventoryScan;
 
 window.cancelInventorySession = async function() {
   const ok = await UI.confirm("Êtes-vous sûr de vouloir annuler l'inventaire en cours ? Toutes les saisies seront perdues.");

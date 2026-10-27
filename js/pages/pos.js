@@ -651,6 +651,18 @@ function renderFullPOSUI(container) {
   const _prepQueuePoll = setInterval(refreshPrepQueueBadge, 30000);
   if (typeof Router !== 'undefined' && Router.onLeave) Router.onLeave(() => clearInterval(_prepQueuePoll));
 
+  // Scanner physique (douchette USB/Bluetooth, toute marque) : fonctionne via le
+  // clavier, où que soit le focus (champ recherche, modale de saisie...) - pas
+  // besoin d'ouvrir le scan caméra. ignoreEditable:false car le focus naturel
+  // pendant une vente est justement le champ de recherche.
+  if (window.BarcodeScan) {
+    const _posScanWatcher = BarcodeScan.watchKeyboardWedge({
+      ignoreEditable: false,
+      onScan: (code) => searchByBarcode(code)
+    });
+    if (typeof Router !== 'undefined' && Router.onLeave) Router.onLeave(() => _posScanWatcher.stop());
+  }
+
   // Restore held carts: vérifier s'il y a des paniers en attente
   (async function() {
     try {
@@ -3275,12 +3287,19 @@ function imprimerTicket() {
 }
 
 async function startBarcodeScan() {
-  // Check for BarcodeDetector API (Chrome/Edge) or fallback to manual entry
-  const hasBarcodeAPI = 'BarcodeDetector' in window;
-  const hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  const hasBarcodeAPI = !!(window.BarcodeScan && BarcodeScan.hasBarcodeDetectorAPI());
+  const hasCamera = !!(window.BarcodeScan && BarcodeScan.hasCameraAPI());
+
+  if (!hasBarcodeAPI) {
+    // Safari/Firefox (et tout navigateur sans BarcodeDetector) : jamais de blocage
+    // silencieux - message clair puis bascule immédiate sur la saisie manuelle
+    // ou un scanner physique (douchette clavier), qui fonctionne partout.
+    UI.toast('📷 Le scan caméra n\'est pas supporté par ce navigateur (ex: Safari/iPhone). Utilisez la saisie manuelle ou un scanner physique.', 'warning', 5000);
+    showManualBarcodeEntry();
+    return;
+  }
 
   if (!hasCamera) {
-    // Fallback: manual code entry
     showManualBarcodeEntry();
     return;
   }
@@ -3307,55 +3326,30 @@ async function startBarcodeScan() {
     </div>
   `, { size: 'medium' });
 
-  // Start camera
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-    });
-    const video = document.getElementById('barcode-video');
-    if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
-    video.srcObject = stream;
-    window._scannerStream = stream;
-
-    // Use BarcodeDetector if available
-    if (hasBarcodeAPI) {
-      const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'] });
-      const scanInterval = setInterval(async () => {
-        if (!document.getElementById('barcode-video')) {
-          clearInterval(scanInterval);
-          stream.getTracks().forEach(t => t.stop());
-          return;
-        }
-        try {
-          const barcodes = await detector.detect(video);
-          if (barcodes.length > 0) {
-            clearInterval(scanInterval);
-            stream.getTracks().forEach(t => t.stop());
-            const code = barcodes[0].rawValue;
-            UI.closeModal();
-            searchByBarcode(code);
-          }
-        } catch (e) { /* continue scanning */ }
-      }, 500);
-      window._scanInterval = scanInterval;
+  const video = document.getElementById('barcode-video');
+  const scan = BarcodeScan.scanWithCamera(video, {
+    timeoutMs: 20000,
+    onDetect: (code) => {
+      UI.closeModal();
+      searchByBarcode(code);
+    },
+    onError: (reason) => {
+      const status = document.getElementById('scanner-status');
+      if (reason === 'timeout') {
+        if (status) status.innerHTML = '<span class="text-warning">⏱️ Aucun code détecté après 20s — utilisez la saisie manuelle ci-dessous</span>';
+      } else {
+        if (status) status.innerHTML = '<span class="text-warning">⚠️ Caméra non disponible — utilisez la saisie manuelle ci-dessous</span>';
+      }
     }
-  } catch (err) {
-    const status = document.getElementById('scanner-status');
-    if (status) {
-      status.innerHTML = '<span class="text-warning">⚠️ Caméra non disponible — utilisez la saisie manuelle ci-dessous</span>';
-    }
-  }
+  });
+  window._scannerCamera = scan;
 
   // Cleanup on modal close
   const origClose = UI.closeModal;
   UI.closeModal = function () {
-    if (window._scannerStream) {
-      window._scannerStream.getTracks().forEach(t => t.stop());
-      window._scannerStream = null;
-    }
-    if (window._scanInterval) {
-      clearInterval(window._scanInterval);
-      window._scanInterval = null;
+    if (window._scannerCamera) {
+      window._scannerCamera.stop();
+      window._scannerCamera = null;
     }
     origClose.call(UI);
     UI.closeModal = origClose;
