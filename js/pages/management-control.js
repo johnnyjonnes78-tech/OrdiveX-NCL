@@ -3,6 +3,29 @@
  * Centre de pilotage unifie pour le responsable pharmacie
  */
 
+// Construit, par saleItem, la quantité qui a été retournée (retours
+// approuvés uniquement) - même logique que mcRenderDashboard (CA/bénéfice),
+// appliquée ici au niveau de la ligne de vente plutôt qu'en agrégat. Fonction
+// pure, exposée hors de toute fonction englobante pour rester testable.
+window._buildReturnedQtyBySaleItem = function _buildReturnedQtyBySaleItem(returns) {
+  const map = {};
+  (returns || []).filter(r => r.status === 'approved').forEach(r => {
+    (r.items || []).forEach(it => {
+      if (!it.saleItemId) return;
+      map[it.saleItemId] = (map[it.saleItemId] || 0) + (it.quantity || 0);
+    });
+  });
+  return map;
+};
+
+// Quantité nette (vendue moins retournée) d'une ligne de vente - jamais
+// négative même si plus retourné que vendu (donnée incohérente, par sécurité).
+window._netSaleItemQty = function _netSaleItemQty(saleItem, returnedQtyBySaleItem) {
+  if (!saleItem) return 0;
+  const returnedQty = (returnedQtyBySaleItem || {})[saleItem.id] || 0;
+  return Math.max(0, (saleItem.quantity || 0) - returnedQty);
+};
+
 // ══════════════════════════════════════════════════════════════════════
 // 1. POINT D'ENTREE & RENDU PRINCIPAL
 // ══════════════════════════════════════════════════════════════════════
@@ -430,12 +453,20 @@ function mcRenderDetail(contentEl) {
   const saleMap = {};
   sales.forEach(s => { saleMap[s.id] = s; });
 
+  // Fiabilisation — ce rapport comptait auparavant la quantite/le profit
+  // COMPLETS d'une ligne de vente meme si elle avait ete retournee (partiellement
+  // ou totalement) via le module Retours Medicaments : un article revenu en
+  // stock restait affiche comme vendu, surestimant CA et marge affiches ici
+  // (meme correctif que mcRenderDashboard, applique ligne par ligne).
+  const returnedQtyBySaleItem = window._buildReturnedQtyBySaleItem(window._mcData.returns);
+
   let detailData = saleItems.map(si => {
     const sale = saleMap[si.saleId] || {};
     const prod = productMap[si.productId] || {};
     const costPrice = si.purchasePrice || prod.purchasePrice || 0;
     const sellPrice = si.price || prod.salePrice || 0;
-    const profit = (sellPrice - costPrice) * (si.quantity || 0);
+    const netQty = window._netSaleItemQty(si, returnedQtyBySaleItem);
+    const profit = (sellPrice - costPrice) * netQty;
     const user = userMap[sale.userId];
     const patient = sale.patientId ? patientMap[sale.patientId] : null;
 
@@ -445,7 +476,7 @@ function mcRenderDetail(contentEl) {
       form: prod.form || '—',
       category: prod.category || '—',
       brand: prod.brand || '—',
-      qty: si.quantity || 0,
+      qty: netQty,
       stockQty: stockMap[si.productId]?.quantity ?? '—',
       costPrice,
       sellPrice,
@@ -455,7 +486,7 @@ function mcRenderDetail(contentEl) {
       client: patient?.name || (sale.patientName || '—'),
       paymentMethod: sale.paymentMethod || '—',
     };
-  });
+  }).filter(d => d.qty > 0); // une ligne entierement retournee ne represente plus aucune vente reelle
 
   // Filtres
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
@@ -891,7 +922,7 @@ async function mcExportPDF() {
   } else if (activeTab === 'detail') {
     // ── Onglet 2 : Rapport detaille des ventes ──
     // Fiabilisation — même correctif que mcRenderDetail (affichage écran).
-    const { saleItems: allPeriodSaleItems, sales: allPeriodSales, productMap, stockMap, userMap, patientMap } = dataObj;
+    const { saleItems: allPeriodSaleItems, sales: allPeriodSales, productMap, stockMap, userMap, patientMap, returns: periodReturns } = dataObj;
     const sales = allPeriodSales.filter(s => ['completed', 'paid'].includes(s.status));
     const completedSaleIds = new Set(sales.map(s => s.id));
     const saleItems = allPeriodSaleItems.filter(si => completedSaleIds.has(si.saleId));
@@ -899,12 +930,17 @@ async function mcExportPDF() {
     const saleMap = {};
     sales.forEach(s => { saleMap[s.id] = s; });
 
+    // Fiabilisation — même correctif que mcRenderDetail (affichage écran) :
+    // netter la quantité/le profit des articles retournés.
+    const returnedQtyBySaleItem = window._buildReturnedQtyBySaleItem(periodReturns);
+
     let detailData = saleItems.map(si => {
       const sale = saleMap[si.saleId] || {};
       const prod = productMap[si.productId] || {};
       const costPrice = si.purchasePrice || prod.purchasePrice || 0;
       const sellPrice = si.price || prod.salePrice || 0;
-      const profit = (sellPrice - costPrice) * (si.quantity || 0);
+      const netQty = window._netSaleItemQty(si, returnedQtyBySaleItem);
+      const profit = (sellPrice - costPrice) * netQty;
       const user = userMap[sale.userId];
       const patient = sale.patientId ? patientMap[sale.patientId] : null;
 
@@ -913,7 +949,7 @@ async function mcExportPDF() {
         form: prod.form || '—',
         category: prod.category || '—',
         brand: prod.brand || '—',
-        qty: si.quantity || 0,
+        qty: netQty,
         stockQty: stockMap[si.productId]?.quantity ?? '—',
         costPrice,
         sellPrice,
@@ -922,7 +958,7 @@ async function mcExportPDF() {
         seller: user?.name || user?.username || '—',
         client: patient?.name || (sale.patientName || '—'),
       };
-    });
+    }).filter(d => d.qty > 0);
 
     // Appliquer les memes filtres que l'affichage
     const fCat = window._mcFilterCat || '';

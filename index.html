@@ -592,7 +592,25 @@
     // ═══════════════════════════════════════════════════════════════════
     const ORDIVEX_CURRENT_VERSION = APP_VERSION;
 
-    if ('serviceWorker' in navigator) {
+    // Environnement de test local (ex: python -m http.server) : jamais de
+    // Service Worker. But : les fichiers modifiés sur disque pendant une
+    // session de test doivent TOUJOURS être servis frais au prochain
+    // rechargement — avec un SW en cache-first (voir sw.js), ce ne serait
+    // pas le cas. On neutralise aussi activement tout SW/cache déjà installé
+    // par une session de test précédente sur cette même origine, pour éviter
+    // la confusion récurrente "mes modifications ne s'affichent pas" alors
+    // qu'elles sont bien sur le disque mais servies depuis un ancien cache.
+    // Sans effet en production (une pharmacie n'accède jamais via ces hôtes).
+    const isLocalTestServer = ['127.0.0.1', 'localhost'].includes(location.hostname);
+
+    if (isLocalTestServer) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+      }
+      if (window.caches) {
+        caches.keys().then(names => names.forEach(name => caches.delete(name)));
+      }
+    } else if ('serviceWorker' in navigator) {
       // Lot 5 hardening (F15) : { updateViaCache: 'none' } force le navigateur
       // à ne JAMAIS servir sw.js depuis son cache HTTP lors d'un reg.update()
       // (vérification périodique plus bas) — sans ça, sur un hébergement où
