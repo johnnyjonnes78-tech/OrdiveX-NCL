@@ -2381,9 +2381,8 @@ function renderLanding(container) {
 
 const TERMS_ARTICLES = [
   { id: 'preambule', title: 'Préambule', html: `
-    <p>OrdiveX est une application de gestion destinée aux officines pharmaceutiques. Elle permet notamment de gérer les ventes, les stocks, les achats, les mouvements financiers, les ressources humaines et certaines informations relatives aux patients.</p>
+    <p>OrdiveX est une application de gestion destinée aux officines pharmaceutiques, éditée par TrillionX. Elle permet notamment de gérer les ventes, les stocks, les achats, les mouvements financiers, les ressources humaines et certaines informations relatives aux patients.</p>
     <p>Les présentes Conditions Générales d'Utilisation, ci-après désignées « CGU », définissent les conditions d'accès et d'utilisation de l'application.</p>
-    <p>Ce document constitue un projet de conditions d'utilisation. Il doit être adapté à l'organisation réelle du service et validé par un professionnel du droit avant d'être utilisé comme document contractuel définitif.</p>
   `},
   { id: 'art-1', title: 'Article 1 — Objet et champ d\'application', html: `
     <p>Les présentes CGU encadrent l'accès à OrdiveX et son utilisation par les pharmacies, leurs administrateurs et les utilisateurs autorisés.</p>
@@ -2591,7 +2590,7 @@ function renderTerms(container) {
       </div>
 
       <div class="terms-footer">
-        <p>OrdiveX v${window.APP_VERSION || '9.8.6'} — Document à faire valider juridiquement avant sa publication définitive. La présente version ne remplace pas une politique de confidentialité, un accord relatif au traitement des données personnelles ou un contrat de maintenance lorsqu'ils sont nécessaires.</p>
+        <p>OrdiveX v${window.APP_VERSION || '9.8.6'}</p>
         <button class="btn btn-primary" onclick="Router.navigate('${backTarget}')"><i data-lucide="arrow-left"></i> Retour ${backTarget === 'login' ? 'à la connexion' : ''}</button>
       </div>
     </div>
