@@ -1929,23 +1929,18 @@ textarea.form-control {
 }
 
 /* ===== PAGE VITRINE (LANDING) ===== */
-/* Palette bleue professionnelle, coherente avec l'identite de marque
-   existante (boutons, liens, ecran de connexion) : bleu profond en accent
-   principal, fond legerement bleu-gris (jamais blanc plat) pour un rendu
-   plus "pro" que les sections neutres par defaut. */
+/* Un seul monde visuel voulu, pas un theme clair/sombre : fond en degrade
+   bleu continu sur toute la page (jamais de bande blanche/grise entre les
+   sections), cartes "verre depoli" blanc translucide par-dessus, texte
+   blanc partout. Le degrade est pose UNE SEULE FOIS sur .landing-page (pas
+   repete section par section) pour rester parfaitement continu au defilement. */
 .landing-page {
-  --landing-accent: #1B6FAE;
   --landing-accent-dark: #0F4C75;
-  --landing-tint-bg: #EEF4FA;
   min-height: 100vh;
-  background: var(--landing-tint-bg);
+  background: linear-gradient(180deg, #0F4C75 0%, #1B6FAE 28%, #175F96 58%, #0B2436 100%);
   overflow-y: auto;
+  color: #fff;
 }
-@media (prefers-color-scheme: dark) {
-  .landing-page { --landing-tint-bg: #0B1624; }
-}
-:root[data-theme="dark"] .landing-page { --landing-tint-bg: #0B1624; }
-:root[data-theme="light"] .landing-page { --landing-tint-bg: #EEF4FA; }
 
 .landing-nav {
   position: sticky;
@@ -1956,8 +1951,10 @@ textarea.form-control {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 28px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: rgba(11, 36, 54, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .landing-nav-brand {
@@ -1966,10 +1963,10 @@ textarea.form-control {
   gap: 10px;
   font-size: 17px;
   font-weight: 800;
-  color: var(--text);
+  color: #fff;
 }
 
-.landing-nav-logo { width: 34px; height: 34px; margin: 0; border-radius: 9px; }
+.landing-nav-logo { width: 34px; height: 34px; margin: 0; border-radius: 9px; background: rgba(255, 255, 255, 0.15); }
 .landing-nav-logo i { width: 18px; height: 18px; }
 .landing-nav-x { opacity: 0.65; }
 
@@ -1983,10 +1980,10 @@ textarea.form-control {
 .landing-nav-links a {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
 }
-.landing-nav-links a:hover { color: var(--landing-accent); }
+.landing-nav-links a:hover { color: #fff; }
 
 @media (max-width: 640px) {
   .landing-nav-links { display: none; }
@@ -1997,11 +1994,9 @@ textarea.form-control {
   grid-template-columns: 1.1fr 1fr;
   gap: 40px;
   align-items: center;
-  /* Fond degrade plein-largeur, contenu centre sur ~1120px - un padding
-     horizontal calcule plutot qu'un wrapper separe ou un max-width/margin
-     qui retrecirait l'element (et donc son fond) au lieu du seul contenu. */
-  padding: 72px max(28px, calc((100% - 1120px) / 2)) 96px;
-  background: linear-gradient(135deg, #0F4C75 0%, #1B6FAE 55%, #175F96 100%);
+  /* Contenu centre sur ~1120px via un padding calcule plutot qu'un
+     wrapper/max-width separe - le fond vient de .landing-page, continu. */
+  padding: 72px max(28px, calc((100% - 1120px) / 2)) 64px;
 }
 
 .landing-title {
@@ -2053,14 +2048,15 @@ textarea.form-control {
 
 /* Representation stylisee du tableau de bord - PAS une vraie capture
    d'ecran (voir note cote produit : a remplacer par une capture reelle
-   avec des donnees de demonstration clairement identifiees). */
+   avec des donnees de demonstration clairement identifiees). Verre depoli,
+   comme .glass-card sur l'ecran de connexion. */
 .landing-mock-window {
   width: 100%;
   max-width: 420px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
@@ -2068,12 +2064,12 @@ textarea.form-control {
   display: flex;
   gap: 6px;
   padding: 12px 14px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 .landing-mock-bar span {
   width: 9px; height: 9px; border-radius: 50%;
-  background: var(--border);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .landing-mock-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
@@ -2084,11 +2080,11 @@ textarea.form-control {
   gap: 14px;
   padding: 14px;
   border-radius: 12px;
-  background: var(--landing-tint-bg);
+  background: rgba(255, 255, 255, 0.08);
 }
-.landing-mock-kpi i { width: 22px; height: 22px; color: var(--landing-accent); flex-shrink: 0; }
-.landing-mock-kpi strong { display: block; font-size: 13px; color: var(--text); }
-.landing-mock-kpi span { font-size: 11px; color: var(--text-muted); }
+.landing-mock-kpi i { width: 22px; height: 22px; color: #fff; flex-shrink: 0; }
+.landing-mock-kpi strong { display: block; font-size: 13px; color: #fff; }
+.landing-mock-kpi span { font-size: 11px; color: rgba(255, 255, 255, 0.7); }
 
 .landing-strapline {
   text-align: center;
@@ -2096,7 +2092,7 @@ textarea.form-control {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: var(--landing-accent);
+  color: rgba(255, 255, 255, 0.85);
   padding: 0 24px 48px;
 }
 
@@ -2111,7 +2107,7 @@ textarea.form-control {
   text-align: center;
   font-size: 26px;
   font-weight: 800;
-  color: var(--text);
+  color: #fff;
   margin-bottom: 36px;
   letter-spacing: -0.3px;
 }
@@ -2124,18 +2120,17 @@ textarea.form-control {
 
 .feature-card {
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 16px;
   padding: 24px 22px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
 .feature-card-icon {
   width: 42px;
   height: 42px;
   border-radius: 11px;
-  background: var(--landing-accent);
+  background: rgba(255, 255, 255, 0.18);
   color: #fff;
   display: flex;
   align-items: center;
@@ -2149,27 +2144,28 @@ textarea.form-control {
   right: 22px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--border);
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .feature-card h3 {
   font-size: 15.5px;
   font-weight: 700;
-  color: var(--text);
+  color: #fff;
   margin-bottom: 6px;
 }
 
 .feature-card-hook {
   font-size: 13px;
   font-weight: 600;
-  color: var(--landing-accent);
+  color: #fff;
+  opacity: 0.9;
   margin-bottom: 8px;
 }
 
 .feature-card-text {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .landing-visibility {
@@ -2180,7 +2176,7 @@ textarea.form-control {
 }
 
 .landing-section-lead {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.78);
   font-size: 14.5px;
   margin-bottom: 24px;
 }
@@ -2188,8 +2184,8 @@ textarea.form-control {
 .landing-visibility-list {
   text-align: left;
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 16px;
   padding: 24px 28px;
   display: flex;
@@ -2200,12 +2196,12 @@ textarea.form-control {
 .landing-visibility-list li {
   font-size: 14px;
   line-height: 1.6;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.78);
 }
-.landing-visibility-list li strong { color: var(--text); }
+.landing-visibility-list li strong { color: #fff; }
 
 .landing-section-footnote {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 13.5px;
   font-style: italic;
   margin-top: 20px;
@@ -2233,8 +2229,8 @@ textarea.form-control {
   height: 48px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(27, 111, 174, 0.12);
-  color: var(--landing-accent);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2243,20 +2239,19 @@ textarea.form-control {
 .pillar-card h3 {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text);
+  color: #fff;
   margin-bottom: 8px;
 }
 
 .pillar-card p {
   font-size: 13.5px;
   line-height: 1.6;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .landing-final-cta {
   text-align: center;
   padding: 56px max(28px, calc((100% - 640px) / 2)) 64px;
-  background: linear-gradient(135deg, #0F4C75 0%, #1B6FAE 55%, #175F96 100%);
 }
 
 .landing-final-cta h2 {
@@ -2272,28 +2267,23 @@ textarea.form-control {
   margin-bottom: 24px;
 }
 
-.landing-final-cta .landing-cta {
-  background: #fff;
-  color: var(--landing-accent-dark);
-}
-
 .landing-footer {
   display: flex;
   justify-content: center;
   gap: 20px;
   padding: 20px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.65);
-  background: #0B2436;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .landing-footer a {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.6);
   text-decoration: underline;
 }
 
 @media (max-width: 860px) {
-  .landing-hero { grid-template-columns: 1fr; text-align: center; padding: 48px 20px 40px; }
+  .landing-hero { grid-template-columns: 1fr; text-align: center; padding: 48px 20px 32px; }
   .landing-tagline-sub { margin: 0 auto 28px; }
   .landing-hero-visual { order: -1; }
 }
