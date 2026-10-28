@@ -460,7 +460,11 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
   async function renderDepenses(c) {
     const dateFrom = window._acctDateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const dateTo = window._acctDateTo || today();
-    const data = window._acctData || await loadAccountingData(dateFrom, dateTo);
+    // Toujours rechargé depuis la base (jamais depuis un ancien cache) : les
+    // montants comptables ne doivent jamais afficher une version obsolète
+    // après une action effectuée ailleurs dans l'app (facture marquée payée,
+    // mouvement de caisse, vente...).
+    const data = await loadAccountingData(dateFrom, dateTo);
     window._acctData = data;
 
     const depenses = data.entries.filter(e => e.type === 'depense');
@@ -523,7 +527,11 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
   async function renderRecettes(c) {
     const dateFrom = window._acctDateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const dateTo = window._acctDateTo || today();
-    const data = window._acctData || await loadAccountingData(dateFrom, dateTo);
+    // Toujours rechargé depuis la base (jamais depuis un ancien cache) : les
+    // montants comptables ne doivent jamais afficher une version obsolète
+    // après une action effectuée ailleurs dans l'app (facture marquée payée,
+    // mouvement de caisse, vente...).
+    const data = await loadAccountingData(dateFrom, dateTo);
     window._acctData = data;
 
     const recettes = data.entries.filter(e => e.type === 'recette');
@@ -592,7 +600,11 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
   async function renderBalance(c) {
     const dateFrom = window._acctDateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const dateTo = window._acctDateTo || today();
-    const data = window._acctData || await loadAccountingData(dateFrom, dateTo);
+    // Toujours rechargé depuis la base (jamais depuis un ancien cache) : les
+    // montants comptables ne doivent jamais afficher une version obsolète
+    // après une action effectuée ailleurs dans l'app (facture marquée payée,
+    // mouvement de caisse, vente...).
+    const data = await loadAccountingData(dateFrom, dateTo);
     window._acctData = data;
 
     const entries = data.entries;
@@ -617,6 +629,8 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
       dailyStats[d].credit += e.credit;
     });
     const dailySorted = Object.entries(dailyStats).sort((a, b) => b[0].localeCompare(a[0]));
+    window._acctDailyPage = window._acctDailyPage || 1;
+    const dailyPg = paginate(dailySorted, window._acctDailyPage, 31);
 
     c.innerHTML = `
       <!-- Résumé financier -->
@@ -662,12 +676,13 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
       </div>
 
       <!-- Résumé journalier -->
-      <h3 style="font-size:.95rem;font-weight:700;margin-bottom:12px"><i data-lucide="calendar" style="width:16px;height:16px"></i> Résumé Journalier</h3>
+      <h3 style="font-size:.95rem;font-weight:700;margin-bottom:12px"><i data-lucide="calendar" style="width:16px;height:16px"></i> Résumé Journalier <span style="font-weight:400;color:var(--text-muted);font-size:.8rem">(${dailySorted.length} jour${dailySorted.length > 1 ? 's' : ''})</span></h3>
       <div class="table-responsive" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;">
         <table class="data-table" style="margin:0">
           <thead><tr><th>Date</th><th style="text-align:right">Recettes</th><th style="text-align:right">Dépenses</th><th style="text-align:right">Solde du jour</th></tr></thead>
           <tbody>
-            ${dailySorted.slice(0, 31).map(([d, v]) => `
+            ${dailyPg.items.length === 0 ? '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-muted)">Aucune donnée pour cette période</td></tr>' : ''}
+            ${dailyPg.items.map(([d, v]) => `
               <tr>
                 <td>${fmtD(d)}</td>
                 <td style="text-align:right;color:var(--success)">${fmt(v.credit)}</td>
@@ -678,6 +693,14 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
           </tbody>
         </table>
       </div>
+      ${dailyPg.totalPages > 1 ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:13px;color:var(--text-muted)">${dailyPg.total} jours — Page ${dailyPg.page}/${dailyPg.totalPages}</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm" ${dailyPg.page<=1?'disabled':''} onclick="window._acctDailyPage=${dailyPg.page-1};acctSwitchTab('balance',document.getElementById('acct-btn-balance'))">Précédent</button>
+          <button class="btn btn-secondary btn-sm" ${dailyPg.page>=dailyPg.totalPages?'disabled':''} onclick="window._acctDailyPage=${dailyPg.page+1};acctSwitchTab('balance',document.getElementById('acct-btn-balance'))">Suivant</button>
+        </div>
+      </div>` : ''}
     `;
   }
 
@@ -693,7 +716,7 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
 
     const dateFrom = window._acctDateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const dateTo = window._acctDateTo || today();
-    const data = window._acctData || await loadAccountingData(dateFrom, dateTo);
+    const data = await loadAccountingData(dateFrom, dateTo);
 
     const entries = data.entries;
     const totalDebit = entries.reduce((a, e) => a + e.debit, 0);
