@@ -359,6 +359,9 @@ function renderProductsTable(data) {
       <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);" onclick="bulkReactivateProducts()">
         <i data-lucide="toggle-right" style="width:14px;height:14px"></i> Réactiver
       </button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);" onclick="printProductLabels()">
+        <i data-lucide="printer" style="width:14px;height:14px"></i> Imprimer étiquettes
+      </button>
       <button class="btn btn-sm" style="background:rgba(214,59,59,0.8);color:#fff;border:none;" onclick="bulkDeleteProducts()">
         <i data-lucide="trash-2" style="width:14px;height:14px"></i> Désactiver
       </button>
@@ -521,6 +524,77 @@ async function bulkReactivateProducts() {
   UI.toast(`✅ ${done} produit${done > 1 ? 's' : ''} réactivé${done > 1 ? 's' : ''}.`, 'success');
   Router.navigate('products');
 }
+
+// ── Impression d'étiquettes (planche A4) ───────────────────────────────
+// Construit la page d'impression en pur HTML/CSS (fonction pure, sans DOM,
+// pour rester testable isolément) : une planche A4 de 3 colonnes d'étiquettes
+// avec nom produit, prix de vente et code-barres Code128 du code produit
+// (le même champ déjà comparé lors d'un scan - l'étiquette imprimée est donc
+// garantie compatible avec le scan existant, quelle que soit l'imprimante).
+function buildProductLabelsSheetHtml(products) {
+  const fmt = (n) => (window.UI && UI.formatCurrency) ? UI.formatCurrency(n) : String(n) + ' GNF';
+
+  const labelsHtml = products.map(p => {
+    const code = p.code || p.ean || p.cip || '';
+    const svg = (window.BarcodeRender && code)
+      ? BarcodeRender.toSvg(code, { moduleWidthPx: 1.6, heightPx: 36, showText: true })
+      : '<div style="font-size:9px;color:#900">Pas de code produit</div>';
+    return `
+      <div class="label-cell">
+        <div class="label-name">${(p.name || '').substring(0, 40)}</div>
+        <div class="label-barcode">${svg}</div>
+        <div class="label-price">${fmt(p.salePrice || 0)}</div>
+      </div>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Étiquettes Produits</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 0; }
+    .labels-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4mm;
+    }
+    .label-cell {
+      border: 1px dashed #999;
+      border-radius: 2mm;
+      padding: 3mm;
+      text-align: center;
+      page-break-inside: avoid;
+      min-height: 28mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .label-name { font-size: 11px; font-weight: 700; margin-bottom: 2mm; word-break: break-word; }
+    .label-barcode svg { max-width: 100%; height: auto; }
+    .label-price { font-size: 12px; font-weight: 700; margin-top: 2mm; }
+  </style>
+  </head><body>
+    <div class="labels-grid">${labelsHtml}</div>
+    <script>window.onload = () => setTimeout(() => window.print(), 200);</script>
+  </body></html>`;
+}
+window.buildProductLabelsSheetHtml = buildProductLabelsSheetHtml;
+
+async function printProductLabels() {
+  const ids = [...(window._selectedProductIds || [])];
+  if (!ids.length) return;
+
+  const products = await Promise.all(ids.map(id => DB.dbGet('products', id).catch(() => null)));
+  const valid = products.filter(Boolean);
+  if (!valid.length) { UI.toast('Aucun produit valide à imprimer.', 'warning'); return; }
+
+  const html = buildProductLabelsSheetHtml(valid);
+  const w = window.open('', '_blank');
+  if (!w) { UI.toast("Impossible d'ouvrir la fenêtre d'impression (bloqueur de popup ?)", 'error'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+window.printProductLabels = printProductLabels;
 
 // ── Édition en lot ────────────────────────────────────────────────────
 async function bulkEditProducts() {
