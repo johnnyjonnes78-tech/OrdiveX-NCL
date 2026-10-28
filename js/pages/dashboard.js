@@ -48,7 +48,7 @@ async function _refreshDashboard(container) {
     // Charger products intelligemment : stock-only si catalogue > 50k pour éviter crash RAM
     let products;
     if (productCount > 50000) {
-      products = stockAll.map(s => ({ id: s.productId, name: 'Produit', minStock: 10 }));
+      products = stockAll.map(s => ({ id: s.productId, name: 'Produit', minStock: (window._defaultMinStock ? window._defaultMinStock() : 10) }));
     } else {
       // Exclure les médicaments désactivés des indicateurs de stock du tableau
       // de bord (un produit supprimé du catalogue ne doit plus fausser les KPI).

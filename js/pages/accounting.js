@@ -83,6 +83,48 @@ window._saleToAccountingEntry = function _saleToAccountingEntry(s, dateFrom, dat
   };
 };
 
+// Bénéfice RÉEL (marge brute) : prix de vente moins prix d'achat des produits
+// réellement vendus, sur la période - distinct du "Solde Net" du journal
+// (qui nette TOUTES les dépenses : salaires, factures fournisseur, caisse...
+// pas seulement le coût des produits vendus). Même principe déjà appliqué au
+// Tableau de Bord de Pilotage & Contrôle (retours nettés via refundAmount/
+// COGS), répliqué ici en agrégat pour la Comptabilité Générale. Fonction
+// pure, testable isolément.
+window._computeBeneficeReel = function _computeBeneficeReel(sales, saleItems, returns, dateFrom, dateTo) {
+  const validSales = (sales || []).filter(s => {
+    if (!s || s.status === 'annulled') return false;
+    const d = (s.date || '').slice(0, 10);
+    return d >= dateFrom && d <= dateTo;
+  });
+  const validSaleIds = new Set(validSales.map(s => s.id));
+  const totalVentes = validSales.reduce((a, s) => a + (s.total || 0), 0);
+
+  const relevantItems = (saleItems || []).filter(si => validSaleIds.has(si.saleId));
+  const totalAchat = relevantItems.reduce((a, si) => a + ((si.purchasePrice || 0) * (si.quantity || 0)), 0);
+
+  // Retours approuvés rattachés à une vente comptée ci-dessus : soustraire le
+  // remboursement (recette) ET le coût d'achat (charge) correspondants - sans
+  // ça, un article revenu en stock resterait compté comme vendu ET comme
+  // acheté, faussant le bénéfice dans les deux sens.
+  const itemsById = new Map((saleItems || []).map(si => [si.id, si]));
+  const approvedReturns = (returns || []).filter(r => r && r.status === 'approved' && validSaleIds.has(r.saleId));
+  const returnsRefundTotal = approvedReturns.reduce((a, r) => a + (r.refundAmount || 0), 0);
+  const returnsCOGS = approvedReturns.reduce((a, r) => {
+    return a + (r.items || []).reduce((acc, ri) => {
+      const si = itemsById.get(ri.saleItemId);
+      return acc + ((si?.purchasePrice || 0) * (ri.quantity || 0));
+    }, 0);
+  }, 0);
+
+  const totalVentesNet = totalVentes - returnsRefundTotal;
+  const totalAchatNet = totalAchat - returnsCOGS;
+  return {
+    totalVentes: totalVentesNet,
+    totalAchat: totalAchatNet,
+    beneficeReel: totalVentesNet - totalAchatNet,
+  };
+};
+
 window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateFrom, dateTo) {
   if (!inv || inv.status !== 'validated' || !inv.paid) return null;
   const d = (inv.paidDate || inv.date || '').slice(0, 10);
@@ -223,8 +265,10 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
   //  CHARGEMENT DES DONNÉES
   // ═══════════════════════════════════════════════════════════════════════
   async function loadAccountingData(dateFrom, dateTo) {
-    const [sales, cashRegister, payroll, purchaseOrders, invoices, users] = await Promise.all([
+    const [sales, saleItems, returns, cashRegister, payroll, purchaseOrders, invoices, users] = await Promise.all([
       DB.dbGetAll('sales'),
+      DB.dbGetAll('saleItems').catch(() => []),
+      DB.dbGetAll('returns').catch(() => []),
       DB.dbGetAll('cashRegister'),
       DB.dbGetAll('hr_payroll').catch(() => []),
       DB.dbGetAll('purchaseOrders').catch(() => []),
@@ -234,6 +278,8 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
 
     const userMap = {};
     users.forEach(u => { userMap[u.id] = u; });
+
+    const beneficeReel = window._computeBeneficeReel(sales, saleItems, returns, dateFrom, dateTo);
 
     // Construire le journal unifié
     const entries = [];
@@ -326,7 +372,7 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
     // Trier par date décroissante
     entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    return { entries, sales, cashRegister, payroll, purchaseOrders, invoices, userMap };
+    return { entries, sales, cashRegister, payroll, purchaseOrders, invoices, userMap, beneficeReel };
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -392,6 +438,30 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
         <div class="stat-chip stat-purple" style="padding:16px;text-align:center;">
           <span class="stat-val" style="font-size:1.2rem">${filtered.length}</span>
           <span class="stat-label">Écritures</span>
+        </div>
+      </div>
+
+      <!-- Bénéfice Réel : marge sur prix d'achat, distincte du Solde Net (qui
+           nette TOUTES les dépenses - salaires, factures, caisse...) -->
+      <div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:20px;background:var(--surface);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <i data-lucide="trending-up" style="width:16px;height:16px;color:var(--primary)"></i>
+          <strong style="font-size:.88rem">Bénéfice Réel</strong>
+          <span style="font-size:.75rem;color:var(--text-muted)">— ventes moins prix d'achat des produits vendus (hors ventes annulées, retours déduits)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;">
+          <div style="text-align:center;">
+            <div style="font-size:1.1rem;font-weight:700;color:var(--success)">${fmt(data.beneficeReel.totalVentes)}</div>
+            <div style="font-size:.75rem;color:var(--text-muted)">Ventes (net retours)</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.1rem;font-weight:700;color:var(--danger)">${fmt(data.beneficeReel.totalAchat)}</div>
+            <div style="font-size:.75rem;color:var(--text-muted)">Prix d'achat des produits vendus</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.2rem;font-weight:800;color:${data.beneficeReel.beneficeReel >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmt(data.beneficeReel.beneficeReel)}</div>
+            <div style="font-size:.75rem;color:var(--text-muted)">Bénéfice Réel</div>
+          </div>
         </div>
       </div>
 

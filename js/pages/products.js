@@ -12,6 +12,14 @@ function _defaultMinStock() {
   const v = parseInt((window._appSettings || {})['min_stock_alert']);
   return Number.isFinite(v) && v > 0 ? v : 10;
 }
+// Exposée globalement : de nombreuses pages (dashboard, metrics, pos,
+// management-control, stock) calculent le seuil EFFECTIF d'un produit via
+// `p.minStock || 10` pour savoir s'il est en rupture - ce `|| 10` en dur
+// est le même bug que celui déjà corrigé à la création d'un produit, mais
+// côté LECTURE cette fois : pour tout produit sans minStock individuel
+// (import CSV ancien, etc.), le réglage global n'avait jamais d'effet nulle
+// part dans l'app tant que chaque fallback restait figé à 10.
+window._defaultMinStock = _defaultMinStock;
 
 async function deduplicateProducts() {
   try {
@@ -926,7 +934,7 @@ window.renderBulkGridPage = function(page) {
         <td>${canPA ? `<input type="number" id="bulk-row-pa-${p.id}" value="${p.purchasePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'purchasePrice', this.value)">` : '<span class="text-muted">—</span>'}</td>
         <td><input type="number" id="bulk-row-pv-${p.id}" value="${p.salePrice || ''}" class="form-input" style="width:90px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'salePrice', this.value)"></td>
         <td>${canMarge ? `<strong id="bulk-row-marge-${p.id}" style="color:var(--primary);">${margin}%</strong>` : '<span class="text-muted">—</span>'}</td>
-        <td><input type="number" id="bulk-row-min-${p.id}" value="${p.minStock || 10}" class="form-input" style="width:70px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'minStock', this.value)"></td>
+        <td><input type="number" id="bulk-row-min-${p.id}" value="${p.minStock || _defaultMinStock()}" class="form-input" style="width:70px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'minStock', this.value)"></td>
         <td><input type="date" id="bulk-row-exp-${p.id}" value="${p.expiryDate || ''}" class="form-input" style="width:125px;padding:4px 8px;" oninput="window._updateBulkProductField(${p.id}, 'expiryDate', this.value)"></td>
         <td>
           <select id="bulk-row-cat-${p.id}" class="form-select" style="width:130px;padding:4px 8px;" onchange="window._updateBulkProductField(${p.id}, 'category', this.value)">
@@ -1439,7 +1447,7 @@ async function editProductForm(id) {
         </div>
         <div class="form-group">
           <label>Seuil minimum (boîtes)</label>
-          <input type="number" name="minStock" class="form-control" value="${p.minStock || 10}" min="0">
+          <input type="number" name="minStock" class="form-control" value="${p.minStock || _defaultMinStock()}" min="0">
         </div>
       </div>
       <div class="med-only-section" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border); display:${isPara ? 'none' : ''}">
@@ -1564,7 +1572,7 @@ async function updateProduct(id) {
     controlledClass: data.isControlled === '1' ? (data.controlledClass || 'Stupéfiant') : null,
     salePrice: parseFloat(data.salePrice),
     purchasePrice: parseFloat(data.purchasePrice || 0),
-    minStock: parseInt(data.minStock || 10),
+    minStock: parseInt(data.minStock || _defaultMinStock()),
     allowUnitSale: !!data.allowUnitSale,
     subUnitsPerBox: parseInt(data.subUnitsPerBox || 1),
     pricePerSubUnit: parseFloat(data.pricePerSubUnit || 0),
@@ -1701,7 +1709,7 @@ async function exportProductsPDF() {
     valVente += pv * qty;
     
     if (qty <= 0) rupture++;
-    else if (qty <= (p.minStock || 10)) faible++;
+    else if (qty <= (p.minStock || _defaultMinStock())) faible++;
     
     if (p.expiryDate) {
       const expD = new Date(p.expiryDate);

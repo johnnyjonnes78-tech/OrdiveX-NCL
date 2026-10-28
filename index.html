@@ -898,6 +898,19 @@
         onboardingDone = finalSettings.find(s => s.key === 'onboarding_done')?.value || localStorage.getItem('onboarding_done') === 'true';
 
         if (!onboardingDone) {
+          // La page vitrine ne doit se montrer qu'UNE SEULE FOIS, avant que la
+          // pharmacie soit installée/configurée - jamais une fois l'onboarding
+          // terminé (voir _leaveLanding dans settings.js, qui pose ce drapeau).
+          const landingSeen = localStorage.getItem('ordivex_landing_seen') === 'true';
+          if (!landingSeen) {
+            console.log('[App] Première visite — page vitrine.');
+            Router.currentPage = 'landing';
+            DB.AppState.currentPage = 'landing';
+            const main = document.getElementById('app-content');
+            main.innerHTML = '';
+            renderLanding(main);
+            return;
+          }
           console.log('[App] Onboarding required.');
           Router.currentPage = 'onboarding';
           DB.AppState.currentPage = 'onboarding';
@@ -913,7 +926,7 @@
           updateTopbar();
           Router.navigate('dashboard');
         } else {
-          Router.navigate('landing');
+          Router.navigate('login');
         }
 
         updateNetworkStatus();

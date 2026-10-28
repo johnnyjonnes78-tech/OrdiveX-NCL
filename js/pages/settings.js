@@ -2255,6 +2255,18 @@ async function loadDeviceCount() {
 
 window.loadDeviceCount = loadDeviceCount;
 
+// Quitte la page vitrine : marque qu'elle a déjà été vue (ne doit plus
+// jamais s'afficher automatiquement ensuite - voir index.html/initApp) et
+// dirige vers la suite logique : l'onboarding si la pharmacie n'est pas
+// encore configurée, sinon la connexion.
+window._leaveLanding = function() {
+  try { localStorage.setItem('ordivex_landing_seen', 'true'); } catch (e) {}
+  const onboardingDone = (window._appSettings || {})['onboarding_done'] === true
+    || (window._appSettings || {})['onboarding_done'] === 'true'
+    || localStorage.getItem('onboarding_done') === 'true';
+  Router.navigate(onboardingDone ? 'login' : 'onboarding');
+};
+
 function renderLanding(container) {
   document.getElementById('app-sidebar')?.style.setProperty('display', 'none');
   document.getElementById('app-topbar')?.style.setProperty('display', 'none');
@@ -2299,7 +2311,7 @@ function renderLanding(container) {
           <a href="#landing-features">Fonctionnalités</a>
           <a href="#landing-security">Sécurité</a>
         </nav>
-        <button class="btn btn-primary btn-sm" onclick="Router.navigate('login')">Se connecter</button>
+        <button class="btn btn-primary btn-sm" onclick="_leaveLanding()">Se connecter</button>
       </header>
 
       <div class="landing-hero">
@@ -2307,7 +2319,7 @@ function renderLanding(container) {
           <h1 class="landing-title">Toute la gestion de votre pharmacie.<br>Un seul outil.</h1>
           <p class="landing-tagline">Pilotez vos ventes, maîtrisez votre stock et suivez vos finances depuis une seule application.</p>
           <p class="landing-tagline-sub">OrdiveX réunit les outils essentiels à la gestion de votre officine : ventes au comptoir, achats, inventaire, comptabilité, personnel et suivi des patients. Continuez à travailler même sans connexion Internet et retrouvez une gestion plus structurée de votre activité.</p>
-          <button class="btn btn-primary landing-cta" onclick="Router.navigate('login')">
+          <button class="btn btn-primary landing-cta" onclick="_leaveLanding()">
             Se connecter à OrdiveX <i data-lucide="arrow-right"></i>
           </button>
         </div>
@@ -2365,7 +2377,7 @@ function renderLanding(container) {
       <section class="landing-final-cta">
         <h2>Prenez le contrôle de votre pharmacie</h2>
         <p>Ventes, stock, finances, personnel et suivi des patients : retrouvez les fonctions essentielles de votre gestion dans OrdiveX.</p>
-        <button class="btn btn-primary landing-cta" onclick="Router.navigate('login')">
+        <button class="btn btn-primary landing-cta" onclick="_leaveLanding()">
           Se connecter à OrdiveX <i data-lucide="arrow-right"></i>
         </button>
       </section>

@@ -83,7 +83,7 @@ async function renderMetrics(container) {
     // Mode léger si catalogue > 50k : pseudo-produits depuis le stock
     let products;
     if (productCount > 50000) {
-      products = stockAll.map(s => ({ id: s.productId, minStock: 10, purchasePrice: 0, salePrice: 0 }));
+      products = stockAll.map(s => ({ id: s.productId, minStock: (window._defaultMinStock ? window._defaultMinStock() : 10), purchasePrice: 0, salePrice: 0 }));
     } else {
       // Exclure les médicaments désactivés des statistiques (un produit
       // supprimé du catalogue ne doit plus fausser la santé du stock/KPIs).
@@ -187,7 +187,7 @@ async function renderMetrics(container) {
     const lowStock = products.filter(p => {
       const s = stockMap[p.id];
       const qty = s ? (s.quantity || 0) : 0;
-      const minSeuil = p.minStock || 10;
+      const minSeuil = p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10);
       return qty > 0 && qty <= minSeuil;
     }).length;
     const activeProductCount = products.length;

@@ -1114,7 +1114,7 @@ function refreshGrid() {
     const q = posStock[p.id] || 0;
     const inCart = posCart.find(c => c.productId === p.id);
     const rupt = q === 0;
-    const low = q > 0 && q <= (p.minStock || 10);
+    const low = q > 0 && q <= (p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10));
     const isRx = p.requiresPrescription;
     const marginInfo = isAdmin && p.purchasePrice ? `<span class="prod-margin">Marge: ${Math.round(((p.salePrice - p.purchasePrice) / p.salePrice) * 100)}%</span>` : '';
 

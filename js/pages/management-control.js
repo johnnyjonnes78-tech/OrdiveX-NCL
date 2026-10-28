@@ -293,7 +293,7 @@ function mcRenderDashboard(contentEl) {
   const ruptures = products.filter(p => (stockMap[p.id]?.quantity || 0) === 0);
   const lowStock = products.filter(p => {
     const qty = stockMap[p.id]?.quantity || 0;
-    return qty > 0 && qty <= (p.minStock || 10);
+    return qty > 0 && qty <= (p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10));
   });
 
   contentEl.innerHTML = `
@@ -404,7 +404,7 @@ function mcRenderDashboard(contentEl) {
         ${lowStock.length === 0 ? '<p class="text-muted">Aucun stock bas detecte</p>' :
           `<div style="max-height:250px;overflow-y:auto;">
           <table class="data-table" style="margin:0;"><thead><tr><th>Produit</th><th style="text-align:right">Stock</th><th style="text-align:right">Seuil</th></tr></thead><tbody>
-          ${lowStock.slice(0, 30).map(p => `<tr><td><strong>${p.name}</strong></td><td style="text-align:right;color:var(--warning);font-weight:700;">${stockMap[p.id]?.quantity || 0}</td><td style="text-align:right">${p.minStock || 10}</td></tr>`).join('')}
+          ${lowStock.slice(0, 30).map(p => `<tr><td><strong>${p.name}</strong></td><td style="text-align:right;color:var(--warning);font-weight:700;">${stockMap[p.id]?.quantity || 0}</td><td style="text-align:right">${p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10)}</td></tr>`).join('')}
           ${lowStock.length > 30 ? `<tr><td colspan="3" class="text-muted text-center">... et ${lowStock.length - 30} autres</td></tr>` : ''}
           </tbody></table></div>`
         }
@@ -678,11 +678,11 @@ function mcRenderReorder(contentEl) {
       justification = currentStock === 0
         ? 'Rupture de stock — Reapprovisionnement urgent requis'
         : `Moins de 2 jours de couverture (${coverageDays}j). Risque imminent de rupture.`;
-    } else if (currentStock <= (p.minStock || 10)) {
+    } else if (currentStock <= (p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10))) {
       priority = 2;
       priorityLabel = 'Elevee';
       priorityCls = 'badge-warning';
-      justification = `Stock (${currentStock}) inferieur ou egal au seuil minimum (${p.minStock || 10}).`;
+      justification = `Stock (${currentStock}) inferieur ou egal au seuil minimum (${p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10)}).`;
     } else if (cmq > 0 && coverageDays < 15) {
       priority = 3;
       priorityLabel = 'Moyenne';
@@ -714,7 +714,7 @@ function mcRenderReorder(contentEl) {
 
     return {
       id: p.id, name: p.name, category: p.category, form: p.form,
-      currentStock, minStock: p.minStock || 10, cmq,
+      currentStock, minStock: p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10), cmq,
       coverageDays: cmq > 0 ? coverageDays : null,
       priority, priorityLabel, priorityCls,
       suggestedQty, justification,
@@ -1047,7 +1047,7 @@ async function mcExportPDF() {
       if (currentStock === 0 || (cmq > 0 && coverageDays < 2)) {
         priority = 1;
         priorityLabel = 'Critique';
-      } else if (currentStock <= (p.minStock || 10)) {
+      } else if (currentStock <= (p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10))) {
         priority = 2;
         priorityLabel = 'Elevee';
       } else if (cmq > 0 && coverageDays < 15) {

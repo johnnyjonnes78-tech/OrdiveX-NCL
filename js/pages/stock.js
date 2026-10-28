@@ -1302,7 +1302,7 @@ window.importStockCsv = async function(event) {
             salePrice:     sellPrice,
             purchasePrice: buyPrice,
             requiresPrescription: requiresRx,
-            minStock: 10,
+            minStock: (window._defaultMinStock ? window._defaultMinStock() : 10),
             status: 'active'
           };
           const prodId = await DB.dbAdd('products', newProd);

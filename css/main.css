@@ -1929,23 +1929,23 @@ textarea.form-control {
 }
 
 /* ===== PAGE VITRINE (LANDING) ===== */
-/* Palette dediee a cette page : vert profond/turquoise en accent principal
-   (tire du meme gradient de marque utilise ailleurs dans l'app, cote #2EAF7D),
-   sur un fond legerement gris-vert - reste coherent avec l'identite bleue
-   existante (boutons, liens) sans creer une charte totalement a part. */
+/* Palette bleue professionnelle, coherente avec l'identite de marque
+   existante (boutons, liens, ecran de connexion) : bleu profond en accent
+   principal, fond legerement bleu-gris (jamais blanc plat) pour un rendu
+   plus "pro" que les sections neutres par defaut. */
 .landing-page {
-  --landing-accent: #1F9D73;
-  --landing-accent-dark: #17B88A;
-  --landing-tint-bg: #F3F8F6;
+  --landing-accent: #1B6FAE;
+  --landing-accent-dark: #0F4C75;
+  --landing-tint-bg: #EEF4FA;
   min-height: 100vh;
   background: var(--landing-tint-bg);
   overflow-y: auto;
 }
 @media (prefers-color-scheme: dark) {
-  .landing-page { --landing-tint-bg: #0F1613; }
+  .landing-page { --landing-tint-bg: #0B1624; }
 }
-:root[data-theme="dark"] .landing-page { --landing-tint-bg: #0F1613; }
-:root[data-theme="light"] .landing-page { --landing-tint-bg: #F3F8F6; }
+:root[data-theme="dark"] .landing-page { --landing-tint-bg: #0B1624; }
+:root[data-theme="light"] .landing-page { --landing-tint-bg: #EEF4FA; }
 
 .landing-nav {
   position: sticky;
@@ -1997,13 +1997,15 @@ textarea.form-control {
   grid-template-columns: 1.1fr 1fr;
   gap: 40px;
   align-items: center;
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 64px 28px 56px;
+  /* Fond degrade plein-largeur, contenu centre sur ~1120px - un padding
+     horizontal calcule plutot qu'un wrapper separe ou un max-width/margin
+     qui retrecirait l'element (et donc son fond) au lieu du seul contenu. */
+  padding: 72px max(28px, calc((100% - 1120px) / 2)) 96px;
+  background: linear-gradient(135deg, #0F4C75 0%, #1B6FAE 55%, #175F96 100%);
 }
 
 .landing-title {
-  color: var(--text);
+  color: #fff;
   font-size: 38px;
   font-weight: 800;
   letter-spacing: -0.5px;
@@ -2012,7 +2014,7 @@ textarea.form-control {
 }
 
 .landing-tagline {
-  color: var(--text);
+  color: #fff;
   font-size: 17px;
   font-weight: 600;
   line-height: 1.5;
@@ -2020,7 +2022,7 @@ textarea.form-control {
 }
 
 .landing-tagline-sub {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 14.5px;
   line-height: 1.65;
   margin-bottom: 28px;
@@ -2035,16 +2037,16 @@ textarea.form-control {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: var(--landing-accent);
-  color: #fff;
+  background: #fff;
+  color: var(--landing-accent-dark);
   border: none;
-  box-shadow: 0 10px 26px rgba(31, 157, 115, 0.3);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .landing-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 32px rgba(31, 157, 115, 0.38);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.26);
 }
 
 .landing-hero-visual { display: flex; justify-content: center; }
@@ -2231,7 +2233,7 @@ textarea.form-control {
   height: 48px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(31, 157, 115, 0.12);
+  background: rgba(27, 111, 174, 0.12);
   color: var(--landing-accent);
   display: flex;
   align-items: center;
@@ -2253,37 +2255,40 @@ textarea.form-control {
 
 .landing-final-cta {
   text-align: center;
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 24px 28px 72px;
+  padding: 56px max(28px, calc((100% - 640px) / 2)) 64px;
+  background: linear-gradient(135deg, #0F4C75 0%, #1B6FAE 55%, #175F96 100%);
 }
 
 .landing-final-cta h2 {
   font-size: 26px;
   font-weight: 800;
-  color: var(--text);
+  color: #fff;
   margin-bottom: 12px;
 }
 
 .landing-final-cta p {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 14.5px;
   margin-bottom: 24px;
+}
+
+.landing-final-cta .landing-cta {
+  background: #fff;
+  color: var(--landing-accent-dark);
 }
 
 .landing-footer {
   display: flex;
   justify-content: center;
   gap: 20px;
-  padding: 24px;
+  padding: 20px;
   font-size: 12px;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+  color: rgba(255, 255, 255, 0.65);
+  background: #0B2436;
 }
 
 .landing-footer a {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.65);
   text-decoration: underline;
 }
 
