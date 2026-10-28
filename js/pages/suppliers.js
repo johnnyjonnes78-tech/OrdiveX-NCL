@@ -3,27 +3,57 @@
  * Commandes, réceptions, litiges, évaluation fournisseurs
  */
 
+// Combine le total des Bons de Commande et des Factures Fournisseurs sans
+// compter en double : une facture générée automatiquement à la réception
+// d'un bon de commande (reliée via po.invoiceId) représente le MÊME achat
+// que ce bon de commande, pas un achat supplémentaire - elle est donc
+// exclue. Seules les factures validées et non liées à un bon de commande
+// (saisies directement) s'ajoutent au total des commandes. Fonction pure,
+// exposée hors de toute fonction englobante pour rester testable isolément.
+window._computeCombinedPurchaseTotal = function _computeCombinedPurchaseTotal(orders, invoices) {
+  const linkedInvoiceIds = new Set((orders || []).map(o => o.invoiceId).filter(Boolean));
+  const ordersTotal = (orders || []).reduce((a, o) => a + (o.totalAmount || 0), 0);
+  const invoicesTotal = (invoices || [])
+    .filter(inv => inv.status === 'validated' && !linkedInvoiceIds.has(inv.id))
+    .reduce((a, inv) => a + (inv.totalAmount || 0), 0);
+  return ordersTotal + invoicesTotal;
+};
+
 async function renderSuppliers(container) {
   UI.loading(container, 'Chargement des fournisseurs...');
-  const [suppliers, orders] = await Promise.all([
+  const [suppliers, orders, invoices] = await Promise.all([
     DB.dbGetAll('suppliers'),
     DB.dbGetAll('purchaseOrders'),
+    DB.dbGetAll('invoices'),
   ]);
 
-  // Stats per supplier
+  // Stats per supplier (nombre de commandes + dernière commande : inchangé,
+  // basé sur les bons de commande uniquement comme avant)
   const supplierStats = {};
   orders.forEach(o => {
     if (!supplierStats[o.supplierId]) supplierStats[o.supplierId] = { total: 0, count: 0, lastOrder: null };
-    supplierStats[o.supplierId].total += o.totalAmount || 0;
     supplierStats[o.supplierId].count++;
     if (!supplierStats[o.supplierId].lastOrder || o.date > supplierStats[o.supplierId].lastOrder) {
       supplierStats[o.supplierId].lastOrder = o.date;
     }
   });
 
+  // Total achats combiné (commandes + factures fournisseur non liées), sans double-compte
+  const ordersBySupplier = {};
+  orders.forEach(o => { (ordersBySupplier[o.supplierId] = ordersBySupplier[o.supplierId] || []).push(o); });
+  const invoicesBySupplier = {};
+  invoices.forEach(inv => { (invoicesBySupplier[inv.supplierId] = invoicesBySupplier[inv.supplierId] || []).push(inv); });
+  const allSupplierIds = new Set([...Object.keys(ordersBySupplier), ...Object.keys(invoicesBySupplier)].map(Number));
+  allSupplierIds.forEach(supplierId => {
+    if (!supplierStats[supplierId]) supplierStats[supplierId] = { total: 0, count: 0, lastOrder: null };
+    supplierStats[supplierId].total = window._computeCombinedPurchaseTotal(ordersBySupplier[supplierId], invoicesBySupplier[supplierId]);
+  });
+
   const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'sent').length;
-  const totalSpent = orders.filter(o => o.status === 'received').reduce((a, o) => a + (o.totalAmount || 0), 0);
+  const linkedInvoiceIdsGlobal = new Set(orders.map(o => o.invoiceId).filter(Boolean));
+  const totalSpent = orders.filter(o => o.status === 'received').reduce((a, o) => a + (o.totalAmount || 0), 0)
+    + invoices.filter(inv => inv.status === 'validated' && !linkedInvoiceIdsGlobal.has(inv.id)).reduce((a, inv) => a + (inv.totalAmount || 0), 0);
 
   container.innerHTML = `
     <div class="page-header">
@@ -462,7 +492,7 @@ async function viewSupplierDetail(supId) {
           <div class="rx-detail-card">
             <h4>Statistiques</h4>
             <div class="detail-row"><span>Total commandes</span><span><strong>${orders.length}</strong></span></div>
-            <div class="detail-row"><span>Total achats</span><span><strong>${UI.formatCurrency(orders.reduce((a, o) => a + (o.totalAmount || 0), 0))}</strong></span></div>
+            <div class="detail-row"><span>Total achats</span><span><strong>${UI.formatCurrency(window._computeCombinedPurchaseTotal(orders, invoices))}</strong></span></div>
             <div class="detail-row"><span>Dernière commande</span><span>${orders[0]?.date ? UI.formatDate(orders[0].date) : '—'}</span></div>
             <div class="detail-row"><span>Statut</span><span><span class="badge badge-${sup.status === 'active' ? 'success' : 'neutral'}">${sup.status}</span></span></div>
             <div class="detail-row"><span>Réclamations ouvertes</span><span>${openComplaints > 0 ? `<span class="badge badge-danger">${openComplaints}</span>` : '<span class="text-muted">0</span>'}</span></div>

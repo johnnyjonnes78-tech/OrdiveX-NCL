@@ -83,6 +83,11 @@ async function renderInvoices(container) {
         <option value="">Tous fournisseurs</option>
         ${suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
       </select>
+      <select id="inv-paid-filter" class="filter-select" onchange="var c=document.getElementById('inv-table-container'); if(c) c.dataset.page=1; filterInvoices();" style="min-width: 160px;">
+        <option value="">Tout paiement</option>
+        <option value="paid">Payée</option>
+        <option value="unpaid">Non payée</option>
+      </select>
     </div>
 
     <div id="inv-table-container"></div>
@@ -95,8 +100,9 @@ function filterInvoices() {
   const query = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
   const status = document.getElementById('inv-status')?.value || '';
   const supId = document.getElementById('inv-supplier')?.value;
+  const paidFilter = document.getElementById('inv-paid-filter')?.value || '';
   let data = window._invoicesData || [];
-  
+
   // Filtrage
   if (query) {
     data = data.filter(i => (i.invoiceNumber || '').toLowerCase().includes(query));
@@ -106,6 +112,11 @@ function filterInvoices() {
   }
   if (supId) {
     data = data.filter(i => i.supplierId === parseInt(supId));
+  }
+  if (paidFilter === 'paid') {
+    data = data.filter(i => i.paid === true);
+  } else if (paidFilter === 'unpaid') {
+    data = data.filter(i => i.status === 'validated' && !i.paid);
   }
 
   // Tri par date décroissante (facture la plus récente en premier)

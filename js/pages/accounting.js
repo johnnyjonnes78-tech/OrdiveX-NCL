@@ -57,6 +57,32 @@ window._buildAccountingBreakdown = function _buildAccountingBreakdown(entries) {
   };
 };
 
+// Transforme une vente en écriture "Vente" (recette), sauf si elle a été
+// annulée (annulerVente) : le stock est alors restauré et aucune somme n'est
+// réellement encaissée, donc elle ne doit jamais compter comme chiffre
+// d'affaires. Les retours partiels/totaux (module Retours Médicaments), eux,
+// restent comptés en recette brute ici - le remboursement correspondant est
+// déjà compté séparément en dépense ("Remboursement retour") : les confondre
+// compterait le même retour deux fois.
+window._saleToAccountingEntry = function _saleToAccountingEntry(s, dateFrom, dateTo, userMap) {
+  if (!s || s.status === 'annulled') return null;
+  const d = (s.date || '').slice(0, 10);
+  if (d < dateFrom || d > dateTo) return null;
+  const um = userMap || {};
+  const userName = um[s.userId]?.name || um[s.userId]?.username || '—';
+  return {
+    date: s.date,
+    type: 'recette',
+    category: 'Vente',
+    label: `Vente #${s.saleNumber || s.id}`,
+    debit: 0,
+    credit: s.total || 0,
+    ref: s.saleNumber || String(s.id),
+    user: userName,
+    method: s.paymentMethod || 'cash',
+  };
+};
+
 window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateFrom, dateTo) {
   if (!inv || inv.status !== 'validated' || !inv.paid) return null;
   const d = (inv.paidDate || inv.date || '').slice(0, 10);
@@ -197,10 +223,9 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
   //  CHARGEMENT DES DONNÉES
   // ═══════════════════════════════════════════════════════════════════════
   async function loadAccountingData(dateFrom, dateTo) {
-    const [sales, cashRegister, returns, payroll, purchaseOrders, invoices, users] = await Promise.all([
+    const [sales, cashRegister, payroll, purchaseOrders, invoices, users] = await Promise.all([
       DB.dbGetAll('sales'),
       DB.dbGetAll('cashRegister'),
-      DB.dbGetAll('movements'),
       DB.dbGetAll('hr_payroll').catch(() => []),
       DB.dbGetAll('purchaseOrders').catch(() => []),
       DB.dbGetAll('invoices').catch(() => []),
@@ -213,22 +238,15 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
     // Construire le journal unifié
     const entries = [];
 
-    // 1. Ventes => Recette
+    // 1. Ventes => Recette (hors ventes annulées : stock restauré, aucune
+    // somme réellement encaissée - les retours partiels/totaux via le module
+    // Retours Médicaments, eux, restent comptés en recette brute ici, le
+    // remboursement correspondant étant déjà compté séparément en dépense
+    // via cashRegister "return_out" plus bas - ne pas les confondre, sous
+    // peine de compter deux fois le même retour).
     sales.forEach(s => {
-      const d = (s.date || '').slice(0, 10);
-      if (d < dateFrom || d > dateTo) return;
-      const userName = userMap[s.userId]?.name || userMap[s.userId]?.username || '—';
-      entries.push({
-        date: s.date,
-        type: 'recette',
-        category: 'Vente',
-        label: `Vente #${s.saleNumber || s.id}`,
-        debit: 0,
-        credit: s.total || 0,
-        ref: s.saleNumber || String(s.id),
-        user: userName,
-        method: s.paymentMethod || 'cash',
-      });
+      const entry = window._saleToAccountingEntry(s, dateFrom, dateTo, userMap);
+      if (entry) entries.push(entry);
     });
 
     // 2. Sorties manuelles de caisse => Dépense
