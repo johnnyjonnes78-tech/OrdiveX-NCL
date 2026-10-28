@@ -246,13 +246,6 @@ function filterCashMovements() {
     {
       label: 'Observations',
       render: r => `<span style="font-size:11px; max-width:200px; display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.observations || ''}">${r.observations || '—'}</span>`
-    },
-    {
-      label: 'Actions',
-      render: r => {
-        const canEdit = Auth.can('caisse_depot_retrait') || DB.AppState.currentUser?.role === 'admin';
-        return canEdit ? `<button class="btn btn-xs btn-warning" onclick="showEditCashMovementForm(${r.id})" title="Modifier l'opération (audit log généré)"><i data-lucide="edit-3"></i></button>` : '<span class="text-muted">—</span>';
-      }
     }
   ], filtered, {
     emptyMessage: "Aucun mouvement manuel de trésorerie trouvé.",
@@ -364,127 +357,6 @@ async function submitNewCashMovement(type) {
   }
 }
 
-async function showEditCashMovementForm(movId) {
-  if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
-    UI.toast('⛔ Vous n\'avez pas la permission de modifier un mouvement de caisse.', 'error', 4000);
-    return;
-  }
-  try {
-    const movObj = await DB.dbGet('cashRegister', movId);
-    if (!movObj) return;
-
-    const isEntry = movObj.type === 'manual_in';
-    
-    const formHTML = `
-      <form id="cash-mov-edit-form" class="form-grid">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Montant (GNF) *</label>
-            <input type="number" name="amount" class="form-control" min="1" value="${movObj.amount}" required>
-          </div>
-          <div class="form-group">
-            <label>Motif de la modification *</label>
-            <input type="text" id="edit-audit-reason" class="form-control" placeholder="Justification obligatoire..." required>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Libellé / Objet *</label>
-            <input type="text" name="reason" class="form-control" value="${movObj.reason || ''}" required>
-          </div>
-          <div class="form-group">
-            <label>Mode de règlement *</label>
-            <select name="paymentMethod" class="form-control" required>
-              <option value="cash" ${movObj.paymentMethod === 'cash' ? 'selected' : ''}>Espèces</option>
-              <option value="orange_money" ${movObj.paymentMethod === 'orange_money' ? 'selected' : ''}>Orange Money</option>
-              <option value="mtn_momo" ${movObj.paymentMethod === 'mtn_momo' ? 'selected' : ''}>MTN MoMo</option>
-              <option value="transfer" ${movObj.paymentMethod === 'transfer' ? 'selected' : ''}>Virement</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Référence / N° Pièce</label>
-            <input type="text" name="reference" class="form-control" value="${movObj.reference || ''}">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Observations / Notes</label>
-          <textarea name="observations" class="form-control" rows="2">${movObj.observations || ''}</textarea>
-        </div>
-      </form>
-    `;
-
-    UI.modal('<i data-lucide="edit-3" class="modal-icon-inline"></i> Modifier le Mouvement de Caisse', formHTML, {
-      footer: `
-        <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-        <button class="btn btn-warning" onclick="submitEditCashMovement(${movId})"><i data-lucide="save"></i> Enregistrer les modifications</button>
-      `
-    });
-    if (window.lucide) lucide.createIcons();
-
-  } catch(err) {
-    UI.toast('Erreur : ' + err.message, 'error');
-  }
-}
-
-async function submitEditCashMovement(movId) {
-  if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
-    UI.toast('⛔ Action non autorisée.', 'error', 4000);
-    return;
-  }
-  const form = document.getElementById('cash-mov-edit-form');
-  const auditReason = document.getElementById('edit-audit-reason')?.value?.trim();
-  if (!form || !form.checkValidity()) { form?.reportValidity(); return; }
-  if (!auditReason) { UI.toast('Veuillez saisir un motif de modification', 'warning'); return; }
-
-  const formData = Object.fromEntries(new FormData(form));
-  const newAmount = parseFloat(formData.amount);
-  if (isNaN(newAmount) || newAmount <= 0) { UI.toast('Veuillez saisir un montant valide', 'warning'); return; }
-
-  try {
-    const movObj = await DB.dbGet('cashRegister', movId);
-    if (!movObj) return;
-
-    const oldAmount = movObj.amount;
-
-    const updatedMovObj = {
-      ...movObj,
-      amount: newAmount,
-      reason: formData.reason,
-      paymentMethod: formData.paymentMethod,
-      reference: formData.reference || '',
-      observations: formData.observations || '',
-      updatedAt: Date.now(),
-      updatedBy: DB.AppState.currentUser?.id
-    };
-
-    await DB.dbPut('cashRegister', updatedMovObj);
-
-    // Enregistrer dans l'audit log
-    await DB.writeAudit('CASH_MANUAL_EDIT', 'cashRegister', movId, {
-      oldAmount,
-      newAmount,
-      oldReason: movObj.reason,
-      newReason: formData.reason,
-      auditReason,
-      editedBy: DB.AppState.currentUser?.name || DB.AppState.currentUser?.username
-    });
-
-    UI.closeModal();
-    UI.toast('Mouvement mis à jour et tracé dans l\'audit', 'success');
-
-    if (typeof DB.syncToSupabase === 'function') DB.syncToSupabase();
-    renderStockExits(document.getElementById('app-content'));
-
-  } catch(err) {
-    UI.toast('Erreur de mise à jour : ' + err.message, 'error');
-  }
-}
-
 function exportCashMovementsCSV() {
   if (window.Auth && !Auth.can('caisse_export_csv') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission d\'exporter en CSV.', 'error', 4000);
@@ -586,7 +458,5 @@ Router.register('stock-exits', renderStockExits);
 window.filterCashMovements = filterCashMovements;
 window.showNewCashMovementForm = showNewCashMovementForm;
 window.submitNewCashMovement = submitNewCashMovement;
-window.showEditCashMovementForm = showEditCashMovementForm;
-window.submitEditCashMovement = submitEditCashMovement;
 window.exportCashMovementsCSV = exportCashMovementsCSV;
 window.exportCashMovementsPDF = exportCashMovementsPDF;

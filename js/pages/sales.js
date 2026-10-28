@@ -226,12 +226,10 @@ function renderSalesTable(data) {
       label: 'Actions', render: r => {
         const isPending = r.status === 'pending' && ['credit', 'assurance'].includes(r.paymentMethod);
         const canSms = r.paymentMethod === 'credit' && r.status === 'pending' && r.patientId;
-        const canAnnul = Auth.can('sales_cancel') && r.status !== 'annulled';
         return `
           <button class="btn btn-xs btn-primary" onclick="viewSaleDetail(${r.id})">Détail</button>
           ${canSms ? `<button class="btn btn-xs" style="margin-left:4px;background:var(--info);color:white;border:none" onclick="openSmsModal(${r.patientId})" title="Envoyer rappel SMS"><i data-lucide="message-square" style="width:12px;height:12px"></i></button>` : ''}
           ${isPending ? `<button class="btn btn-xs btn-success" style="margin-left:4px" onclick="settleDebt(${r.id})"><i data-lucide="check-circle" style="width:12px;height:12px"></i> Encaisser</button>` : ''}
-          ${canAnnul ? `<button class="btn btn-xs btn-danger" style="margin-left:4px" onclick="annulerVente(${r.id}, this)" title="Annuler la vente"><i data-lucide="trash-2" style="width:12px;height:12px"></i></button>` : ''}
         `;
       }
     },

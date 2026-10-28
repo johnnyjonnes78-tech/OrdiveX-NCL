@@ -108,6 +108,9 @@ function filterInvoices() {
     data = data.filter(i => i.supplierId === parseInt(supId));
   }
 
+  // Tri par date décroissante (facture la plus récente en premier)
+  data = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+
   const container = document.getElementById('inv-table-container');
   if (!container) return;
 
@@ -145,7 +148,7 @@ function filterInvoices() {
     {
       label: 'Actions', render: r => {
         const gs = (key) => (window._appSettings || {})[key];
-        const canCorriger = r.status === 'validated' && (gs('purchase_allow_edit_after') === 'true' || DB.AppState.currentUser?.role === 'admin');
+        const canCorriger = r.status === 'validated' && !r.paid && (gs('purchase_allow_edit_after') === 'true' || DB.AppState.currentUser?.role === 'admin');
         const canDelete = r.status === 'draft' && (Auth.can('invoices_delete') || DB.AppState.currentUser?.role === 'admin');
         const canEdit   = r.status === 'draft' && (Auth.can('invoices_edit')   || DB.AppState.currentUser?.role === 'admin');
         const canValidate = r.status === 'draft' && (Auth.can('invoices_create') || DB.AppState.currentUser?.role === 'admin');
@@ -234,7 +237,10 @@ async function showNewInvoiceForm(invoiceId = null) {
     <div class="rx-section" style="margin-top:16px">
       <div class="rx-section-header">
         <h4 class="rx-section-title"><i data-lucide="package"></i> Articles facturés</h4>
-        <button type="button" class="btn btn-sm btn-primary" onclick="addInvoiceItem()"><i data-lucide="plus"></i> Ajouter article</button>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="openInvoiceCameraScan()"><i data-lucide="camera"></i> Scanner</button>
+          <button type="button" class="btn btn-sm btn-primary" onclick="addInvoiceItem()"><i data-lucide="plus"></i> Ajouter article</button>
+        </div>
       </div>
       <div id="invoice-items-list">
         <div class="rx-empty-items">Ajoutez les produits présents sur la facture</div>
@@ -267,7 +273,119 @@ async function showNewInvoiceForm(invoiceId = null) {
     // Ajouter un premier champ vide
     addInvoiceItem();
   }
+
+  // Scanner physique (douchette) actif pendant toute la durée de la modale -
+  // un scan ajoute l'article correspondant ou incrémente sa quantité s'il est
+  // déjà présent sur une ligne.
+  if (window.BarcodeScan) {
+    window._invoiceScanWatcher = BarcodeScan.watchKeyboardWedge({
+      ignoreEditable: false,
+      onScan: (code) => incrementOrAddInvoiceItemByScan(code)
+    });
+  }
+  const origCloseInvoice = UI.closeModal;
+  UI.closeModal = function () {
+    if (window._invoiceScanWatcher) { window._invoiceScanWatcher.stop(); window._invoiceScanWatcher = null; }
+    if (window._invoiceScannerCamera) { window._invoiceScannerCamera.stop(); window._invoiceScannerCamera = null; }
+    const overlay = document.getElementById('invoice-scan-overlay');
+    if (overlay) overlay.remove();
+    origCloseInvoice.call(UI);
+    UI.closeModal = origCloseInvoice;
+  };
 }
+
+function _resolveInvoiceProductByCode(code) {
+  const norm = (code || '').trim().toUpperCase();
+  if (!norm) return null;
+  const products = window._invoicesProducts || [];
+  return products.find(p =>
+    (p.code || '').toUpperCase() === norm ||
+    (p.ean || '').toUpperCase() === norm ||
+    (p.cip || '').toUpperCase() === norm
+  ) || null;
+}
+
+function incrementOrAddInvoiceItemByScan(code) {
+  const prod = _resolveInvoiceProductByCode(code);
+  if (!prod) {
+    UI.toast(`❌ Aucun produit ne correspond au code "${code}"`, 'error', 3000);
+    return;
+  }
+
+  // Si ce produit est déjà présent sur une ligne, incrémenter sa quantité
+  const existingHidden = Array.from(document.querySelectorAll('input[id^="inv-prod-"]'))
+    .find(el => parseInt(el.value) === prod.id);
+  if (existingHidden) {
+    const idx = existingHidden.id.replace('inv-prod-', '');
+    const qtyEl = document.getElementById(`inv-qty-${idx}`);
+    if (qtyEl) {
+      qtyEl.value = (parseInt(qtyEl.value) || 0) + 1;
+      updateInvoiceTotal();
+      UI.toast(`📷 ${prod.name} : quantité = ${qtyEl.value}`, 'success', 1500);
+    }
+    return;
+  }
+
+  // Sinon, ajouter une nouvelle ligne pour ce produit
+  addInvoiceItem();
+  const newIdx = window._invoiceItemCounter - 1;
+  setTimeout(() => selectInvoiceProduct(newIdx, prod.id), 60);
+}
+window.incrementOrAddInvoiceItemByScan = incrementOrAddInvoiceItemByScan;
+
+function openInvoiceCameraScan() {
+  const hasBarcodeAPI = !!(window.BarcodeScan && BarcodeScan.hasBarcodeDetectorAPI());
+  const hasCamera = !!(window.BarcodeScan && BarcodeScan.hasCameraAPI());
+  if (!hasBarcodeAPI || !hasCamera) {
+    UI.toast(!hasBarcodeAPI
+      ? "📷 Scan caméra non supporté par ce navigateur (ex: Safari/iPhone). Utilisez un scanner physique (douchette) - il fonctionne directement dans cette fenêtre."
+      : '📷 Caméra non disponible. Utilisez un scanner physique (douchette).', 'warning', 6000);
+    return;
+  }
+
+  const existing = document.getElementById('invoice-scan-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'invoice-scan-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card,#fff);border-radius:12px;padding:16px;max-width:420px;width:100%">
+      <div class="scanner-preview-wrap">
+        <video id="inv-scan-video" autoplay playsinline muted style="width:100%;max-height:300px;border-radius:8px;background:#000"></video>
+        <div class="scanner-overlay"><div class="scanner-line"></div></div>
+      </div>
+      <div class="scanner-status" id="inv-scan-status">
+        <span class="scanner-status-dot"></span>
+        Scannez chaque article de la facture.
+      </div>
+      <button type="button" class="btn btn-secondary" style="margin-top:12px;width:100%" onclick="document.getElementById('invoice-scan-overlay').remove(); if (window._invoiceScannerCamera) { window._invoiceScannerCamera.stop(); window._invoiceScannerCamera = null; }">Fermer le scan</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  _startInvoiceCameraLoop();
+}
+window.openInvoiceCameraScan = openInvoiceCameraScan;
+
+function _startInvoiceCameraLoop() {
+  const video = document.getElementById('inv-scan-video');
+  if (!video || !window.BarcodeScan) return;
+  window._invoiceScannerCamera = BarcodeScan.scanWithCamera(video, {
+    timeoutMs: 25000,
+    onDetect: (code) => {
+      incrementOrAddInvoiceItemByScan(code);
+      setTimeout(() => { if (document.getElementById('inv-scan-video')) _startInvoiceCameraLoop(); }, 500);
+    },
+    onError: (reason) => {
+      const status = document.getElementById('inv-scan-status');
+      if (!status) return;
+      status.innerHTML = reason === 'timeout'
+        ? '<span class="text-warning">⏱️ Scan en pause (25s sans activité). </span> <button type="button" class="btn btn-sm btn-secondary" onclick="_startInvoiceCameraLoop()">Reprendre</button>'
+        : '<span class="text-warning">⚠️ Caméra non disponible</span>';
+    }
+  });
+}
+window._startInvoiceCameraLoop = _startInvoiceCameraLoop;
 
 function addInvoiceItem(itemData = null) {
   const listEl = document.getElementById('invoice-items-list');

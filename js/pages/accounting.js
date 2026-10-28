@@ -8,6 +8,55 @@
 // seulement si elle est validée ET réellement payée (comptabilité de caisse :
 // datée du paiement réel, pas de la date de facture). Fonction pure et
 // exposée en dehors de l'IIFE ci-dessous pour rester testable isolément.
+// Transforme une fiche de paie en écriture du journal comptable, si et
+// seulement si son statut est 'paye'. Datée de payedAt (date réelle du
+// paiement) - PAS de "datePaiement"/"date", des champs qui n'existent sur
+// aucune fiche de paie réellement écrite par le module RH (voir hr.js) : les
+// utiliser faisait que cette catégorie ne produisait jamais d'écriture.
+window._payrollToAccountingEntry = function _payrollToAccountingEntry(p, dateFrom, dateTo, userMap) {
+  if (!p || p.status !== 'paye') return null;
+  const d = (p.payedAt || '').slice(0, 10);
+  if (!d || d < dateFrom || d > dateTo) return null;
+  const emp = (userMap || {})[p.employeeId];
+  return {
+    date: p.payedAt,
+    type: 'depense',
+    category: 'Salaire',
+    label: `Paie ${emp?.nom || emp?.name || '?'} — ${p.period || ''}`,
+    debit: p.netAPayer || 0,
+    credit: 0,
+    ref: `PAY-${p.id}`,
+    user: '—',
+    method: 'virement',
+  };
+};
+
+// Regroupe une liste d'écritures par catégorie, séparément pour les recettes
+// (entrées : ventes, mouvements, règlements...) et les dépenses (sorties :
+// salaires, factures fournisseurs, sorties de caisse...), triées du montant
+// le plus élevé au plus faible. Fonction pure, testable isolément - utilisée
+// pour rendre le journal comptable explicite sur l'origine de chaque somme.
+window._buildAccountingBreakdown = function _buildAccountingBreakdown(entries) {
+  const recettesMap = {};
+  const depensesMap = {};
+  (entries || []).forEach(e => {
+    if (e.type === 'recette') {
+      if (!recettesMap[e.category]) recettesMap[e.category] = { category: e.category, total: 0, count: 0 };
+      recettesMap[e.category].total += e.credit || 0;
+      recettesMap[e.category].count += 1;
+    } else if (e.type === 'depense') {
+      if (!depensesMap[e.category]) depensesMap[e.category] = { category: e.category, total: 0, count: 0 };
+      depensesMap[e.category].total += e.debit || 0;
+      depensesMap[e.category].count += 1;
+    }
+  });
+  const sortDesc = (a, b) => b.total - a.total;
+  return {
+    recettesByCategory: Object.values(recettesMap).sort(sortDesc),
+    depensesByCategory: Object.values(depensesMap).sort(sortDesc),
+  };
+};
+
 window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateFrom, dateTo) {
   if (!inv || inv.status !== 'validated' || !inv.paid) return null;
   const d = (inv.paidDate || inv.date || '').slice(0, 10);
@@ -242,23 +291,10 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
       }
     });
 
-    // 3. Paies RH => Dépense
+    // 3. Paies RH => Dépense (uniquement les fiches de paie réellement payées)
     payroll.forEach(p => {
-      const d = (p.datePaiement || p.date || '').slice(0, 10);
-      if (d < dateFrom || d > dateTo) return;
-      if (p.status !== 'paye') return;
-      const emp = userMap[p.employeeId];
-      entries.push({
-        date: p.datePaiement || p.date,
-        type: 'depense',
-        category: 'Salaire',
-        label: `Paie ${emp?.nom || emp?.name || '?'} — ${p.period || ''}`,
-        debit: p.netAPayer || 0,
-        credit: 0,
-        ref: `PAY-${p.id}`,
-        user: '—',
-        method: 'virement',
-      });
+      const entry = window._payrollToAccountingEntry(p, dateFrom, dateTo, userMap);
+      if (entry) entries.push(entry);
     });
 
     // 4. Factures fournisseurs réellement payées => Dépense (comptabilité de
@@ -299,6 +335,7 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
     const totalDebit = filtered.reduce((a, e) => a + e.debit, 0);
     const totalCredit = filtered.reduce((a, e) => a + e.credit, 0);
     const solde = totalCredit - totalDebit;
+    const breakdown = window._buildAccountingBreakdown(filtered);
 
     const pg = paginate(filtered, window._acctJournalPage, 30);
 
@@ -337,6 +374,32 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
         <div class="stat-chip stat-purple" style="padding:16px;text-align:center;">
           <span class="stat-val" style="font-size:1.2rem">${filtered.length}</span>
           <span class="stat-label">Écritures</span>
+        </div>
+      </div>
+
+      <!-- Répartition explicite : d'où viennent les entrées, où vont les sorties -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:20px;">
+        <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+          <div style="font-weight:700;font-size:.85rem;color:var(--success);margin-bottom:8px;">
+            <i data-lucide="arrow-down-circle" style="width:14px;height:14px;vertical-align:middle"></i> Entrées — d'où vient l'argent
+          </div>
+          ${breakdown.recettesByCategory.length === 0 ? '<div style="font-size:.8rem;color:var(--text-muted)">Aucune entrée sur cette période</div>' : breakdown.recettesByCategory.map(r => `
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;padding:4px 0;border-bottom:1px solid var(--border)">
+              <span>${r.category} <span style="color:var(--text-muted)">(${r.count})</span></span>
+              <strong style="color:var(--success)">${fmt(r.total)}</strong>
+            </div>
+          `).join('')}
+        </div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+          <div style="font-weight:700;font-size:.85rem;color:var(--danger);margin-bottom:8px;">
+            <i data-lucide="arrow-up-circle" style="width:14px;height:14px;vertical-align:middle"></i> Sorties — où va l'argent
+          </div>
+          ${breakdown.depensesByCategory.length === 0 ? '<div style="font-size:.8rem;color:var(--text-muted)">Aucune sortie sur cette période</div>' : breakdown.depensesByCategory.map(d => `
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;padding:4px 0;border-bottom:1px solid var(--border)">
+              <span>${d.category} <span style="color:var(--text-muted)">(${d.count})</span></span>
+              <strong style="color:var(--danger)">${fmt(d.total)}</strong>
+            </div>
+          `).join('')}
         </div>
       </div>
 
