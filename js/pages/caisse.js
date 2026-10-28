@@ -522,16 +522,64 @@ function switchCaisseTab(btn, tabId) {
   target.style.display = 'block';
 }
 
-function openAddCashEntry() {
+// Catégories par défaut proposées selon le type de mouvement. "Autre" révèle
+// un champ libre, dont la valeur est mémorisée (settings) pour réapparaître
+// dans la liste la prochaine fois - évite de retaper la même catégorie à
+// chaque fois tout en gardant la liste ouverte à ce qu'une pharmacie invente.
+const CASH_ENTRY_CATEGORIES = {
+  in: ['Fond de caisse', 'Règlement créance patient (via Caisse)', 'Dépôt divers'],
+  out: ['Loyer', 'Électricité / Eau', 'Entretien', 'Transport / Carburant', 'Fournitures', 'Taxes / Impôts', 'Remboursement patient', 'Achat express (hors facture)'],
+};
+window.CASH_ENTRY_CATEGORIES = CASH_ENTRY_CATEGORIES;
+
+async function _getCashCustomCategories() {
+  try {
+    const row = await DB.dbGet('settings', 'cash_custom_categories');
+    return row && row.value ? JSON.parse(row.value) : [];
+  } catch (e) { return []; }
+}
+
+async function _saveCashCustomCategory(category) {
+  if (!category) return;
+  const current = await _getCashCustomCategories();
+  if (current.includes(category)) return;
+  current.push(category);
+  await DB.dbPut('settings', { key: 'cash_custom_categories', value: JSON.stringify(current), updatedAt: Date.now() });
+}
+
+function _renderCashCategoryOptions(type, selected) {
+  const custom = window._cashCustomCategoriesCache || [];
+  const list = [...(CASH_ENTRY_CATEGORIES[type] || []), ...custom];
+  const opts = list.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
+  return opts + `<option value="__autre__">Autre (préciser)...</option>`;
+}
+
+window.onCashEntryTypeChange = function(type) {
+  const sel = document.getElementById('cash-entry-category');
+  if (sel) sel.innerHTML = _renderCashCategoryOptions(type);
+  window.onCashEntryCategoryChange();
+};
+
+window.onCashEntryCategoryChange = function() {
+  const sel = document.getElementById('cash-entry-category');
+  const customGroup = document.getElementById('cash-entry-custom-category-group');
+  const hint = document.getElementById('cash-entry-patient-hint');
+  if (customGroup) customGroup.style.display = sel && sel.value === '__autre__' ? 'block' : 'none';
+  if (hint) hint.style.display = sel && sel.value === 'Règlement créance patient (via Caisse)' ? 'flex' : 'none';
+};
+
+async function openAddCashEntry() {
   if (window.Auth && !Auth.can('caisse_depot_retrait') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission d\'effectuer des mouvements de caisse manuels.', 'error', 5000);
     return;
   }
+  window._cashCustomCategoriesCache = await _getCashCustomCategories();
+
   UI.modal('<i data-lucide="banknote" class="modal-icon-inline"></i> Mouvement de Caisse Manuel', `
     <form id="cash-entry-form" class="form-grid">
       <div class="form-group">
         <label>Type de mouvement *</label>
-        <select name="type" id="cash-entry-type" class="form-control" required>
+        <select name="type" id="cash-entry-type" class="form-control" required onchange="onCashEntryTypeChange(this.value)">
           <option value="in">Entrée (fond de caisse, autre recette)</option>
           <option value="out">Sortie (achat express, remboursement, dépense)</option>
         </select>
@@ -550,6 +598,22 @@ function openAddCashEntry() {
             <option value="transfer">Virement</option>
           </select>
         </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Catégorie *</label>
+          <select name="category" id="cash-entry-category" class="form-control" required onchange="onCashEntryCategoryChange()">
+            ${_renderCashCategoryOptions('in')}
+          </select>
+        </div>
+        <div class="form-group" id="cash-entry-custom-category-group" style="display:none">
+          <label>Préciser la catégorie</label>
+          <input type="text" name="customCategory" class="form-control" placeholder="Ex: Assurance locaux...">
+        </div>
+      </div>
+      <div class="info-box-small" id="cash-entry-patient-hint" style="display:none">
+        <i data-lucide="info"></i>
+        <span>Pour un règlement de créance patient, pensez plutôt au Dossier Patient (règlement de créance dédié) — plus précis pour le suivi de ce patient. Cette saisie manuelle reste possible si besoin.</span>
       </div>
       <div class="form-group">
         <label>Motif *</label>
@@ -602,10 +666,18 @@ async function submitCashEntry() {
       }
     }
 
+    let category = data.category || '';
+    if (category === '__autre__') {
+      category = (data.customCategory || '').trim();
+      if (!category) { UI.toast('Veuillez préciser la catégorie', 'warning'); return; }
+      await _saveCashCustomCategory(category);
+    }
+
     await DB.dbAdd('cashRegister', {
       type,
       amount,
       paymentMethod: data.paymentMethod,
+      category,
       reason: data.reason,
       reference: data.reference || '',
       date: new Date().toISOString().split('T')[0],

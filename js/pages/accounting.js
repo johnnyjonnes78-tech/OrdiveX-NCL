@@ -4,6 +4,27 @@
 //  Journal comptable unifié : ventes, dépenses caisse, retours, paies, factures fournisseurs
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Transforme une facture fournisseur en écriture du journal comptable, si et
+// seulement si elle est validée ET réellement payée (comptabilité de caisse :
+// datée du paiement réel, pas de la date de facture). Fonction pure et
+// exposée en dehors de l'IIFE ci-dessous pour rester testable isolément.
+window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateFrom, dateTo) {
+  if (!inv || inv.status !== 'validated' || !inv.paid) return null;
+  const d = (inv.paidDate || inv.date || '').slice(0, 10);
+  if (d < dateFrom || d > dateTo) return null;
+  return {
+    date: inv.paidDate || inv.date,
+    type: 'depense',
+    category: 'Facture fournisseur',
+    label: `Facture N° ${inv.invoiceNumber || inv.id} — ${inv.supplierName || 'Fournisseur'}`,
+    debit: inv.totalAmount || 0,
+    credit: 0,
+    ref: inv.invoiceNumber || String(inv.id),
+    user: '—',
+    method: inv.paymentMethod || 'virement',
+  };
+};
+
 (function () {
   'use strict';
 
@@ -127,12 +148,13 @@
   //  CHARGEMENT DES DONNÉES
   // ═══════════════════════════════════════════════════════════════════════
   async function loadAccountingData(dateFrom, dateTo) {
-    const [sales, cashRegister, returns, payroll, purchaseOrders, users] = await Promise.all([
+    const [sales, cashRegister, returns, payroll, purchaseOrders, invoices, users] = await Promise.all([
       DB.dbGetAll('sales'),
       DB.dbGetAll('cashRegister'),
       DB.dbGetAll('movements'),
       DB.dbGetAll('hr_payroll').catch(() => []),
       DB.dbGetAll('purchaseOrders').catch(() => []),
+      DB.dbGetAll('invoices').catch(() => []),
       DB.dbGetAll('users').catch(() => []),
     ]);
 
@@ -169,7 +191,7 @@
         entries.push({
           date: c.date,
           type: 'depense',
-          category: 'Sortie de caisse',
+          category: c.category || 'Sortie de caisse',
           label: c.reason || 'Sortie manuelle',
           debit: c.amount || 0,
           credit: 0,
@@ -182,7 +204,7 @@
         entries.push({
           date: c.date,
           type: 'recette',
-          category: 'Dépôt en caisse',
+          category: c.category || 'Dépôt en caisse',
           label: c.reason || 'Dépôt manuel',
           debit: 0,
           credit: c.amount || 0,
@@ -239,28 +261,18 @@
       });
     });
 
-    // 4. Factures fournisseurs payées => Dépense
-    purchaseOrders.forEach(po => {
-      const d = (po.date || '').slice(0, 10);
-      if (d < dateFrom || d > dateTo) return;
-      if ((po.paid || 0) <= 0) return;
-      entries.push({
-        date: po.date,
-        type: 'depense',
-        category: 'Achat fournisseur',
-        label: `Commande #${po.orderNumber || po.id}`,
-        debit: po.paid || 0,
-        credit: 0,
-        ref: po.orderNumber || String(po.id),
-        user: '—',
-        method: 'virement',
-      });
+    // 4. Factures fournisseurs réellement payées => Dépense (comptabilité de
+    // caisse, cohérent avec le reste du journal : on compte à la date où
+    // l'argent est réellement sorti, pas à la date de la facture elle-même).
+    invoices.forEach(inv => {
+      const entry = window._invoiceToAccountingEntry(inv, dateFrom, dateTo);
+      if (entry) entries.push(entry);
     });
 
     // Trier par date décroissante
     entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    return { entries, sales, cashRegister, payroll, purchaseOrders, userMap };
+    return { entries, sales, cashRegister, payroll, purchaseOrders, invoices, userMap };
   }
 
   // ═══════════════════════════════════════════════════════════════════════

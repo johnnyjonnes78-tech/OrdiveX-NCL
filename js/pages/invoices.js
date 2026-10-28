@@ -133,6 +133,14 @@ function filterInvoices() {
         return `<span class="badge ${s.cls}">${s.label}</span>`;
       }
     },
+    {
+      label: 'Paiement', render: r => {
+        if (r.status !== 'validated') return '<span class="text-muted text-sm">—</span>';
+        return r.paid
+          ? `<span class="badge badge-success">Payée${r.paidDate ? ' le ' + UI.formatDate(r.paidDate) : ''}</span>`
+          : `<span class="badge badge-warning">Non payée</span>`;
+      }
+    },
     { label: 'Sync', render: r => UI.syncBadge(r, 'invoices', window._invoicesFailedStores) },
     {
       label: 'Actions', render: r => {
@@ -141,10 +149,12 @@ function filterInvoices() {
         const canDelete = r.status === 'draft' && (Auth.can('invoices_delete') || DB.AppState.currentUser?.role === 'admin');
         const canEdit   = r.status === 'draft' && (Auth.can('invoices_edit')   || DB.AppState.currentUser?.role === 'admin');
         const canValidate = r.status === 'draft' && (Auth.can('invoices_create') || DB.AppState.currentUser?.role === 'admin');
+        const canMarkPaid = r.status === 'validated' && !r.paid && (Auth.can('invoices_edit') || DB.AppState.currentUser?.role === 'admin');
         return `
         <div class="actions-cell">
           <button class="btn btn-xs btn-primary" onclick="viewInvoice(${r.id})"><i data-lucide="eye"></i> Voir</button>
           ${canValidate ? `<button class="btn btn-xs btn-success" onclick="validateInvoice(${r.id})"><i data-lucide="check-circle"></i> Valider &amp; Stock</button>` : ''}
+          ${canMarkPaid ? `<button class="btn btn-xs btn-success" onclick="markInvoicePaid(${r.id})"><i data-lucide="banknote"></i> Marquer payée</button>` : ''}
           ${canEdit    ? `<button class="btn btn-xs btn-warning" onclick="showNewInvoiceForm(${r.id})"><i data-lucide="edit"></i> Modifier</button>` : ''}
           ${canCorriger ? `<button class="btn btn-xs btn-warning" onclick="unvalidateInvoice(${r.id}, this)"><i data-lucide="rotate-ccw"></i> Corriger</button>` : ''}
           ${canDelete  ? `<button class="btn btn-xs btn-danger" onclick="deleteInvoice(${r.id})"><i data-lucide="trash-2"></i></button>` : ''}
@@ -199,6 +209,20 @@ async function showNewInvoiceForm(invoiceId = null) {
             <option value="mobile_money" ${invoice && invoice.paymentMethod === 'mobile_money' ? 'selected' : ''}>Mobile Money</option>
             <option value="credit" ${invoice && invoice.paymentMethod === 'credit' ? 'selected' : ''}>Crédit</option>
           </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cette facture a-t-elle déjà été payée au fournisseur ? *</label>
+          <select name="paidStatus" id="inv-paid-status" class="form-control" required
+            onchange="document.getElementById('inv-paiddate-group').style.display = this.value === 'oui' ? 'block' : 'none'">
+            <option value="non" ${!invoice || invoice.paid !== true ? 'selected' : ''}>Non, pas encore payée</option>
+            <option value="oui" ${invoice && invoice.paid === true ? 'selected' : ''}>Oui, déjà payée</option>
+          </select>
+        </div>
+        <div class="form-group" id="inv-paiddate-group" style="${invoice && invoice.paid === true ? '' : 'display:none'}">
+          <label>Date de paiement</label>
+          <input type="date" name="paidDate" class="form-control" value="${invoice && invoice.paidDate ? invoice.paidDate : new Date().toISOString().split('T')[0]}">
         </div>
       </div>
       <div class="form-group">
@@ -551,6 +575,8 @@ async function _submitInvoiceImpl(status) {
     items,
     status, // 'draft' or 'validated'
     paymentMethod: formData.paymentMethod,
+    paid: formData.paidStatus === 'oui',
+    paidDate: formData.paidStatus === 'oui' ? (formData.paidDate || formData.date) : null,
     note: formData.note || '',
     createdBy: DB.AppState.currentUser?.id,
   };
@@ -1444,6 +1470,30 @@ async function deleteInvoice(invoiceId) {
     UI.toast('Erreur : ' + err.message, 'error');
   }
 }
+
+async function markInvoicePaid(invoiceId) {
+  if (window.Auth && !Auth.can('invoices_edit') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de modifier cette facture.', 'error', 5000);
+    return;
+  }
+  const invoice = await DB.dbGet('invoices', invoiceId);
+  if (!invoice || invoice.status !== 'validated') return;
+  if (invoice.paid) { UI.toast('Cette facture est déjà marquée comme payée.', 'info'); return; }
+
+  const confirm = await UI.confirm(`Confirmer que la facture N° ${invoice.invoiceNumber} a bien été payée au fournisseur aujourd'hui ?\n\nElle apparaîtra alors comme dépense dans la Comptabilité Générale.`);
+  if (!confirm) return;
+
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await DB.dbPut('invoices', { ...invoice, paid: true, paidDate: today });
+    await DB.writeAudit('MARK_INVOICE_PAID', 'invoices', invoiceId, { invoiceNumber: invoice.invoiceNumber, paidDate: today });
+    UI.toast('✅ Facture marquée comme payée', 'success');
+    renderInvoices(document.getElementById('app-content'));
+  } catch (err) {
+    UI.toast('Erreur : ' + err.message, 'error');
+  }
+}
+window.markInvoicePaid = markInvoicePaid;
 
 window.renderInvoices = renderInvoices;
 window.filterInvoices = filterInvoices;

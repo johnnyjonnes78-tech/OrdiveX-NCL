@@ -1276,6 +1276,20 @@ async function receiveOrder(orderId) {
               <option value="cheque">Chèque</option>
             </select>
           </div>
+          <div class="form-row" style="margin-top:12px">
+            <div class="form-group">
+              <label>Cette facture a-t-elle déjà été payée au fournisseur ? *</label>
+              <select id="recv-invoice-paid" class="form-control"
+                onchange="document.getElementById('recv-invoice-paiddate-group').style.display = this.value === 'oui' ? 'block' : 'none'">
+                <option value="non" selected>Non, pas encore payée</option>
+                <option value="oui">Oui, déjà payée</option>
+              </select>
+            </div>
+            <div class="form-group" id="recv-invoice-paiddate-group" style="display:none">
+              <label>Date de paiement</label>
+              <input type="date" id="recv-invoice-paiddate" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1380,6 +1394,8 @@ async function _confirmReceiveOrderImpl(orderId) {
   const invoiceNum = document.getElementById('recv-invoice-num')?.value?.trim();
   const invoiceDate = document.getElementById('recv-invoice-date')?.value;
   const invoicePayment = document.getElementById('recv-invoice-payment')?.value || '';
+  const invoicePaidStatus = document.getElementById('recv-invoice-paid')?.value || 'non';
+  const invoicePaidDate = document.getElementById('recv-invoice-paiddate')?.value;
 
   if (createInvoice && !invoiceNum) {
     UI.toast('Le numéro de facture est obligatoire pour générer la facture.', 'error');
@@ -1466,6 +1482,8 @@ async function _confirmReceiveOrderImpl(orderId) {
       items: invoiceItems,
       status: 'validated',
       paymentMethod: invoicePayment,
+      paid: invoicePaidStatus === 'oui',
+      paidDate: invoicePaidStatus === 'oui' ? (invoicePaidDate || invoiceDate || new Date().toISOString().split('T')[0]) : null,
       note: `Facture générée automatiquement à la réception du Bon de Commande N° ${order.orderNumber}.`,
       createdBy: DB.AppState.currentUser?.id,
     });
