@@ -2263,53 +2263,287 @@ function renderLanding(container) {
   if (window.hideSupportWidget) hideSupportWidget();
 
   const features = [
-    { icon: 'monitor-smartphone', title: 'Point de Vente', text: 'Vente rapide au comptoir, scan code-barres (caméra ou douchette), gestion des ordonnances et du tiers payant.' },
-    { icon: 'package-search', title: 'Stock & Inventaire', text: 'Traçabilité par lot et péremption, alertes de rupture, inventaires physiques assistés par scan.' },
-    { icon: 'landmark', title: 'Comptabilité Générale', text: 'Journal unifié des ventes, achats et dépenses, avec répartition claire des entrées et sorties.' },
-    { icon: 'user-cog', title: 'Ressources Humaines', text: 'Paie, avances sur salaire et suivi des équipes, directement liés à la comptabilité.' },
-    { icon: 'printer', title: 'Scan & Étiquettes', text: 'Impression d\'étiquettes code-barres et réception de commandes fournisseur en un scan.' },
-    { icon: 'wifi-off', title: 'Fonctionne hors-ligne', text: 'Toutes les fonctions marchent sans connexion, avec synchronisation automatique multi-appareils.' },
-    { icon: 'users', title: 'Dossiers Patients', text: 'Historique patient, ordonnances et suivi des créances, assurance comme espèces.' },
-    { icon: 'shield-check', title: 'Sécurité & Rôles', text: 'Code PIN par utilisateur, permissions par rôle, journal d\'audit de toutes les actions sensibles.' },
+    { icon: 'monitor-smartphone', title: 'Vente au comptoir', hook: 'Servez vos clients avec efficacité.', text: 'Enregistrez vos ventes, recherchez les produits rapidement et utilisez le scan de codes-barres avec une caméra ou une douchette compatible. Gérez les ordonnances et le tiers payant selon les fonctionnalités disponibles dans votre configuration.' },
+    { icon: 'package-search', title: 'Stock et inventaire', hook: 'Sachez ce que vous avez, ce qui manque et ce qui approche de sa péremption.', text: 'Suivez vos produits par lot et par date de péremption. Identifiez les risques de rupture, facilitez les inventaires physiques et améliorez la traçabilité de vos mouvements de stock.' },
+    { icon: 'landmark', title: 'Comptabilité et suivi financier', hook: 'Comprenez les mouvements financiers de votre pharmacie.', text: 'Centralisez les informations relatives aux ventes, aux achats et aux dépenses. Distinguez les entrées et les sorties d\'argent et consultez les données nécessaires au suivi de votre activité.' },
+    { icon: 'user-cog', title: 'Gestion du personnel', hook: 'Organisez votre équipe et suivez les charges liées aux salaires.', text: 'Enregistrez les informations relatives à la paie et aux avances sur salaire. Retrouvez les données utiles au suivi du personnel et à leur prise en compte dans la gestion financière.' },
+    { icon: 'printer', title: 'Réception des commandes et codes-barres', hook: 'Simplifiez l\'identification des produits et le traitement des marchandises.', text: 'Utilisez le scan des codes-barres pour accélérer certaines opérations d\'inventaire et de réception des commandes fournisseurs. Préparez également l\'impression d\'étiquettes compatibles avec votre matériel.' },
+    { icon: 'wifi-off', title: 'Fonctionnement hors ligne', hook: 'Continuez à travailler même lorsque Internet n\'est pas disponible.', text: 'OrdiveX est conçu pour permettre la poursuite des opérations prises en charge hors ligne. Lorsque la connexion revient, les données prévues pour la synchronisation peuvent être mises à jour entre les appareils configurés.' },
+    { icon: 'users', title: 'Dossiers patients et créances', hook: 'Retrouvez les informations nécessaires au suivi de vos patients.', text: 'Consultez les dossiers et historiques enregistrés dans l\'application. Suivez les créances et les informations associées aux règlements en espèces ou aux prises en charge par des organismes tiers, selon les fonctionnalités activées.' },
+    { icon: 'shield-check', title: 'Sécurité et contrôle des accès', hook: 'Définissez qui peut accéder aux différentes fonctions.', text: 'Attribuez des rôles et des permissions adaptés aux responsabilités de chaque utilisateur. Les codes PIN, les contrôles d\'accès et le journal d\'audit permettent de mieux encadrer l\'utilisation de l\'application et de retracer les opérations sensibles prises en charge.' },
+  ];
+
+  const visibility = [
+    { label: 'Ventes', text: 'retrouvez les opérations commerciales enregistrées.' },
+    { label: 'Stock', text: 'suivez les quantités, les mouvements et les péremptions.' },
+    { label: 'Finances', text: 'consultez les mouvements financiers enregistrés.' },
+    { label: 'Personnel', text: 'centralisez les informations relatives à votre équipe.' },
+    { label: 'Patients', text: 'retrouvez les données enregistrées et les informations de suivi autorisées.' },
+    { label: 'Traçabilité', text: 'facilitez le contrôle des opérations sensibles grâce aux fonctions disponibles.' },
+  ];
+
+  const pillars = [
+    { icon: 'wifi-off', title: 'Travaillez sans dépendre constamment d\'Internet', text: 'Poursuivez les opérations compatibles avec le mode hors ligne, puis synchronisez les données prévues à cet effet lorsque la connexion est disponible.' },
+    { icon: 'layout-grid', title: 'Structurez votre gestion', text: 'Regroupez les informations essentielles de votre officine dans un même environnement.' },
+    { icon: 'shield-check', title: 'Renforcez le contrôle interne', text: 'Organisez les accès des utilisateurs et facilitez le suivi des opérations enregistrées.' },
   ];
 
   container.innerHTML = `
     <div class="landing-page">
+      <header class="landing-nav">
+        <div class="landing-nav-brand">
+          <div class="login-logo-elite landing-nav-logo"><i data-lucide="activity"></i></div>
+          <span>Ordive<span class="landing-nav-x">X</span></span>
+        </div>
+        <nav class="landing-nav-links">
+          <a href="#landing-features">Fonctionnalités</a>
+          <a href="#landing-security">Sécurité</a>
+        </nav>
+        <button class="btn btn-primary btn-sm" onclick="Router.navigate('login')">Se connecter</button>
+      </header>
+
       <div class="landing-hero">
-        <div class="mesh-gradient"></div>
-        <div class="landing-hero-content">
-          <div class="login-logo-elite" style="margin:0 auto 20px">
-            <i data-lucide="activity"></i>
-          </div>
-          <h1 class="landing-title">Ordive<span>X</span></h1>
-          <p class="landing-tagline">La suite de gestion tout-en-un pour votre pharmacie — vente, stock, comptabilité et ressources humaines, en ligne comme hors-ligne.</p>
+        <div class="landing-hero-text">
+          <h1 class="landing-title">Toute la gestion de votre pharmacie.<br>Un seul outil.</h1>
+          <p class="landing-tagline">Pilotez vos ventes, maîtrisez votre stock et suivez vos finances depuis une seule application.</p>
+          <p class="landing-tagline-sub">OrdiveX réunit les outils essentiels à la gestion de votre officine : ventes au comptoir, achats, inventaire, comptabilité, personnel et suivi des patients. Continuez à travailler même sans connexion Internet et retrouvez une gestion plus structurée de votre activité.</p>
           <button class="btn btn-primary landing-cta" onclick="Router.navigate('login')">
-            Se connecter <i data-lucide="arrow-right"></i>
+            Se connecter à OrdiveX <i data-lucide="arrow-right"></i>
           </button>
+        </div>
+        <div class="landing-hero-visual">
+          <div class="landing-mock-window">
+            <div class="landing-mock-bar"><span></span><span></span><span></span></div>
+            <div class="landing-mock-body">
+              <div class="landing-mock-kpi"><i data-lucide="shopping-cart"></i><div><strong>Ventes du jour</strong><span>Données de démonstration</span></div></div>
+              <div class="landing-mock-kpi"><i data-lucide="package-search"></i><div><strong>Produits à surveiller</strong><span>Données de démonstration</span></div></div>
+              <div class="landing-mock-kpi"><i data-lucide="landmark"></i><div><strong>Mouvements financiers</strong><span>Données de démonstration</span></div></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="landing-features">
-        <h2 class="landing-features-title">Ce qu'OrdiveX gère pour vous</h2>
+      <p class="landing-strapline">Votre pharmacie. Vos données. Votre gestion.</p>
+
+      <section id="landing-features" class="landing-features">
+        <h2 class="landing-features-title">Une gestion complète, pensée pour les pharmacies</h2>
         <div class="landing-features-grid">
-          ${features.map(f => `
+          ${features.map((f, i) => `
             <div class="feature-card">
               <div class="feature-card-icon"><i data-lucide="${f.icon}"></i></div>
+              <span class="feature-card-num">${String(i + 1).padStart(2, '0')}</span>
               <h3>${f.title}</h3>
-              <p>${f.text}</p>
+              <p class="feature-card-hook">${f.hook}</p>
+              <p class="feature-card-text">${f.text}</p>
             </div>
           `).join('')}
         </div>
-      </div>
+      </section>
+
+      <section class="landing-visibility">
+        <h2 class="landing-section-title">Une meilleure visibilité sur votre activité</h2>
+        <p class="landing-section-lead">Avec OrdiveX, vous disposez d'informations regroupées pour mieux suivre les opérations quotidiennes de votre pharmacie.</p>
+        <ul class="landing-visibility-list">
+          ${visibility.map(v => `<li><strong>${v.label} :</strong> ${v.text}</li>`).join('')}
+        </ul>
+        <p class="landing-section-footnote">L'objectif : réduire la dispersion des informations et vous aider à prendre vos décisions sur la base de données mieux organisées.</p>
+      </section>
+
+      <section id="landing-security" class="landing-pillars">
+        <h2 class="landing-section-title">Une application adaptée à votre quotidien</h2>
+        <div class="landing-pillars-grid">
+          ${pillars.map(p => `
+            <div class="pillar-card">
+              <div class="pillar-card-icon"><i data-lucide="${p.icon}"></i></div>
+              <h3>${p.title}</h3>
+              <p>${p.text}</p>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+
+      <section class="landing-final-cta">
+        <h2>Prenez le contrôle de votre pharmacie</h2>
+        <p>Ventes, stock, finances, personnel et suivi des patients : retrouvez les fonctions essentielles de votre gestion dans OrdiveX.</p>
+        <button class="btn btn-primary landing-cta" onclick="Router.navigate('login')">
+          Se connecter à OrdiveX <i data-lucide="arrow-right"></i>
+        </button>
+      </section>
 
       <div class="landing-footer">
         <span>OrdiveX v${window.APP_VERSION || '9.8.6'}</span>
-        <a href="#" onclick="window._termsBackTo='landing'; Router.navigate('terms'); return false;">Conditions d'Utilisation</a>
+        <a href="#" onclick="window._termsBackTo='landing'; Router.navigate('terms'); return false;">Conditions Générales d'Utilisation</a>
       </div>
     </div>
   `;
   if (window.lucide) lucide.createIcons();
 }
+
+const TERMS_ARTICLES = [
+  { id: 'preambule', title: 'Préambule', html: `
+    <p>OrdiveX est une application de gestion destinée aux officines pharmaceutiques. Elle permet notamment de gérer les ventes, les stocks, les achats, les mouvements financiers, les ressources humaines et certaines informations relatives aux patients.</p>
+    <p>Les présentes Conditions Générales d'Utilisation, ci-après désignées « CGU », définissent les conditions d'accès et d'utilisation de l'application.</p>
+    <p>Ce document constitue un projet de conditions d'utilisation. Il doit être adapté à l'organisation réelle du service et validé par un professionnel du droit avant d'être utilisé comme document contractuel définitif.</p>
+  `},
+  { id: 'art-1', title: 'Article 1 — Objet et champ d\'application', html: `
+    <p>Les présentes CGU encadrent l'accès à OrdiveX et son utilisation par les pharmacies, leurs administrateurs et les utilisateurs autorisés.</p>
+    <p>Elles s'appliquent à toute personne qui accède à l'application ou utilise ses fonctionnalités.</p>
+    <p>L'utilisation d'OrdiveX ne dispense pas la pharmacie de respecter les obligations légales et professionnelles applicables à son activité, notamment en matière de gestion pharmaceutique, de comptabilité, de confidentialité et de protection des données personnelles.</p>
+  `},
+  { id: 'art-2', title: 'Article 2 — Acceptation des conditions', html: `
+    <p>Avant d'utiliser OrdiveX, l'utilisateur doit pouvoir prendre connaissance des présentes CGU.</p>
+    <p>L'acceptation des conditions doit être recueillie selon une procédure appropriée. Lorsque l'application prévoit un mécanisme d'acceptation, celui-ci doit permettre de déterminer la version acceptée et, si nécessaire, d'en conserver la preuve.</p>
+    <p>L'administrateur de la pharmacie veille à ce que les membres de son personnel autorisés à utiliser l'application soient informés des règles qui leur sont applicables.</p>
+    <p>Si une personne n'accepte pas les présentes conditions, elle ne doit pas utiliser le service, sous réserve des droits et obligations déjà applicables.</p>
+  `},
+  { id: 'art-3', title: 'Article 3 — Description du service', html: `
+    <p>OrdiveX est une application de gestion destinée aux officines pharmaceutiques. Selon la version installée et les fonctionnalités activées, elle peut notamment proposer :</p>
+    <ul>
+      <li>la gestion des ventes et des opérations au comptoir ;</li>
+      <li>la gestion des produits, des stocks, des lots et des péremptions ;</li>
+      <li>le suivi des achats, des dépenses et des mouvements financiers ;</li>
+      <li>la gestion des informations relatives au personnel ;</li>
+      <li>le suivi de certaines informations relatives aux patients et aux créances ;</li>
+      <li>la gestion des utilisateurs, des rôles et des permissions ;</li>
+      <li>la consultation de journaux d'audit pour les opérations prises en charge ;</li>
+      <li>le fonctionnement hors ligne et la synchronisation des données compatibles.</li>
+    </ul>
+    <p>Les fonctionnalités effectivement accessibles dépendent de la version déployée, de sa configuration, des équipements utilisés et des éventuels services associés.</p>
+    <p>OrdiveX est un outil informatique de gestion. Il ne remplace pas le jugement professionnel du pharmacien, les contrôles réglementaires obligatoires ni les systèmes officiels auxquels la pharmacie doit éventuellement recourir.</p>
+  `},
+  { id: 'art-4', title: 'Article 4 — Accès au service et gestion des comptes', html: `
+    <p>L'accès à OrdiveX peut être réservé aux utilisateurs disposant d'un compte ou d'une autorisation valide.</p>
+    <p>La pharmacie, par l'intermédiaire de son administrateur, est chargée de :</p>
+    <ul>
+      <li>créer ou faire créer les comptes nécessaires ;</li>
+      <li>attribuer des rôles adaptés aux responsabilités de chaque utilisateur ;</li>
+      <li>limiter les permissions aux besoins professionnels de chacun ;</li>
+      <li>retirer ou désactiver les accès devenus inutiles, notamment lors du départ d'un employé ;</li>
+      <li>vérifier régulièrement la pertinence des autorisations accordées.</li>
+    </ul>
+    <p>Chaque utilisateur doit utiliser son propre accès lorsque le système le permet. Le partage de codes PIN ou d'identifiants personnels est déconseillé et peut compromettre la traçabilité des opérations.</p>
+    <p>Les règles d'authentification et de gestion des sessions dépendent des mécanismes effectivement disponibles dans la version utilisée.</p>
+  `},
+  { id: 'art-5', title: 'Article 5 — Obligations des utilisateurs', html: `
+    <p>Chaque utilisateur s'engage à :</p>
+    <ul>
+      <li>utiliser OrdiveX dans le cadre de ses fonctions et conformément aux règles applicables ;</li>
+      <li>fournir des informations exactes lorsqu'il enregistre des données ;</li>
+      <li>ne pas tenter de contourner les contrôles d'accès ou les mécanismes de sécurité ;</li>
+      <li>ne pas accéder aux informations sans autorisation ;</li>
+      <li>signaler rapidement tout accès suspect, toute erreur importante ou tout incident de sécurité constaté ;</li>
+      <li>ne pas introduire volontairement de code malveillant ou perturber le fonctionnement du service.</li>
+    </ul>
+    <p>Les utilisateurs doivent vérifier les informations saisies avant de valider les opérations importantes, notamment celles qui concernent les ventes, les mouvements de stock et les écritures financières.</p>
+  `},
+  { id: 'art-6', title: 'Article 6 — Données de la pharmacie et protection des données personnelles', html: `
+    <h3>6.1. Nature des données</h3>
+    <p>OrdiveX peut permettre de traiter des données commerciales, financières, professionnelles et, selon les fonctionnalités utilisées, des données personnelles relatives aux patients.</p>
+    <p>Ces dernières peuvent comprendre des informations liées aux ordonnances, à l'historique des opérations ou au suivi des créances. Leur traitement doit faire l'objet d'une attention particulière en raison de leur caractère potentiellement sensible.</p>
+    <h3>6.2. Responsabilités de la pharmacie</h3>
+    <p>La pharmacie demeure responsable de déterminer les finalités et les modalités des traitements de données qu'elle effectue dans le cadre de son activité, dans la mesure prévue par la réglementation applicable.</p>
+    <p>Elle doit notamment veiller à :</p>
+    <ul>
+      <li>disposer d'une base légale appropriée pour les traitements effectués ;</li>
+      <li>informer les personnes concernées lorsque la réglementation l'exige ;</li>
+      <li>limiter la collecte aux informations nécessaires ;</li>
+      <li>contrôler les accès aux données ;</li>
+      <li>respecter les obligations applicables en matière de confidentialité et de conservation ;</li>
+      <li>répondre aux demandes des personnes concernées conformément au droit applicable.</li>
+    </ul>
+    <h3>6.3. Responsabilités de l'éditeur</h3>
+    <p>Le rôle exact de l'éditeur d'OrdiveX dans le traitement des données doit être défini selon l'architecture réelle du service et les contrats conclus avec les pharmacies.</p>
+    <p>Lorsque l'éditeur ou un prestataire intervient dans le stockage, l'hébergement, la synchronisation ou la maintenance de données personnelles pour le compte d'une pharmacie, les responsabilités respectives doivent être précisées dans les documents contractuels appropriés.</p>
+    <p>Le cas échéant, un accord relatif au traitement des données doit compléter les présentes CGU.</p>
+    <h3>6.4. Confidentialité</h3>
+    <p>La pharmacie et les utilisateurs autorisés doivent préserver la confidentialité des données auxquelles ils accèdent.</p>
+    <p>Les données relatives aux patients ne doivent pas être consultées, utilisées, exportées ou communiquées à des personnes non autorisées, sauf lorsque cela est permis ou exigé par la réglementation applicable.</p>
+  `},
+  { id: 'art-7', title: 'Article 7 — Fonctionnement hors ligne et synchronisation', html: `
+    <p>OrdiveX est conçu pour permettre l'utilisation hors ligne des fonctionnalités compatibles avec ce mode de fonctionnement.</p>
+    <p>Certaines opérations peuvent toutefois dépendre de services externes, d'une connexion Internet, d'une configuration particulière ou de la disponibilité d'un équipement.</p>
+    <p>Lorsque la synchronisation est activée, les données prévues à cet effet peuvent être transmises entre les appareils et les services configurés, selon les mécanismes de synchronisation disponibles.</p>
+    <p>La pharmacie doit tenir compte des points suivants :</p>
+    <ul>
+      <li>les données présentes sur un appareil peuvent ne pas encore avoir été synchronisées ;</li>
+      <li>une interruption de connexion peut retarder la mise à jour des informations sur les autres appareils ;</li>
+      <li>les conflits de synchronisation ou les incidents techniques doivent être traités selon les procédures prévues ;</li>
+      <li>la disponibilité d'un service d'hébergement externe peut dépendre de son propre fournisseur.</li>
+    </ul>
+    <p>L'utilisateur doit vérifier que les opérations importantes ont été correctement enregistrées et, lorsque cela est nécessaire, synchronisées.</p>
+    <p>Le fonctionnement hors ligne ne doit pas être interprété comme une garantie d'absence de perte de données dans toutes les circonstances.</p>
+  `},
+  { id: 'art-8', title: 'Article 8 — Sauvegarde et conservation des données', html: `
+    <p>La pharmacie doit disposer de mesures de sauvegarde et de conservation adaptées à l'importance des données qu'elle utilise.</p>
+    <p>Les responsabilités de sauvegarde dépendent notamment de l'architecture déployée, des services d'hébergement retenus, des fonctions de sauvegarde disponibles et des engagements contractuels conclus avec l'éditeur ou les prestataires.</p>
+    <p>Avant toute opération importante susceptible de modifier ou de supprimer des données, la pharmacie doit appliquer les précautions adaptées à sa configuration.</p>
+    <p>Les modalités de sauvegarde, de restauration, d'export et de récupération des données doivent être précisées dans la documentation technique ou les accords de service applicables.</p>
+    <p>Aucune partie ne doit présumer qu'une sauvegarde existe ou qu'une restauration est possible sans avoir vérifié les dispositifs effectivement mis en place.</p>
+  `},
+  { id: 'art-9', title: 'Article 9 — Sécurité et incidents', html: `
+    <p>OrdiveX peut proposer des mécanismes de sécurité tels que la gestion des rôles, les codes PIN, les contrôles d'accès et les journaux d'audit, selon la version et la configuration utilisées.</p>
+    <p>La pharmacie doit configurer ces mécanismes de manière appropriée, gérer les autorisations et protéger les équipements utilisés pour accéder au service.</p>
+    <p>Tout incident susceptible de compromettre la confidentialité, l'intégrité ou la disponibilité des données doit être signalé sans délai à l'interlocuteur de support prévu pour la pharmacie.</p>
+    <p>Les parties coopèrent, dans la limite de leurs responsabilités respectives, afin de comprendre l'incident et de mettre en œuvre les mesures correctives appropriées.</p>
+  `},
+  { id: 'art-10', title: 'Article 10 — Propriété intellectuelle', html: `
+    <p>Sauf disposition contractuelle contraire, les droits de propriété intellectuelle relatifs à OrdiveX, notamment son code source, son interface, son design, sa documentation, ses éléments graphiques et ses composants propres, demeurent la propriété de leur titulaire.</p>
+    <p>L'accès au logiciel confère uniquement un droit d'utilisation dans les limites prévues par les accords applicables.</p>
+    <p>Il ne constitue pas une cession de propriété intellectuelle.</p>
+    <p>Sauf autorisation préalable ou disposition légale contraire, l'utilisateur ne doit pas reproduire, distribuer, modifier, décompiler ou exploiter les éléments protégés du logiciel au-delà de ce qui est autorisé.</p>
+    <p>Les droits attachés aux composants tiers restent soumis à leurs licences respectives.</p>
+  `},
+  { id: 'art-11', title: 'Article 11 — Disponibilité, maintenance et évolution', html: `
+    <p>L'éditeur s'efforce de maintenir OrdiveX dans un état de fonctionnement adapté à son usage prévu, selon les engagements contractuels éventuellement conclus avec la pharmacie.</p>
+    <p>La disponibilité du service peut être affectée par des opérations de maintenance, des incidents techniques, des problèmes d'équipement, des interruptions de connexion ou l'indisponibilité de services externes.</p>
+    <p>Les mises à jour peuvent être nécessaires pour corriger des anomalies, renforcer la sécurité ou améliorer certaines fonctionnalités.</p>
+    <p>Lorsque cela est pertinent, les modifications susceptibles d'avoir un impact important sur l'utilisation du service doivent être communiquées aux pharmacies concernées.</p>
+    <p>Les modalités de maintenance, de support et de mise à jour peuvent faire l'objet d'un accord distinct.</p>
+  `},
+  { id: 'art-12', title: 'Article 12 — Responsabilité', html: `
+    <p>Chaque partie demeure responsable des obligations qui lui incombent conformément à la réglementation applicable et aux accords conclus.</p>
+    <p>La pharmacie reste responsable notamment :</p>
+    <ul>
+      <li>de la licéité et de la qualité des données qu'elle enregistre ;</li>
+      <li>de la gestion des comptes et des autorisations de son personnel ;</li>
+      <li>de la vérification des opérations importantes ;</li>
+      <li>du respect des obligations professionnelles et réglementaires applicables à son activité ;</li>
+      <li>de la mise en place des mesures de sauvegarde relevant de sa responsabilité.</li>
+    </ul>
+    <p>L'éditeur est responsable des obligations qui lui incombent en vertu de la loi et des engagements contractuels applicables.</p>
+    <p>Les conséquences d'un incident doivent être appréciées en tenant compte de son origine, des responsabilités de chaque partie, des engagements pris et des dispositions légales applicables.</p>
+    <p>Aucune disposition des présentes CGU ne doit être interprétée comme excluant ou limitant une responsabilité lorsque cette exclusion ou cette limitation est interdite par la loi.</p>
+  `},
+  { id: 'art-13', title: 'Article 13 — Suspension et fin d\'utilisation', html: `
+    <p>La pharmacie peut cesser d'utiliser OrdiveX, sous réserve des engagements contractuels applicables.</p>
+    <p>Lorsque les circonstances le justifient, notamment en cas de risque pour la sécurité ou d'utilisation manifestement non autorisée, l'accès peut être suspendu selon les modalités contractuelles et les règles applicables.</p>
+    <p>Avant de mettre fin à l'utilisation du service, la pharmacie doit, dans la mesure où les fonctions disponibles le permettent :</p>
+    <ul>
+      <li>récupérer les données qu'elle est autorisée à conserver ;</li>
+      <li>vérifier l'intégrité des exports obtenus ;</li>
+      <li>organiser la continuité de ses opérations ;</li>
+      <li>respecter les obligations légales de conservation ;</li>
+      <li>demander, le cas échéant, des précisions sur la suppression des données et les délais applicables.</li>
+    </ul>
+    <p>Les conditions d'accès aux données après la fin du service, les modalités de restitution et les éventuels délais de suppression doivent être définis dans les accords applicables.</p>
+    <p>La fin d'utilisation ne dispense pas la pharmacie de ses obligations légales de conservation des dossiers et documents.</p>
+  `},
+  { id: 'art-14', title: 'Article 14 — Modification des CGU', html: `
+    <p>Les présentes CGU peuvent être modifiées afin de tenir compte de l'évolution du service, des exigences de sécurité ou des obligations légales.</p>
+    <p>La version applicable doit être identifiable et sa date de mise à jour clairement indiquée.</p>
+    <p>Les modifications substantielles doivent être portées à la connaissance des utilisateurs concernés par un moyen approprié.</p>
+    <p>Lorsque la loi ou le contrat l'exige, une nouvelle acceptation des conditions doit être recueillie avant l'application des modifications concernées.</p>
+  `},
+  { id: 'art-15', title: 'Article 15 — Droit applicable et règlement des différends', html: `
+    <p>Les présentes CGU ont vocation à être soumises au droit guinéen, sous réserve de validation juridique et des règles impératives applicables.</p>
+    <p>En cas de différend relatif à l'interprétation ou à l'application des présentes CGU, les parties sont invitées à rechercher une solution amiable.</p>
+    <p>À défaut de résolution amiable, le différend sera traité conformément aux règles de compétence et aux procédures prévues par le droit applicable.</p>
+  `},
+  { id: 'art-16', title: 'Article 16 — Contact et support', html: `
+    <p>Pour toute question concernant l'utilisation d'OrdiveX, les présentes CGU ou le signalement d'un incident, la pharmacie doit utiliser les coordonnées de support qui lui ont été communiquées par l'éditeur.</p>
+    <p>Les coordonnées officielles de l'éditeur et les modalités de contact doivent être indiquées dans la version définitive du présent document.</p>
+  `},
+];
 
 function renderTerms(container) {
   document.getElementById('app-sidebar')?.style.setProperty('display', 'none');
@@ -2319,56 +2553,48 @@ function renderTerms(container) {
   if (window.hideSupportWidget) hideSupportWidget();
 
   const backTarget = DB.AppState.currentUser ? 'dashboard' : (window._termsBackTo || 'login');
+  try { if (window.location && window.location.hash !== '#terms') window.location.hash = 'terms'; } catch (e) {}
 
   container.innerHTML = `
     <div class="terms-page">
-      <div class="terms-header">
-        <button class="btn btn-ghost btn-sm" onclick="Router.navigate('${backTarget}')"><i data-lucide="arrow-left"></i> Retour</button>
-        <span class="terms-header-title">Conditions d'Utilisation</span>
-      </div>
-      <div class="terms-body">
-        <div class="terms-doc">
-          <h1>Conditions Générales d'Utilisation d'OrdiveX</h1>
-          <p class="terms-updated">Dernière mise à jour : 28 octobre 2026</p>
-
-          <div class="terms-notice">
-            <i data-lucide="alert-triangle"></i>
-            <span>Ce document est un modèle fourni à titre indicatif pour accompagner le lancement d'OrdiveX. Il ne remplace pas une relecture par un juriste qualifié, en particulier sur les obligations liées aux données de santé (patients, ordonnances) applicables en Guinée. Faites valider ce texte avant de vous y appuyer juridiquement.</span>
-          </div>
-
-          <h2>1. Objet</h2>
-          <p>Les présentes Conditions Générales d'Utilisation (« CGU ») encadrent l'accès et l'utilisation du logiciel OrdiveX, une application de gestion destinée aux officines pharmaceutiques (point de vente, gestion de stock, comptabilité, ressources humaines, et fonctionnalités associées).</p>
-
-          <h2>2. Acceptation des conditions</h2>
-          <p>La création ou l'utilisation d'un compte OrdiveX, par l'administrateur de la pharmacie ou par tout utilisateur qu'il autorise, implique l'acceptation pleine et entière des présentes CGU. L'administrateur de la pharmacie est responsable de porter ces conditions à la connaissance de son personnel.</p>
-
-          <h2>3. Description du service</h2>
-          <p>OrdiveX est une application fonctionnant hors-ligne, avec synchronisation optionnelle vers un espace cloud dédié à chaque pharmacie. La pharmacie reste seule responsable de la configuration de son espace de stockage (ex : Supabase) et de la sécurité des identifiants associés.</p>
-
-          <h2>4. Compte utilisateur et sécurité</h2>
-          <p>Chaque utilisateur est responsable de la confidentialité de ses identifiants (mot de passe, code PIN). Toute action effectuée depuis un compte est présumée effectuée par son titulaire. La pharmacie doit désactiver sans délai le compte d'un employé qui quitte ses fonctions.</p>
-
-          <h2>5. Données traitées</h2>
-          <p>OrdiveX permet l'enregistrement de données sensibles, notamment des données de santé relatives aux patients (ordonnances, historiques de traitement). La pharmacie agit en qualité de responsable du traitement de ces données et s'engage à respecter la réglementation applicable en matière de protection des données personnelles et de secret médical/pharmaceutique.</p>
-
-          <h2>6. Propriété intellectuelle</h2>
-          <p>OrdiveX, son code, son design et sa documentation restent la propriété de leur éditeur. L'utilisation du logiciel n'emporte aucune cession de droits de propriété intellectuelle au profit de la pharmacie utilisatrice.</p>
-
-          <h2>7. Disponibilité et limitation de responsabilité</h2>
-          <p>OrdiveX est fourni « en l'état ». Si l'application fonctionne hors-ligne, la synchronisation cloud dépend de la disponibilité d'une connexion Internet et du service d'hébergement choisi. L'éditeur ne garantit pas une disponibilité continue et ne saurait être tenu responsable des pertes de données résultant d'un défaut de sauvegarde par la pharmacie elle-même.</p>
-
-          <h2>8. Résiliation</h2>
-          <p>La pharmacie peut cesser d'utiliser OrdiveX à tout moment. Elle reste responsable de l'export et de la conservation de ses données conformément à ses obligations légales (durées de conservation des dossiers patients et pièces comptables notamment).</p>
-
-          <h2>9. Modification des CGU</h2>
-          <p>Les présentes CGU peuvent évoluer. Toute modification substantielle sera portée à la connaissance des pharmacies utilisatrices.</p>
-
-          <h2>10. Droit applicable</h2>
-          <p>Les présentes CGU sont soumises au droit guinéen, sous réserve de validation juridique définitive.</p>
-
-          <h2>11. Contact</h2>
-          <p>Pour toute question relative aux présentes CGU, contactez l'équipe OrdiveX via les canaux habituels de support de votre pharmacie.</p>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Conditions Générales d'Utilisation</h1>
+          <p class="page-subtitle">Les règles d'accès et d'utilisation d'OrdiveX — Version 1.0, dernière mise à jour le 28 octobre 2026</p>
         </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="Router.navigate('${backTarget}')"><i data-lucide="arrow-left"></i> Retour</button>
+        </div>
+      </div>
+
+      <div class="terms-notice">
+        <i data-lucide="alert-triangle"></i>
+        <span>Ce document constitue un projet de conditions d'utilisation. Il doit être adapté à l'organisation réelle du service et validé par un professionnel du droit avant d'être utilisé comme document contractuel définitif, en particulier pour les données de santé des patients et la réglementation guinéenne applicable.</span>
+      </div>
+
+      <div class="card terms-toc">
+        <div class="card-body">
+          <h3>Sommaire</h3>
+          <ol>
+            ${TERMS_ARTICLES.map(a => `<li><a href="#${a.id}">${a.title}</a></li>`).join('')}
+          </ol>
+        </div>
+      </div>
+
+      <div class="card terms-doc-card">
+        <div class="card-body terms-doc">
+          ${TERMS_ARTICLES.map(a => `
+            <section id="${a.id}">
+              <h2>${a.title}</h2>
+              ${a.html}
+            </section>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="terms-footer">
+        <p>OrdiveX v${window.APP_VERSION || '9.8.6'} — Document à faire valider juridiquement avant sa publication définitive. La présente version ne remplace pas une politique de confidentialité, un accord relatif au traitement des données personnelles ou un contrat de maintenance lorsqu'ils sont nécessaires.</p>
+        <button class="btn btn-primary" onclick="Router.navigate('${backTarget}')"><i data-lucide="arrow-left"></i> Retour ${backTarget === 'login' ? 'à la connexion' : ''}</button>
       </div>
     </div>
   `;
