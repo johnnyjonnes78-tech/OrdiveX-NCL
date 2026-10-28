@@ -1937,9 +1937,16 @@ textarea.form-control {
 .landing-page {
   --landing-accent-dark: #0F4C75;
   min-height: 100vh;
-  background: linear-gradient(180deg, #0F4C75 0%, #1B6FAE 28%, #175F96 58%, #0B2436 100%);
+  /* Meme technique que .mesh-gradient (ecran de connexion) : un fond qui
+     respire lentement au lieu d'etre statique. */
+  background: linear-gradient(160deg, #0F4C75 0%, #1B6FAE 30%, #2EAF7D 55%, #175F96 75%, #0B2436 100%);
+  background-size: 300% 300%;
+  animation: mesh-flow 18s infinite ease-in-out;
   overflow-y: auto;
   color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-page { animation: none; }
 }
 
 .landing-nav {
