@@ -2540,8 +2540,11 @@ const TERMS_ARTICLES = [
     <p>À défaut de résolution amiable, le différend sera traité conformément aux règles de compétence et aux procédures prévues par le droit applicable.</p>
   `},
   { id: 'art-16', title: 'Article 16 — Contact et support', html: `
-    <p>Pour toute question concernant l'utilisation d'OrdiveX, les présentes CGU ou le signalement d'un incident, la pharmacie doit utiliser les coordonnées de support qui lui ont été communiquées par l'éditeur.</p>
-    <p>Les coordonnées officielles de l'éditeur et les modalités de contact doivent être indiquées dans la version définitive du présent document.</p>
+    <p>Pour toute question concernant l'utilisation d'OrdiveX, les présentes CGU ou le signalement d'un incident, la pharmacie peut contacter l'éditeur aux coordonnées suivantes :</p>
+    <ul>
+      <li>Téléphone : 610 93 55 24 / 627 17 13 97</li>
+      <li>E-mail : trillionnx@gmail.com</li>
+    </ul>
   `},
 ];
 
