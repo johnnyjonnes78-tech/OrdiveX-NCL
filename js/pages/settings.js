@@ -2570,11 +2570,6 @@ function renderTerms(container) {
         </div>
       </div>
 
-      <div class="terms-notice">
-        <i data-lucide="alert-triangle"></i>
-        <span>Ce document constitue un projet de conditions d'utilisation. Il doit être adapté à l'organisation réelle du service et validé par un professionnel du droit avant d'être utilisé comme document contractuel définitif, en particulier pour les données de santé des patients et la réglementation guinéenne applicable.</span>
-      </div>
-
       <div class="card terms-toc">
         <div class="card-body">
           <h3>Sommaire</h3>

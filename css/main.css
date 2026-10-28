@@ -1842,28 +1842,6 @@ textarea.form-control {
   padding: 32px 24px 60px;
 }
 
-.terms-notice {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  background: rgba(230, 126, 34, 0.1);
-  border: 1px solid rgba(230, 126, 34, 0.3);
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 20px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text);
-}
-
-.terms-notice i {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: #e67e22;
-  margin-top: 2px;
-}
-
 .terms-toc { margin-bottom: 20px; }
 
 .terms-toc h3 {
