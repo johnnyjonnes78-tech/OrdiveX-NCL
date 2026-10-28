@@ -1832,6 +1832,230 @@ textarea.form-control {
   }
 }
 
+/* ===== PAGE CONDITIONS D'UTILISATION ===== */
+.terms-page {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.terms-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.terms-header-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.terms-body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px 80px;
+}
+
+.terms-doc {
+  max-width: 720px;
+  width: 100%;
+  color: var(--text);
+}
+
+.terms-doc h1 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.terms-updated {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.terms-doc h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 28px 0 10px;
+  color: var(--text);
+}
+
+.terms-doc p {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+.terms-notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: rgba(230, 126, 34, 0.1);
+  border: 1px solid rgba(230, 126, 34, 0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.terms-notice i {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: #e67e22;
+  margin-top: 2px;
+}
+
+/* ===== PAGE VITRINE (LANDING) ===== */
+.landing-page {
+  min-height: 100vh;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.landing-hero {
+  position: relative;
+  padding: 90px 24px 110px;
+  text-align: center;
+  overflow: hidden;
+}
+
+.landing-hero .mesh-gradient { opacity: 1; }
+
+.landing-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.landing-title {
+  color: #fff;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+}
+
+.landing-title span { opacity: 0.75; }
+
+.landing-tagline {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.landing-cta {
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  color: #145B8F;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.landing-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+.landing-features {
+  max-width: 1040px;
+  margin: -60px auto 0;
+  padding: 0 24px 60px;
+  position: relative;
+  z-index: 1;
+}
+
+.landing-features-title {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+.landing-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.04));
+}
+
+.feature-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: var(--gradient-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.feature-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.feature-card p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.landing-footer {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+.landing-footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .landing-hero { padding: 64px 20px 90px; }
+  .landing-title { font-size: 32px; }
+  .landing-features { margin-top: -48px; }
+}
+
 /* ===== MODAL ===== */
 .modal-overlay {
   position: fixed;
@@ -8112,14 +8336,20 @@ kbd {
   .onboarding-mobile-progress-text { font-size: 11px; opacity: 0.85; font-weight: 600; }
 
   .onboarding-form-panel { overflow-y: visible; }
-  .onboarding-form-scroll { padding: 24px 16px 96px; align-items: flex-start; }
+  /* Marge basse du contenu scrollable : doit couvrir la hauteur reelle de la
+     barre fixe .onboarding-footer (boutons Suivant/Retour) + l'encoche/barre
+     d'accueil des telephones avec safe-area (iPhone notch/home indicator) -
+     sans le terme env(), la derniere section (ex: "Restaurer via Magic Link"
+     en etape 1) restait partiellement/totalement cachee derriere cette barre
+     fixe sur certains mobiles. */
+  .onboarding-form-scroll { padding: 24px 16px calc(96px + env(safe-area-inset-bottom, 0px)); align-items: flex-start; }
   .onboarding-card { padding: 28px 20px; border-radius: 18px; }
 
   .onboarding-footer {
     position: fixed;
     left: 0; right: 0; bottom: 0;
     background: var(--surface);
-    padding: 14px 20px;
+    padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
     border-top: 1px solid var(--border);
     margin-top: 0;

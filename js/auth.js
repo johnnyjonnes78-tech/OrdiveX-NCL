@@ -460,7 +460,7 @@ const Router = {
 
   navigate(page, params) {
     params = params || {};
-    if (!DB.AppState.currentUser && page !== 'login' && page !== 'onboarding') {
+    if (!DB.AppState.currentUser && !['login', 'onboarding', 'landing', 'terms'].includes(page)) {
       page = 'login';
     }
     

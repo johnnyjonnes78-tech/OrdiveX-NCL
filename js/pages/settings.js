@@ -14,6 +14,7 @@ function renderLogin(container) {
       <div class="login-aside">
         <div class="login-aside-content">
           <div class="login-header">
+            <button class="btn btn-ghost btn-sm" style="margin-bottom:12px;padding-left:0" onclick="Router.navigate('landing')"><i data-lucide="arrow-left"></i> Accueil</button>
             <div class="login-logo-elite">
               <i data-lucide="activity"></i>
             </div>
@@ -61,6 +62,7 @@ function renderLogin(container) {
             <i data-lucide="${(window.NM ? window.NM.isOnline() : navigator.onLine) ? 'wifi' : 'wifi-off'}"></i>
             ${(window.NM ? window.NM.isOnline() : navigator.onLine) ? 'Système synchronisé' : 'Mode hors-ligne'}
           </div>
+          <a href="#" onclick="window._termsBackTo='login'; Router.navigate('terms'); return false;" style="font-size:11px;color:var(--text-muted);text-decoration:underline;margin-top:6px;display:inline-block">Conditions d'Utilisation</a>
         </div>
       </div>
 
@@ -319,9 +321,39 @@ async function _showPinGate(user) {
 }
 
 function _finishLogin(user) {
-  Router.navigate('dashboard');
-  UI.toast('Bienvenue, ' + (user.name || user.username) + ' !', 'success');
-  window.dispatchEvent(new CustomEvent('ordivex-login'));
+  _showLoginSuccessSplash(() => {
+    Router.navigate('dashboard');
+    UI.toast('Bienvenue, ' + (user.name || user.username) + ' !', 'success');
+    window.dispatchEvent(new CustomEvent('ordivex-login'));
+  });
+}
+
+// Court ecran de transition (logo + animation) entre une connexion reussie
+// et l'affichage du tableau de bord - purement visuel, n'affecte jamais le
+// delai reel de connexion (le login/PIN sont deja valides avant son appel).
+function _showLoginSuccessSplash(onDone) {
+  const existing = document.getElementById('login-success-splash');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'login-success-splash';
+  overlay.innerHTML = `
+    <div class="login-splash-logo"><i data-lucide="activity"></i></div>
+    <div class="login-splash-name">Ordive<span>X</span></div>
+    <div class="login-splash-spinner"></div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) lucide.createIcons({ root: overlay });
+
+  requestAnimationFrame(() => overlay.classList.add('visible'));
+
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    setTimeout(() => {
+      overlay.remove();
+      onDone();
+    }, 300);
+  }, 750);
 }
 
 function _promptSetPin(user, mandatory) {
@@ -449,6 +481,33 @@ function _promptSetPin(user, mandatory) {
       transition:color 0.2s; font-family:inherit;
     }
     .pin-gate-logout:hover { color:rgba(255,255,255,0.6); }
+
+    #login-success-splash {
+      position:fixed; inset:0; z-index:99999;
+      background:linear-gradient(135deg, #1B6FAE 0%, #175F96 25%, #2EAF7D 50%, #1B6FAE 100%);
+      background-size:400% 400%; animation:mesh-flow 15s infinite ease-in-out;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+      opacity:0; transition:opacity 0.3s;
+    }
+    #login-success-splash.visible { opacity:1; }
+    .login-splash-logo {
+      width:72px; height:72px; border-radius:18px;
+      background:rgba(255,255,255,0.15); color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      animation:loginSplashPulse 1.4s ease-in-out infinite;
+    }
+    .login-splash-logo i { width:36px; height:36px; }
+    .login-splash-name { color:#fff; font-size:22px; font-weight:800; letter-spacing:0.3px; }
+    .login-splash-name span { opacity:0.75; }
+    .login-splash-spinner {
+      width:28px; height:28px; border-radius:50%;
+      border:3px solid rgba(255,255,255,0.3); border-top-color:#fff;
+      animation:spin 0.8s linear infinite;
+    }
+    @keyframes loginSplashPulse {
+      0%, 100% { transform:scale(1); }
+      50% { transform:scale(1.08); }
+    }
   `;
   document.head.appendChild(s);
 })();
@@ -1581,6 +1640,10 @@ async function submitUser() {
   if (!form?.checkValidity()) { form?.reportValidity(); return; }
   const data = Object.fromEntries(new FormData(form));
   data.active = true;
+  // Tout compte créé via OrdiveX accepte par défaut les Conditions
+  // d'Utilisation (voir page dédiée "terms").
+  data.termsAccepted = true;
+  data.termsAcceptedAt = Date.now();
   try {
     await DB.dbAdd('users', data);
     await DB.writeAudit('ADD_USER', 'users', null, { name: data.name, username: data.username, role: data.role });
@@ -2192,6 +2255,128 @@ async function loadDeviceCount() {
 
 window.loadDeviceCount = loadDeviceCount;
 
+function renderLanding(container) {
+  document.getElementById('app-sidebar')?.style.setProperty('display', 'none');
+  document.getElementById('app-topbar')?.style.setProperty('display', 'none');
+  document.getElementById('app-content').style.marginLeft = '0';
+  document.getElementById('app-content').style.paddingTop = '0';
+  if (window.hideSupportWidget) hideSupportWidget();
+
+  const features = [
+    { icon: 'monitor-smartphone', title: 'Point de Vente', text: 'Vente rapide au comptoir, scan code-barres (caméra ou douchette), gestion des ordonnances et du tiers payant.' },
+    { icon: 'package-search', title: 'Stock & Inventaire', text: 'Traçabilité par lot et péremption, alertes de rupture, inventaires physiques assistés par scan.' },
+    { icon: 'landmark', title: 'Comptabilité Générale', text: 'Journal unifié des ventes, achats et dépenses, avec répartition claire des entrées et sorties.' },
+    { icon: 'user-cog', title: 'Ressources Humaines', text: 'Paie, avances sur salaire et suivi des équipes, directement liés à la comptabilité.' },
+    { icon: 'printer', title: 'Scan & Étiquettes', text: 'Impression d\'étiquettes code-barres et réception de commandes fournisseur en un scan.' },
+    { icon: 'wifi-off', title: 'Fonctionne hors-ligne', text: 'Toutes les fonctions marchent sans connexion, avec synchronisation automatique multi-appareils.' },
+    { icon: 'users', title: 'Dossiers Patients', text: 'Historique patient, ordonnances et suivi des créances, assurance comme espèces.' },
+    { icon: 'shield-check', title: 'Sécurité & Rôles', text: 'Code PIN par utilisateur, permissions par rôle, journal d\'audit de toutes les actions sensibles.' },
+  ];
+
+  container.innerHTML = `
+    <div class="landing-page">
+      <div class="landing-hero">
+        <div class="mesh-gradient"></div>
+        <div class="landing-hero-content">
+          <div class="login-logo-elite" style="margin:0 auto 20px">
+            <i data-lucide="activity"></i>
+          </div>
+          <h1 class="landing-title">Ordive<span>X</span></h1>
+          <p class="landing-tagline">La suite de gestion tout-en-un pour votre pharmacie — vente, stock, comptabilité et ressources humaines, en ligne comme hors-ligne.</p>
+          <button class="btn btn-primary landing-cta" onclick="Router.navigate('login')">
+            Se connecter <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="landing-features">
+        <h2 class="landing-features-title">Ce qu'OrdiveX gère pour vous</h2>
+        <div class="landing-features-grid">
+          ${features.map(f => `
+            <div class="feature-card">
+              <div class="feature-card-icon"><i data-lucide="${f.icon}"></i></div>
+              <h3>${f.title}</h3>
+              <p>${f.text}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="landing-footer">
+        <span>OrdiveX v${window.APP_VERSION || '9.8.6'}</span>
+        <a href="#" onclick="window._termsBackTo='landing'; Router.navigate('terms'); return false;">Conditions d'Utilisation</a>
+      </div>
+    </div>
+  `;
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderTerms(container) {
+  document.getElementById('app-sidebar')?.style.setProperty('display', 'none');
+  document.getElementById('app-topbar')?.style.setProperty('display', 'none');
+  document.getElementById('app-content').style.marginLeft = '0';
+  document.getElementById('app-content').style.paddingTop = '0';
+  if (window.hideSupportWidget) hideSupportWidget();
+
+  const backTarget = DB.AppState.currentUser ? 'dashboard' : (window._termsBackTo || 'login');
+
+  container.innerHTML = `
+    <div class="terms-page">
+      <div class="terms-header">
+        <button class="btn btn-ghost btn-sm" onclick="Router.navigate('${backTarget}')"><i data-lucide="arrow-left"></i> Retour</button>
+        <span class="terms-header-title">Conditions d'Utilisation</span>
+      </div>
+      <div class="terms-body">
+        <div class="terms-doc">
+          <h1>Conditions Générales d'Utilisation d'OrdiveX</h1>
+          <p class="terms-updated">Dernière mise à jour : 28 octobre 2026</p>
+
+          <div class="terms-notice">
+            <i data-lucide="alert-triangle"></i>
+            <span>Ce document est un modèle fourni à titre indicatif pour accompagner le lancement d'OrdiveX. Il ne remplace pas une relecture par un juriste qualifié, en particulier sur les obligations liées aux données de santé (patients, ordonnances) applicables en Guinée. Faites valider ce texte avant de vous y appuyer juridiquement.</span>
+          </div>
+
+          <h2>1. Objet</h2>
+          <p>Les présentes Conditions Générales d'Utilisation (« CGU ») encadrent l'accès et l'utilisation du logiciel OrdiveX, une application de gestion destinée aux officines pharmaceutiques (point de vente, gestion de stock, comptabilité, ressources humaines, et fonctionnalités associées).</p>
+
+          <h2>2. Acceptation des conditions</h2>
+          <p>La création ou l'utilisation d'un compte OrdiveX, par l'administrateur de la pharmacie ou par tout utilisateur qu'il autorise, implique l'acceptation pleine et entière des présentes CGU. L'administrateur de la pharmacie est responsable de porter ces conditions à la connaissance de son personnel.</p>
+
+          <h2>3. Description du service</h2>
+          <p>OrdiveX est une application fonctionnant hors-ligne, avec synchronisation optionnelle vers un espace cloud dédié à chaque pharmacie. La pharmacie reste seule responsable de la configuration de son espace de stockage (ex : Supabase) et de la sécurité des identifiants associés.</p>
+
+          <h2>4. Compte utilisateur et sécurité</h2>
+          <p>Chaque utilisateur est responsable de la confidentialité de ses identifiants (mot de passe, code PIN). Toute action effectuée depuis un compte est présumée effectuée par son titulaire. La pharmacie doit désactiver sans délai le compte d'un employé qui quitte ses fonctions.</p>
+
+          <h2>5. Données traitées</h2>
+          <p>OrdiveX permet l'enregistrement de données sensibles, notamment des données de santé relatives aux patients (ordonnances, historiques de traitement). La pharmacie agit en qualité de responsable du traitement de ces données et s'engage à respecter la réglementation applicable en matière de protection des données personnelles et de secret médical/pharmaceutique.</p>
+
+          <h2>6. Propriété intellectuelle</h2>
+          <p>OrdiveX, son code, son design et sa documentation restent la propriété de leur éditeur. L'utilisation du logiciel n'emporte aucune cession de droits de propriété intellectuelle au profit de la pharmacie utilisatrice.</p>
+
+          <h2>7. Disponibilité et limitation de responsabilité</h2>
+          <p>OrdiveX est fourni « en l'état ». Si l'application fonctionne hors-ligne, la synchronisation cloud dépend de la disponibilité d'une connexion Internet et du service d'hébergement choisi. L'éditeur ne garantit pas une disponibilité continue et ne saurait être tenu responsable des pertes de données résultant d'un défaut de sauvegarde par la pharmacie elle-même.</p>
+
+          <h2>8. Résiliation</h2>
+          <p>La pharmacie peut cesser d'utiliser OrdiveX à tout moment. Elle reste responsable de l'export et de la conservation de ses données conformément à ses obligations légales (durées de conservation des dossiers patients et pièces comptables notamment).</p>
+
+          <h2>9. Modification des CGU</h2>
+          <p>Les présentes CGU peuvent évoluer. Toute modification substantielle sera portée à la connaissance des pharmacies utilisatrices.</p>
+
+          <h2>10. Droit applicable</h2>
+          <p>Les présentes CGU sont soumises au droit guinéen, sous réserve de validation juridique définitive.</p>
+
+          <h2>11. Contact</h2>
+          <p>Pour toute question relative aux présentes CGU, contactez l'équipe OrdiveX via les canaux habituels de support de votre pharmacie.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  if (window.lucide) lucide.createIcons();
+}
+
+Router.register('landing', renderLanding);
+Router.register('terms', renderTerms);
 Router.register('login', renderLogin);
 Router.register('settings', renderSettings);
 

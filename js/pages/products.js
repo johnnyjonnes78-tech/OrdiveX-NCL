@@ -2,6 +2,17 @@
  * OrdiveX — Catalogue Produits
  */
 
+// Seuil minimum de stock par defaut pour un NOUVEAU produit : reprend le
+// reglage global "Seuil alerte stock" (Parametres/Onboarding, cle
+// min_stock_alert), pas une valeur fixe - sans ca, changer ce reglage
+// n'avait jamais aucun effet sur les produits crees apres coup, qui
+// recevaient toujours 10 en dur. Un produit EXISTANT garde son propre
+// minStock individuel, jamais ecrase par ce defaut.
+function _defaultMinStock() {
+  const v = parseInt((window._appSettings || {})['min_stock_alert']);
+  return Number.isFinite(v) && v > 0 ? v : 10;
+}
+
 async function deduplicateProducts() {
   try {
     const products = await DB.dbGetAll('products');
@@ -1221,7 +1232,7 @@ async function showAddProduct() {
         </div>
         <div class="form-group">
           <label>Seuil minimum (boîtes/unités brutes)</label>
-          <input type="number" name="minStock" class="form-control" value="10" min="0">
+          <input type="number" name="minStock" class="form-control" value="${_defaultMinStock()}" min="0">
         </div>
       </div>
       <div class="med-only-section" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border)">
@@ -1327,7 +1338,7 @@ async function submitProduct() {
   data.controlledClass = data.isControlled ? (data.controlledClass || 'Stupéfiant') : null;
   data.salePrice = parseFloat(data.salePrice);
   data.purchasePrice = parseFloat(data.purchasePrice || 0);
-  data.minStock = parseInt(data.minStock || 10);
+  data.minStock = parseInt(data.minStock || _defaultMinStock());
   data.manufacturer = data.manufacturer || null;
   data.noticePdfUrl = data.noticePdfUrl || null;
   data.allowUnitSale = !!data.allowUnitSale;
@@ -1896,7 +1907,7 @@ async function processImportCSV(content) {
         salePrice: parseFloat((row[map.salePrice] || '0').replace(/[^\d.]/g, '')) || 0,
         purchasePrice: map.purchasePrice !== -1 ? parseFloat((row[map.purchasePrice] || '0').replace(/[^\d.]/g, '')) || 0 : (existing?.purchasePrice || 0),
         requiresPrescription: map.rx !== -1 ? (row[map.rx]?.toLowerCase().includes('oui') || row[map.rx] === '1') : (existing?.requiresPrescription || false),
-        minStock: existing?.minStock || 10,
+        minStock: existing?.minStock || _defaultMinStock(),
         status: 'active',
         unit: existing?.unit || 'boîte',
         _createdAt: existing?._createdAt || Date.now(),

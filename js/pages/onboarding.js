@@ -287,7 +287,12 @@ const Onboarding = {
         role: 'admin',
         name: this.data.pharmacy_resp || 'Administrateur',
         email: this.data.pharmacy_email || 'admin@pharma.gn',
-        active: true
+        active: true,
+        // Tout compte créé via OrdiveX accepte par défaut les Conditions
+        // d'Utilisation (voir page dédiée "terms") - pas une case à cocher
+        // qui bloquerait l'onboarding, juste un enregistrement de la date.
+        termsAccepted: true,
+        termsAcceptedAt: Date.now(),
       };
 
       // Bascule temporaire : à ce stade de l'onboarding personne n'est encore
