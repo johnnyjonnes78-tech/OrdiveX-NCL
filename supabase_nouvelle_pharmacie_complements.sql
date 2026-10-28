@@ -6,8 +6,9 @@
 -- à ré-exécuter sans danger si besoin.
 --
 -- Contexte : supabase_schema.sql couvre déjà la quasi-totalité des tables que
--- l'app synchronise (voir js/db.js, storesToSync/storesToPull), SAUF 3 écarts
--- identifiés en comparant précisément son contenu au code applicatif actuel :
+-- l'app synchronise (voir js/db.js, storesToSync/storesToPull), SAUF les
+-- écarts identifiés en comparant précisément son contenu au code applicatif
+-- actuel :
 --   1. La table "prep_transfers" (file de préparation → caisse) n'existe pas
 --      du tout dans supabase_schema.sql.
 --   2. "invoices" dans supabase_schema.sql n'a pas les colonnes subtotal et
@@ -15,6 +16,12 @@
 --   3. "saleItems" dans supabase_schema.sql n'a pas la colonne lotNumber, dont
 --      annulerVente() et le traitement des retours ont besoin pour recréditer
 --      le BON lot en stock (pas juste le total global).
+--   4. "invoices" n'a pas les colonnes paid/paidDate (statut de paiement
+--      fournisseur) et "cashRegister" n'a pas la colonne category
+--      (catégorisation des mouvements de caisse manuels) — ajoutées en
+--      octobre 2026. Sans elles, ces deux fonctionnalités marchent sur un
+--      seul appareil mais ne se synchronisent jamais entre postes ni vers le
+--      cloud (le champ est silencieusement ignoré par la synchro).
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────────────────────────────────────────────
@@ -74,12 +81,21 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS _synced BOOLEAN DEFAULT TRUE;
 ALTER TABLE "saleItems" ADD COLUMN IF NOT EXISTS "lotNumber" TEXT;
 
 -- ───────────────────────────────────────────────────────────────
+-- 4. TABLE : invoices (statut de paiement) + cashRegister (catégorie)
+-- ───────────────────────────────────────────────────────────────
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid BOOLEAN DEFAULT FALSE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "paidDate" TEXT;
+ALTER TABLE "cashRegister" ADD COLUMN IF NOT EXISTS category TEXT;
+
+-- ───────────────────────────────────────────────────────────────
 -- Vérification finale
 -- ───────────────────────────────────────────────────────────────
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public' AND table_name = 'prep_transfers';
 
-SELECT column_name, data_type FROM information_schema.columns
+SELECT table_name, column_name, data_type FROM information_schema.columns
 WHERE table_schema = 'public'
-  AND ((table_name = 'invoices' AND column_name IN ('subtotal', 'tvaAmount', '_synced'))
-    OR (table_name = 'saleItems' AND column_name = 'lotNumber'));
+  AND ((table_name = 'invoices' AND column_name IN ('subtotal', 'tvaAmount', '_synced', 'paid', 'paidDate'))
+    OR (table_name = 'saleItems' AND column_name = 'lotNumber')
+    OR (table_name = 'cashRegister' AND column_name = 'category'))
+ORDER BY table_name, column_name;
