@@ -1226,6 +1226,7 @@ async function receiveOrder(orderId) {
   if (!order) return;
 
   window._currentReceiveOrder = JSON.parse(JSON.stringify(order));
+  window._currentReceiveOrderProducts = products; // utilisé par le scan pour retrouver l'article par code/EAN/CIP
   (window._currentReceiveOrder.items || []).forEach((item, idx) => {
     const prod = products.find(p => Number(p.id) === Number(item.productId));
     const remaining = Math.max(0, Number(item.quantity) - (Number(item.receivedQty) || 0));
@@ -1243,6 +1244,13 @@ async function receiveOrder(orderId) {
       <div class="receive-header">
         <code class="code-tag">${order.orderNumber}</code>
         <span>Date de réception : <strong>${new Date().toLocaleDateString('fr-FR')}</strong></span>
+      </div>
+      <div class="info-box-small" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
+        <span><i data-lucide="info"></i> Scannez chaque article physiquement reçu (caméra ou scanner physique) pour incrémenter sa quantité reçue.</span>
+        <div style="display:flex; gap:8px">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="resetReceiveQuantitiesToZero()">Remettre à 0 pour scanner</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="openReceiveCameraScan()"><i data-lucide="camera"></i> Scanner</button>
+        </div>
       </div>
       <div id="receive-items-container"></div>
       <div class="form-group" style="margin-top:16px">
@@ -1301,9 +1309,116 @@ async function receiveOrder(orderId) {
     `
   });
   if (window.lucide) lucide.createIcons();
-  
+
   setTimeout(() => renderReceivePagination(), 100);
+
+  // Scanner physique (douchette) actif pendant toute la durée de la modale
+  // de réception - fonctionne où que soit le focus, sans ouvrir la caméra.
+  if (window.BarcodeScan) {
+    window._receiveScanWatcher = BarcodeScan.watchKeyboardWedge({
+      ignoreEditable: false,
+      onScan: (code) => incrementReceiveItemByScan(code)
+    });
+  }
+  const origCloseReceive = UI.closeModal;
+  UI.closeModal = function () {
+    if (window._receiveScanWatcher) { window._receiveScanWatcher.stop(); window._receiveScanWatcher = null; }
+    if (window._receiveScannerCamera) { window._receiveScannerCamera.stop(); window._receiveScannerCamera = null; }
+    const overlay = document.getElementById('receive-scan-overlay');
+    if (overlay) overlay.remove();
+    origCloseReceive.call(UI);
+    UI.closeModal = origCloseReceive;
+  };
 }
+
+function _resolveReceiveItemIndexByCode(code) {
+  const norm = (code || '').trim().toUpperCase();
+  if (!norm) return -1;
+  const items = window._currentReceiveOrder?.items || [];
+  const productsList = window._currentReceiveOrderProducts || [];
+  const prod = productsList.find(p =>
+    (p.code || '').toUpperCase() === norm ||
+    (p.ean || '').toUpperCase() === norm ||
+    (p.cip || '').toUpperCase() === norm
+  );
+  if (!prod) return -1;
+  return items.findIndex(it => Number(it.productId) === Number(prod.id));
+}
+
+function incrementReceiveItemByScan(code) {
+  const idx = _resolveReceiveItemIndexByCode(code);
+  if (idx === -1) {
+    UI.toast(`❌ Aucun article de cette commande ne correspond au code "${code}"`, 'error', 3000);
+    return;
+  }
+  const item = window._currentReceiveOrder.items[idx];
+  item._recvQty = (parseInt(item._recvQty) || 0) + 1;
+  UI.toast(`📷 ${item.productName} : quantité reçue = ${item._recvQty}`, 'success', 1500);
+  renderReceivePagination();
+}
+window.incrementReceiveItemByScan = incrementReceiveItemByScan;
+
+function resetReceiveQuantitiesToZero() {
+  const items = window._currentReceiveOrder?.items || [];
+  items.forEach(it => { it._recvQty = 0; });
+  renderReceivePagination();
+  UI.toast('Quantités remises à 0 — scannez chaque article reçu.', 'info', 3000);
+}
+window.resetReceiveQuantitiesToZero = resetReceiveQuantitiesToZero;
+
+function openReceiveCameraScan() {
+  const hasBarcodeAPI = !!(window.BarcodeScan && BarcodeScan.hasBarcodeDetectorAPI());
+  const hasCamera = !!(window.BarcodeScan && BarcodeScan.hasCameraAPI());
+  if (!hasBarcodeAPI || !hasCamera) {
+    UI.toast(!hasBarcodeAPI
+      ? '📷 Scan caméra non supporté par ce navigateur (ex: Safari/iPhone). Utilisez un scanner physique (douchette) - il fonctionne directement dans cette fenêtre.'
+      : '📷 Caméra non disponible. Utilisez un scanner physique (douchette).', 'warning', 6000);
+    return;
+  }
+
+  const existing = document.getElementById('receive-scan-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'receive-scan-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card,#fff);border-radius:12px;padding:16px;max-width:420px;width:100%">
+      <div class="scanner-preview-wrap">
+        <video id="recv-barcode-video" autoplay playsinline muted style="width:100%;max-height:300px;border-radius:8px;background:#000"></video>
+        <div class="scanner-overlay"><div class="scanner-line"></div></div>
+      </div>
+      <div class="scanner-status" id="recv-scanner-status">
+        <span class="scanner-status-dot"></span>
+        Scannez chaque article reçu.
+      </div>
+      <button type="button" class="btn btn-secondary" style="margin-top:12px;width:100%" onclick="document.getElementById('receive-scan-overlay').remove(); if (window._receiveScannerCamera) { window._receiveScannerCamera.stop(); window._receiveScannerCamera = null; }">Fermer le scan</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  _startReceiveCameraLoop();
+}
+window.openReceiveCameraScan = openReceiveCameraScan;
+
+function _startReceiveCameraLoop() {
+  const video = document.getElementById('recv-barcode-video');
+  if (!video || !window.BarcodeScan) return;
+  window._receiveScannerCamera = BarcodeScan.scanWithCamera(video, {
+    timeoutMs: 25000,
+    onDetect: (code) => {
+      incrementReceiveItemByScan(code);
+      setTimeout(() => { if (document.getElementById('recv-barcode-video')) _startReceiveCameraLoop(); }, 500);
+    },
+    onError: (reason) => {
+      const status = document.getElementById('recv-scanner-status');
+      if (!status) return;
+      status.innerHTML = reason === 'timeout'
+        ? '<span class="text-warning">⏱️ Scan en pause (25s sans activité). </span> <button type="button" class="btn btn-sm btn-secondary" onclick="_startReceiveCameraLoop()">Reprendre</button>'
+        : '<span class="text-warning">⚠️ Caméra non disponible</span>';
+    }
+  });
+}
+window._startReceiveCameraLoop = _startReceiveCameraLoop;
 
 function renderReceivePagination(page) {
   if (page !== undefined) window._recvOrderPage = page;
