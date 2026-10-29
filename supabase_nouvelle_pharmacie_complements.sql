@@ -22,6 +22,10 @@
 --      octobre 2026. Sans elles, ces deux fonctionnalités marchent sur un
 --      seul appareil mais ne se synchronisent jamais entre postes ni vers le
 --      cloud (le champ est silencieusement ignoré par la synchro).
+--   5. "app_users" n'a pas les colonnes termsAccepted/termsAcceptedAt
+--      (acceptation des Conditions d'Utilisation, posée automatiquement à
+--      la création de tout compte depuis octobre 2026) — même conséquence
+--      sans elles : jamais synchronisé entre postes ni vers le cloud.
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────────────────────────────────────────────
@@ -88,6 +92,12 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "paidDate" TEXT;
 ALTER TABLE "cashRegister" ADD COLUMN IF NOT EXISTS category TEXT;
 
 -- ───────────────────────────────────────────────────────────────
+-- 5. TABLE : app_users — acceptation des Conditions d'Utilisation
+-- ───────────────────────────────────────────────────────────────
+ALTER TABLE "app_users" ADD COLUMN IF NOT EXISTS "termsAccepted" BOOLEAN DEFAULT FALSE;
+ALTER TABLE "app_users" ADD COLUMN IF NOT EXISTS "termsAcceptedAt" BIGINT;
+
+-- ───────────────────────────────────────────────────────────────
 -- Vérification finale
 -- ───────────────────────────────────────────────────────────────
 SELECT table_name FROM information_schema.tables
@@ -97,5 +107,6 @@ SELECT table_name, column_name, data_type FROM information_schema.columns
 WHERE table_schema = 'public'
   AND ((table_name = 'invoices' AND column_name IN ('subtotal', 'tvaAmount', '_synced', 'paid', 'paidDate'))
     OR (table_name = 'saleItems' AND column_name = 'lotNumber')
-    OR (table_name = 'cashRegister' AND column_name = 'category'))
+    OR (table_name = 'cashRegister' AND column_name = 'category')
+    OR (table_name = 'app_users' AND column_name IN ('termsAccepted', 'termsAcceptedAt')))
 ORDER BY table_name, column_name;

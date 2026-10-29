@@ -9,7 +9,7 @@ de la création du projet Supabase jusqu'à la synchronisation vérifiée. Suive
 | Fichier | Rôle |
 |---|---|
 | `supabase_schema.sql` | Schéma principal (quasi toutes les tables + RLS + GRANT) |
-| `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`) |
+| `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`, colonnes `app_users.termsAccepted`/`termsAcceptedAt`) |
 
 Aucun autre fichier `.sql` du dépôt n'est nécessaire pour une pharmacie neuve
 (les autres — `supabase_complete_schema.sql`, `supabase_enable_rls.sql`,
@@ -19,19 +19,19 @@ Aucun autre fichier `.sql` du dépôt n'est nécessaire pour une pharmacie neuve
 réparation pour d'anciennes pharmacies déjà en place, déjà couverts par les
 deux fichiers ci-dessus pour une installation neuve).
 
-### Pharmacie déjà en place avant le 28/10/2026 ?
+### Pharmacie déjà en place avant le 29/10/2026 ?
 
-Si la pharmacie a été installée **avant** l'ajout du statut de paiement des
-factures fournisseurs et de la catégorie des mouvements de caisse manuels,
-exécutez une seule fois, dans son projet Supabase existant :
+Si la pharmacie a été installée **avant** ce déploiement, exécutez une seule
+fois, dans son projet Supabase existant :
 
 - **`ajout_colonnes_paiement_facture_categorie_caisse.sql`**
 
 (équivalent à ré-exécuter `supabase_nouvelle_pharmacie_complements.sql` en
 entier — les deux sont idempotents, sans danger sur des données réelles —
-mais ce script-ci est plus rapide puisqu'il ne touche qu'aux 3 colonnes
-manquantes). Sans cette étape, le statut payée/non payée des factures et la
-catégorie des mouvements de caisse fonctionnent sur un seul appareil mais ne
+mais ce script-ci est plus rapide puisqu'il ne touche qu'aux 5 colonnes
+manquantes : statut de paiement des factures fournisseurs, catégorie des
+mouvements de caisse manuels, et acceptation des Conditions d'Utilisation).
+Sans cette étape, ces fonctionnalités marchent sur un seul appareil mais ne
 se synchronisent jamais vers le cloud ni vers les autres postes de la
 pharmacie.
 
