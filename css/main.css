@@ -1937,16 +1937,31 @@ textarea.form-control {
 .landing-page {
   --landing-accent-dark: #0F4C75;
   min-height: 100vh;
-  /* Meme technique que .mesh-gradient (ecran de connexion) : un fond qui
-     respire lentement au lieu d'etre statique. */
-  background: linear-gradient(160deg, #0F4C75 0%, #1B6FAE 30%, #2EAF7D 55%, #175F96 75%, #0B2436 100%);
-  background-size: 300% 300%;
-  animation: mesh-flow 18s infinite ease-in-out;
+  /* Progression verticale deliberee (bleu profond en haut -> plus clair en
+     descendant), jamais une teinte plate - plus la meme technique mesh-flow
+     que l'ecran de connexion pour une transition animee, douce, qui respire
+     au lieu d'etre figee. */
+  background: linear-gradient(180deg, #0B2E4A 0%, #0F4C75 22%, #1B6FAE 48%, #2E86C1 72%, #5BA7D6 100%);
+  background-size: 100% 220%;
+  animation: mesh-flow-vertical 20s infinite ease-in-out;
   overflow-y: auto;
   color: #fff;
 }
+@keyframes mesh-flow-vertical {
+  0%   { background-position: 50% 0%; }
+  50%  { background-position: 50% 100%; }
+  100% { background-position: 50% 0%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .landing-page { animation: none; }
+}
+
+/* Voile sombre leger derriere le CTA final et le pied de page : la zone la
+   plus claire du degrade est en bas, ce voile garde le texte blanc lisible
+   sans jamais repasser a une couleur unie. */
+.landing-final-cta,
+.landing-footer {
+  background: rgba(5, 20, 33, 0.22);
 }
 
 .landing-nav {
