@@ -835,6 +835,9 @@ window._invoiceToAccountingEntry = function _invoiceToAccountingEntry(inv, dateF
           { label: "Total Recettes (Crédit)", value: fmt(totalCredit) },
           { label: "Total Dépenses (Débit)", value: fmt(totalDebit) },
           { label: "Solde Net", value: fmt(solde) },
+          { label: "Ventes (net retours)", value: fmt(data.beneficeReel.totalVentes) },
+          { label: "Prix d'achat des produits vendus", value: fmt(data.beneficeReel.totalAchat) },
+          { label: "Bénéfice Réel", value: fmt(data.beneficeReel.beneficeReel) },
         ]
       }
     );
