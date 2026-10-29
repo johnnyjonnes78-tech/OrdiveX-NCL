@@ -11,6 +11,12 @@ de la création du projet Supabase jusqu'à la synchronisation vérifiée. Suive
 | `supabase_schema.sql` | Schéma principal (quasi toutes les tables + RLS + GRANT) |
 | `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`, colonnes `app_users.termsAccepted`/`termsAcceptedAt`, et **toutes** les colonnes `sales` liées au règlement de dette/assurance — voir ci-dessous) |
 
+💡 **Raccourci** : `supabase_installation_complete_nouvelle_pharmacie.sql` contient la
+fusion exacte, dans l'ordre, de ces deux fichiers — un seul copier-coller au lieu
+de deux à l'étape 2 ci-dessous. Généré automatiquement à partir des deux fichiers
+sources (qui restent la référence) ; si l'un d'eux évolue, ce fichier fusionné est
+régénéré en conséquence.
+
 Aucun autre fichier `.sql` du dépôt n'est nécessaire pour une pharmacie neuve
 (les autres — `supabase_complete_schema.sql`, `supabase_enable_rls.sql`,
 `creer_tables_assurances.sql`, `creer_tables_manquantes_shifts_prep_assurances.sql`,
@@ -73,6 +79,9 @@ Dans l'éditeur SQL de Supabase (SQL Editor → New query) :
 
 1. Collez et exécutez l'intégralité de **`supabase_schema.sql`**.
 2. Puis collez et exécutez l'intégralité de **`supabase_nouvelle_pharmacie_complements.sql`**.
+
+(ou, en une seule fois : **`supabase_installation_complete_nouvelle_pharmacie.sql`**,
+qui contient déjà les deux dans le bon ordre.)
 
 Les deux scripts se terminent par une requête de vérification (`SELECT ... FROM
 information_schema...`) qui liste les tables/colonnes créées — confirmez que le
