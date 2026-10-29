@@ -1,5 +1,5 @@
 {
-  "version": "9.10.36",
-  "date": "2026-10-14",
-  "changelog": "v9.10.36 : Inventaire - en plus du stock, la date de peremption et le prix de vente peuvent desormais etre corriges directement pendant le comptage (appliques meme si la quantite physique est correcte). Ressources Humaines - la fiche de paie ouverte via \"Modifier\" calcule desormais automatiquement la deduction des avances en cours de l'employe, comme le fait deja la generation groupee des fiches."
+  "version": "9.11.0",
+  "date": "2026-10-29",
+  "changelog": "v9.11.0 : Scan code-barres/QR (vente, inventaire, reception de commande fournisseur) compatible camera et scanner physique (douchette) de toute marque, + impression d'etiquettes produit. Comptabilite Generale - les factures fournisseurs payees sont desormais comptees, nouvelle section Benefice Reel (ventes moins prix d'achat), mouvements de caisse manuels categorisables, plusieurs corrections de calculs (salaires, retours, ventes annulees). Seuil d'alerte de stock bas reellement applique partout (Stock, Catalogue, Point de Vente, Pilotage). Nouvelle page d'accueil et page Conditions d'Utilisation."
 }
