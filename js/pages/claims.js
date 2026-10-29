@@ -335,6 +335,11 @@ window.confirmSettleAllClaims = async function() {
 
       // 1. Statut payé
       sale.status = 'paid';
+      // Fiabilisation — ce flux ne mettait pas creditStatus à jour, le seul
+      // champ que patients.js (_isUnsettledDebtSale) et sales.js regardent
+      // réellement pour savoir si une dette est réglée : une créance soldée
+      // ici restait affichée comme "en cours" dans le Dossier Patient.
+      sale.creditStatus = 'paid';
       sale.paidAt = Date.now();
       sale.paidDate = today;
       sale.paidMethod = paymentMethod;

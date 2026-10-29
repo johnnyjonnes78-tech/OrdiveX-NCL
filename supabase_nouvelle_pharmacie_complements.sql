@@ -26,6 +26,20 @@
 --      (acceptation des Conditions d'Utilisation, posée automatiquement à
 --      la création de tout compte depuis octobre 2026) — même conséquence
 --      sans elles : jamais synchronisé entre postes ni vers le cloud.
+--   6. "sales" n'a JAMAIS eu creditStatus, paidAt, paidDate, paidMethod,
+--      preparerId, preparerName, insuranceId, assuranceName, assuranceRef,
+--      assuranceAmount, insurancePaidAmount, paymentDetails — pourtant
+--      écrites à chaque vente et à chaque règlement de dette (POS,
+--      Historique Ventes, Dossier Patient, Assurances & Tiers Payant).
+--      CONSÉQUENCE GRAVE sans elles : un règlement de dette se fait
+--      normalement sur le moment, mais réapparaît comme "en cours" après
+--      fermeture/réouverture de l'app ou sur un autre appareil (le champ
+--      ne quitte jamais l'appareil d'origine, un pull ultérieur re-télécharge
+--      la version toujours non-réglée restée sur Supabase et écrase la
+--      version locale correctement réglée). Voir aussi le script dédié
+--      ajout_colonnes_sales_dettes_assurance.sql (pharmacies déjà en place),
+--      qui explique l'étape "Réparer l'envoi Cloud" obligatoire en plus de
+--      ce script SQL.
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────────────────────────────────────────────
@@ -98,6 +112,22 @@ ALTER TABLE "app_users" ADD COLUMN IF NOT EXISTS "termsAccepted" BOOLEAN DEFAULT
 ALTER TABLE "app_users" ADD COLUMN IF NOT EXISTS "termsAcceptedAt" BIGINT;
 
 -- ───────────────────────────────────────────────────────────────
+-- 6. TABLE : sales — colonnes de reglement de dette + assurance (CRITIQUE)
+-- ───────────────────────────────────────────────────────────────
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "creditStatus" TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "paidAt" BIGINT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "paidDate" TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "paidMethod" TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "preparerId" BIGINT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "preparerName" TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "insuranceId" BIGINT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "assuranceName" TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "assuranceRef" TEXT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "assuranceAmount" NUMERIC;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "insurancePaidAmount" NUMERIC;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "paymentDetails" JSONB;
+
+-- ───────────────────────────────────────────────────────────────
 -- Vérification finale
 -- ───────────────────────────────────────────────────────────────
 SELECT table_name FROM information_schema.tables
@@ -108,5 +138,8 @@ WHERE table_schema = 'public'
   AND ((table_name = 'invoices' AND column_name IN ('subtotal', 'tvaAmount', '_synced', 'paid', 'paidDate'))
     OR (table_name = 'saleItems' AND column_name = 'lotNumber')
     OR (table_name = 'cashRegister' AND column_name = 'category')
-    OR (table_name = 'app_users' AND column_name IN ('termsAccepted', 'termsAcceptedAt')))
+    OR (table_name = 'app_users' AND column_name IN ('termsAccepted', 'termsAcceptedAt'))
+    OR (table_name = 'sales' AND column_name IN ('creditStatus', 'paidAt', 'paidDate', 'paidMethod',
+        'preparerId', 'preparerName', 'insuranceId', 'assuranceName', 'assuranceRef',
+        'assuranceAmount', 'insurancePaidAmount', 'paymentDetails')))
 ORDER BY table_name, column_name;

@@ -9,31 +9,50 @@ de la création du projet Supabase jusqu'à la synchronisation vérifiée. Suive
 | Fichier | Rôle |
 |---|---|
 | `supabase_schema.sql` | Schéma principal (quasi toutes les tables + RLS + GRANT) |
-| `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`, colonnes `app_users.termsAccepted`/`termsAcceptedAt`) |
+| `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`, colonnes `app_users.termsAccepted`/`termsAcceptedAt`, et **toutes** les colonnes `sales` liées au règlement de dette/assurance — voir ci-dessous) |
 
 Aucun autre fichier `.sql` du dépôt n'est nécessaire pour une pharmacie neuve
 (les autres — `supabase_complete_schema.sql`, `supabase_enable_rls.sql`,
 `creer_tables_assurances.sql`, `creer_tables_manquantes_shifts_prep_assurances.sql`,
 `reparer_table_invoices.sql`, `reparer_ventes_paiements_lots.sql`,
-`ajout_colonnes_paiement_facture_categorie_caisse.sql` — sont des scripts de
-réparation pour d'anciennes pharmacies déjà en place, déjà couverts par les
-deux fichiers ci-dessus pour une installation neuve).
+`ajout_colonnes_paiement_facture_categorie_caisse.sql`,
+`ajout_colonnes_sales_dettes_assurance.sql` — sont des scripts de réparation
+pour d'anciennes pharmacies déjà en place, déjà couverts par les deux
+fichiers ci-dessus pour une installation neuve).
 
 ### Pharmacie déjà en place avant le 29/10/2026 ?
 
-Si la pharmacie a été installée **avant** ce déploiement, exécutez une seule
-fois, dans son projet Supabase existant :
+Si la pharmacie a été installée **avant** ce déploiement, exécutez, dans son
+projet Supabase existant :
 
-- **`ajout_colonnes_paiement_facture_categorie_caisse.sql`**
+1. **`ajout_colonnes_paiement_facture_categorie_caisse.sql`** (statut de
+   paiement des factures fournisseurs, catégorie des mouvements de caisse
+   manuels, acceptation des Conditions d'Utilisation)
+2. **`ajout_colonnes_sales_dettes_assurance.sql`** ⚠️ **CRITIQUE** — corrige
+   un bug grave : un règlement de dette (créance patient ou assurance) se
+   faisait normalement sur le moment, mais réapparaissait "en cours" après
+   fermeture/réouverture de l'app ou sur un autre appareil. La table
+   `sales` n'avait jamais les colonnes nécessaires à ce règlement
+   (`creditStatus`, `paidAt`, `paidDate`, `paidMethod`, et les champs
+   assurance), donc le règlement ne quittait jamais l'appareil d'origine —
+   un pull ultérieur re-téléchargeait la version toujours non-réglée
+   restée sur Supabase et écrasait la version locale correctement réglée.
 
-(équivalent à ré-exécuter `supabase_nouvelle_pharmacie_complements.sql` en
-entier — les deux sont idempotents, sans danger sur des données réelles —
-mais ce script-ci est plus rapide puisqu'il ne touche qu'aux 5 colonnes
-manquantes : statut de paiement des factures fournisseurs, catégorie des
-mouvements de caisse manuels, et acceptation des Conditions d'Utilisation).
-Sans cette étape, ces fonctionnalités marchent sur un seul appareil mais ne
-se synchronisent jamais vers le cloud ni vers les autres postes de la
-pharmacie.
+(ces deux scripts sont idempotents, sans danger sur des données réelles,
+et équivalents à ré-exécuter `supabase_nouvelle_pharmacie_complements.sql`
+en entier — mais plus rapides puisqu'ils ne touchent qu'aux colonnes
+manquantes).
+
+⚠️ **Étape supplémentaire OBLIGATOIRE après le script n°2, sur CHAQUE
+appareil de la pharmacie** (pas seulement celui où le SQL a été exécuté) :
+
+> **Paramètres → Cloud → Zone Sensible → "Réparer l'envoi Cloud"**
+
+Sans cette étape, chaque appareil continue de retirer ces champs de ses
+envois (il a mis en cache "ces colonnes n'existent pas" avant que le script
+SQL ne les crée) — le bug persisterait malgré le script SQL. Cette action
+vide ce cache et renvoie tout ce qui n'a encore jamais atteint Supabase, y
+compris les dettes déjà réglées localement.
 
 ---
 
@@ -143,3 +162,4 @@ encore sur Supabase — la synchronisation n'envoie que ce qui existe localement
 | Diagnostic du poste : "Tables absentes côté serveur" après avoir pourtant créé les tables | `pharma_missing_tables` (cache local) pas encore réactualisé | Paramètres → Cloud → "Récupérer les données" (pull manuel, redonne sa chance aux tables), ou "Réparer la synchro" |
 | Script SQL : `policy already exists` à la ré-exécution | Ré-exécution d'un script déjà appliqué | Sans danger, c'est idempotent partout sauf cas déjà corrigés — relancez simplement |
 | Ticket/devis imprimé illisible à un endroit précis | Bug d'affichage ponctuel déjà corrigé (v9.10.30+) | Vérifier que l'app est à jour |
+| Une dette (créance patient/assurance) réglée revient "en cours" après fermeture/réouverture de l'app ou sur un autre poste | Colonnes `sales` manquantes côté Supabase (corrigé v9.11.0+) | `ajout_colonnes_sales_dettes_assurance.sql` **puis** "Réparer l'envoi Cloud" sur CHAQUE appareil — voir section "Pharmacie déjà en place" ci-dessus |

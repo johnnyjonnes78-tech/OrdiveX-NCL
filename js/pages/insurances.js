@@ -855,6 +855,11 @@ window.submitInsurancePayment = async function(event, insuranceId) {
       if (newDue <= 1) {
         // Entièrement soldé
         sale.status = 'paid';
+        // Fiabilisation — même correctif que claims.js : creditStatus est le
+        // seul champ regardé par patients.js (_isUnsettledDebtSale) pour
+        // savoir si une créance est réglée, sans lui elle restait "en cours"
+        // dans le Dossier Patient malgré un règlement complet ici.
+        sale.creditStatus = 'paid';
         sale.paidAt = Date.now();
         sale.paidDate = todayStr;
         sale.paidMethod = data.paymentMethod;
