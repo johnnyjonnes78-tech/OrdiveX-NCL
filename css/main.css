@@ -1935,36 +1935,46 @@ textarea.form-control {
    blanc partout. Le degrade est pose UNE SEULE FOIS sur .landing-page (pas
    repete section par section) pour rester parfaitement continu au defilement. */
 .landing-page {
-  --landing-red: #D4222B;
-  --landing-red-bright: #F23D42;
+  --landing-blue: #0A84FF;
+  --landing-blue-bright: #2FC1FF;
+  --landing-red: #FF1444;
+  --landing-red-bright: #FF4D73;
   min-height: 100vh;
-  /* Identite bleu/noir/rouge voulue : le fond reste exclusivement noir <->
-     bleu profond (jamais de bleu clair ni de melange avec le rouge dans le
-     degrade, qui tournerait au violet terne) - le rouge n'intervient qu'en
-     accent pose par-dessus (CTA, icones, liserets), jamais dans le fond.
-     Oscillation noir -> bleu -> noir : la zone la plus sombre du degrade
-     revient systematiquement vers le bas, le CTA final et le pied de page
-     n'ont donc plus besoin d'un voile de lisibilite separe. */
-  background: linear-gradient(180deg, #05080E 0%, #0B1D33 28%, #102A4A 50%, #0B1D33 72%, #05080E 100%);
-  background-size: 100% 220%;
-  animation: mesh-flow-vertical 20s infinite ease-in-out;
+  /* Identite bleu electrique / noir profond / rouge neon : le fond reste
+     NOIR, le bleu et le rouge n'existent qu'en halos lumineux (radial-
+     gradient flous, jamais une bande pleine) poses par-dessus - exactement
+     le registre "neon sur noir", jamais un degrade uni bleu<->rouge qui
+     tournerait au violet terne. Les 4 halos restent fixes (leur propre
+     background-size/position) ; seul le calque noir du bas respire tres
+     legerement via mesh-flow-vertical, pour un fond qui reste vivant sans
+     jamais faire bouger les halos eux-memes. */
+  background:
+    radial-gradient(ellipse 60% 42% at 10% 6%, rgba(10, 132, 255, 0.4), transparent 70%),
+    radial-gradient(ellipse 52% 46% at 94% 26%, rgba(255, 20, 68, 0.32), transparent 70%),
+    radial-gradient(ellipse 58% 44% at 12% 90%, rgba(10, 132, 255, 0.32), transparent 70%),
+    radial-gradient(ellipse 52% 42% at 92% 96%, rgba(255, 20, 68, 0.26), transparent 70%),
+    linear-gradient(180deg, #000000 0%, #040508 50%, #000000 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 220%;
+  background-position: 0 0, 0 0, 0 0, 0 0, 50% 0%;
+  animation: mesh-flow-vertical 24s infinite ease-in-out;
   overflow-y: auto;
   color: #fff;
 }
 @keyframes mesh-flow-vertical {
-  0%   { background-position: 50% 0%; }
-  50%  { background-position: 50% 100%; }
-  100% { background-position: 50% 0%; }
+  0%   { background-position: 0 0, 0 0, 0 0, 0 0, 50% 0%; }
+  50%  { background-position: 0 0, 0 0, 0 0, 0 0, 50% 100%; }
+  100% { background-position: 0 0, 0 0, 0 0, 0 0, 50% 0%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-page { animation: none; }
 }
 
-/* Lisere rouge fin en tete du CTA final : separation de section discrete qui
-   porte la couleur de marque, remplace l'ancien voile d'opacite devenu
-   inutile une fois le fond ramene au noir/bleu sur toute la hauteur. */
+/* Lisere rouge neon fin en tete du CTA final : separation de section
+   discrete qui porte la couleur de marque, remplace l'ancien voile
+   d'opacite devenu inutile une fois le fond ramene au noir sur toute la
+   hauteur. */
 .landing-final-cta {
-  border-top: 1px solid rgba(212, 34, 43, 0.28);
+  border-top: 1px solid rgba(255, 20, 68, 0.35);
 }
 
 .landing-nav {
@@ -1976,10 +1986,10 @@ textarea.form-control {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 28px;
-  background: rgba(3, 6, 11, 0.65);
+  background: rgba(2, 4, 8, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(212, 34, 43, 0.22);
+  border-bottom: 1px solid rgba(10, 132, 255, 0.25);
 }
 
 .landing-nav-brand {
@@ -1991,9 +2001,11 @@ textarea.form-control {
   color: #fff;
 }
 
-.landing-nav-logo { width: 34px; height: 34px; margin: 0; border-radius: 9px; background: rgba(212, 34, 43, 0.16); border: 1px solid rgba(212, 34, 43, 0.4); }
-.landing-nav-logo i { width: 18px; height: 18px; color: var(--landing-red-bright); }
-.landing-nav-x { color: var(--landing-red-bright); opacity: 1; font-weight: 900; }
+/* Logo en bleu electrique (marque), le "X" en rouge neon (accent) : les
+   deux couleurs de l'identite se repondent deja dans le nom lui-meme. */
+.landing-nav-logo { width: 34px; height: 34px; margin: 0; border-radius: 9px; background: rgba(10, 132, 255, 0.18); border: 1px solid rgba(10, 132, 255, 0.5); box-shadow: 0 0 14px rgba(10, 132, 255, 0.35); }
+.landing-nav-logo i { width: 18px; height: 18px; color: var(--landing-blue-bright); }
+.landing-nav-x { color: var(--landing-red-bright); opacity: 1; font-weight: 900; text-shadow: 0 0 10px rgba(255, 20, 68, 0.7); }
 
 .landing-nav-links {
   display: flex;
@@ -2008,7 +2020,7 @@ textarea.form-control {
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
 }
-.landing-nav-links a:hover { color: #fff; }
+.landing-nav-links a:hover { color: var(--landing-blue-bright); }
 
 @media (max-width: 640px) {
   .landing-nav-links { display: none; }
@@ -2031,6 +2043,7 @@ textarea.form-control {
   letter-spacing: -0.5px;
   line-height: 1.2;
   margin-bottom: 18px;
+  text-shadow: 0 0 28px rgba(10, 132, 255, 0.35);
 }
 
 .landing-tagline {
@@ -2059,14 +2072,15 @@ textarea.form-control {
   gap: 8px;
   background: linear-gradient(135deg, var(--landing-red-bright), var(--landing-red));
   color: #fff;
-  border: none;
-  box-shadow: 0 10px 26px rgba(212, 34, 43, 0.35);
+  border: 1px solid rgba(255, 77, 115, 0.6);
+  /* Vraie lueur neon : flou large + opacite marquee, pas une ombre discrete. */
+  box-shadow: 0 0 22px rgba(255, 20, 68, 0.55), 0 10px 26px rgba(0, 0, 0, 0.4);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .landing-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(212, 34, 43, 0.5);
+  box-shadow: 0 0 32px rgba(255, 20, 68, 0.8), 0 14px 34px rgba(0, 0, 0, 0.45);
 }
 
 .landing-hero-visual { display: flex; justify-content: center; }
@@ -2078,10 +2092,10 @@ textarea.form-control {
 .landing-mock-window {
   width: 100%;
   max-width: 420px;
-  background: rgba(2, 5, 10, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(2, 5, 10, 0.5);
+  border: 1px solid rgba(10, 132, 255, 0.3);
   border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 40px rgba(10, 132, 255, 0.15), 0 24px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 
@@ -2089,8 +2103,8 @@ textarea.form-control {
   display: flex;
   gap: 6px;
   padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(212, 34, 43, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 20, 68, 0.25);
 }
 .landing-mock-bar span {
   width: 9px; height: 9px; border-radius: 50%;
@@ -2098,6 +2112,7 @@ textarea.form-control {
 }
 .landing-mock-bar span:first-child {
   background: var(--landing-red-bright);
+  box-shadow: 0 0 6px rgba(255, 20, 68, 0.8);
 }
 
 .landing-mock-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
@@ -2110,7 +2125,7 @@ textarea.form-control {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.08);
 }
-.landing-mock-kpi i { width: 22px; height: 22px; color: #fff; flex-shrink: 0; }
+.landing-mock-kpi i { width: 22px; height: 22px; color: var(--landing-blue-bright); flex-shrink: 0; }
 .landing-mock-kpi strong { display: block; font-size: 13px; color: #fff; }
 .landing-mock-kpi span { font-size: 11px; color: rgba(255, 255, 255, 0.7); }
 
@@ -2127,11 +2142,11 @@ textarea.form-control {
 .landing-strapline::before {
   content: '';
   display: block;
-  width: 36px;
+  width: 44px;
   height: 3px;
   margin: 0 auto 14px;
   border-radius: 2px;
-  background: var(--landing-red-bright);
+  background: linear-gradient(90deg, var(--landing-blue-bright), var(--landing-red-bright));
 }
 
 .landing-features {
@@ -2166,8 +2181,8 @@ textarea.form-control {
 }
 
 .feature-card:hover {
-  border-color: rgba(212, 34, 43, 0.45);
-  box-shadow: 0 16px 40px rgba(212, 34, 43, 0.18);
+  border-color: rgba(10, 132, 255, 0.5);
+  box-shadow: 0 0 30px rgba(10, 132, 255, 0.25), 0 16px 40px rgba(0, 0, 0, 0.3);
   transform: translateY(-3px);
 }
 
@@ -2175,9 +2190,9 @@ textarea.form-control {
   width: 42px;
   height: 42px;
   border-radius: 11px;
-  background: rgba(212, 34, 43, 0.16);
-  border: 1px solid rgba(212, 34, 43, 0.3);
-  color: var(--landing-red-bright);
+  background: rgba(10, 132, 255, 0.16);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  color: var(--landing-blue-bright);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2190,7 +2205,7 @@ textarea.form-control {
   right: 22px;
   font-size: 12px;
   font-weight: 700;
-  color: rgba(212, 34, 43, 0.55);
+  color: rgba(255, 20, 68, 0.6);
 }
 
 .feature-card h3 {
@@ -2232,7 +2247,7 @@ textarea.form-control {
   list-style: none;
   background: rgba(2, 5, 10, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-left: 3px solid var(--landing-red);
+  border-left: 3px solid var(--landing-blue);
   border-radius: 16px;
   padding: 24px 28px;
   display: flex;
@@ -2274,7 +2289,7 @@ textarea.form-control {
 }
 
 .pillar-card:hover {
-  background: rgba(212, 34, 43, 0.06);
+  background: rgba(10, 132, 255, 0.07);
 }
 
 .pillar-card-icon {
@@ -2282,9 +2297,10 @@ textarea.form-control {
   height: 48px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(212, 34, 43, 0.14);
-  border: 1px solid rgba(212, 34, 43, 0.35);
-  color: var(--landing-red-bright);
+  background: rgba(10, 132, 255, 0.14);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  box-shadow: 0 0 16px rgba(10, 132, 255, 0.25);
+  color: var(--landing-blue-bright);
   display: flex;
   align-items: center;
   justify-content: center;
