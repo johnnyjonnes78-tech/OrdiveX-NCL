@@ -2048,8 +2048,9 @@ textarea.form-control {
     animation: none;
   }
   .landing-reveal { opacity: 1; transform: none; }
-  .feature-curtain-panel { transition: none; }
-  .feature-stage-sticky { position: static; }
+  .feature-card .feature-curtain-panel { transition: none; }
+  .feature-card .feature-curtain-left { transform: translateX(-101%) !important; }
+  .feature-card .feature-curtain-right { transform: translateX(101%) !important; }
 }
 
 /* Lisere rouge neon fin en tete du CTA final : separation de section
@@ -2254,110 +2255,61 @@ textarea.form-control {
   letter-spacing: -0.3px;
 }
 
-.landing-features-hint {
-  text-align: center;
-  font-size: 12.5px;
-  color: rgba(255, 255, 255, 0.55);
-  margin-top: -22px;
-  margin-bottom: 28px;
+/* Grille de fonctionnalités, chaque carte avec SON PROPRE rideau
+   (signalé par l'utilisateur) : une première version (scène unique
+   recyclée pilotée par la position de défilement) s'est révélée fragile
+   et laissait un grand vide sans texte dans certains cas. Remplacée par
+   cette version : chaque carte est un élément PERSISTANT de la grille
+   (jamais de contenu recyclé/remplacé), et son rideau s'ouvre quand elle
+   entre dans l'écran, via le même IntersectionObserver déjà éprouvé pour
+   les autres sections (.landing-reveal / .landing-reveal-in, posées par
+   renderLanding). Par défaut (sans JS), les pans restent rétractés — le
+   texte est donc toujours visible en repli sûr. */
+.landing-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
 }
 
-/* Scène "rideau" pilotée par le DÉFILEMENT (signalé par l'utilisateur) :
-   .feature-scroll-track réserve une hauteur de défilement proportionnelle
-   au nombre de fonctionnalités : .feature-stage-sticky y reste fixé à
-   l'écran (position:sticky) pendant qu'on défile à travers, et le JS
-   (_landingOnScroll) change de fonctionnalité selon la position atteinte -
-   jamais un minuteur automatique. Une fonctionnalité à la fois, les deux
-   pans du rideau se referment au centre pour masquer l'ancienne avant de
-   révéler la suivante — remplace l'ancienne grille statique, trop linéaire. */
-.feature-scroll-track {
-  position: relative;
-}
-
-.feature-stage-sticky {
-  position: sticky;
-  top: 14vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.feature-stage {
-  position: relative;
-  width: 100%;
-  max-width: 640px;
-  min-height: 260px;
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.feature-stage-content {
-  position: relative;
-  z-index: 1;
-  height: 100%;
-}
-
-.feature-stage-card {
-  height: 100%;
-}
-
-.feature-curtain-panel {
+.feature-card .feature-curtain-panel {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 52%;
   z-index: 2;
   background: linear-gradient(135deg, #152840 0%, #0A1420 100%);
-  border: 1px solid rgba(255, 20, 68, 0.3);
-  transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1);
   pointer-events: none;
 }
-.feature-curtain-left {
+.feature-card .feature-curtain-left {
   left: 0;
   border-radius: 16px 0 0 16px;
   border-right: 1px solid rgba(255, 20, 68, 0.45);
   transform: translateX(-101%);
 }
-.feature-curtain-right {
+.feature-card .feature-curtain-right {
   right: 0;
   border-radius: 0 16px 16px 0;
   border-left: 1px solid rgba(10, 132, 255, 0.45);
   transform: translateX(101%);
 }
-.feature-curtain-closing .feature-curtain-left,
-.feature-curtain-closing .feature-curtain-right {
+/* État initial posé par le JS de configuration (avant l'entrée dans
+   l'écran) : rideau fermé, recouvre le texte. */
+.feature-card.landing-reveal {
+  opacity: 1;
+  transform: none;
+}
+.feature-card.landing-reveal .feature-curtain-left,
+.feature-card.landing-reveal .feature-curtain-right {
   transform: translateX(0);
 }
-
-.feature-stage-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 20px;
-}
-.feature-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: none;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  transition: background 0.25s ease, transform 0.25s ease;
-}
-.feature-dot:hover { background: rgba(255, 255, 255, 0.4); }
-.feature-dot-active {
-  background: var(--landing-red-bright);
-  box-shadow: 0 0 8px rgba(255, 20, 68, 0.7);
-  transform: scale(1.25);
-}
-
-@media (max-width: 640px) {
-  .feature-stage { min-height: 320px; }
-}
+/* À l'entrée dans l'écran : le rideau s'ouvre. */
+.feature-card.landing-reveal-in .feature-curtain-left { transform: translateX(-101%); }
+.feature-card.landing-reveal-in .feature-curtain-right { transform: translateX(101%); }
 
 .feature-card {
   position: relative;
+  overflow: hidden;
   background: rgba(16, 28, 46, 0.58);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);

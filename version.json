@@ -1,5 +1,5 @@
 {
-  "version": "9.12.2",
+  "version": "9.12.3",
   "date": "2026-10-31",
-  "changelog": "v9.12.2 : Correctif critique - le scanner de code-barres physique (douchette) et les raccourcis clavier du Point de Vente (F2/F5/Echap) pouvaient rester actifs en arriere-plan apres avoir quitte la page (notamment vers le Tableau de bord), provoquant un bip sonore et des actions POS declenchees depuis n'importe quelle autre page. Corrige avec un garde-fou systematique sur la page active, en plus du nettoyage normal."
+  "changelog": "v9.12.3 : Page d'accueil - le rideau des fonctionnalites laissait parfois un grand vide sans texte (mecanisme de defilement trop fragile) ; remplace par une version robuste ou chaque fonctionnalite garde sa propre carte et son propre rideau, qui s'ouvre a l'entree dans l'ecran en defilant."
 }
