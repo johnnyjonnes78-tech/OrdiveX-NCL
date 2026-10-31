@@ -759,7 +759,11 @@ async function _submitInvoiceImpl(status) {
             receiptDate: formData.date,
             status: 'active',
             invoiceId: invoiceId,
-            invoiceRef: formData.invoiceNumber
+            invoiceRef: formData.invoiceNumber,
+            // Coût réellement payé pour CE lot précis — plus jamais écrasé
+            // rétroactivement par une facture ultérieure sur le même produit.
+            purchasePrice: item.unitPrice || 0,
+            salePrice: item.salePrice || undefined,
           }
         });
 
@@ -819,7 +823,12 @@ async function _submitInvoiceImpl(status) {
               existingProd.salePrice = item.salePrice;
               updatedProd = true;
             }
-            if (item.expiryDate && existingProd.expiryDate !== item.expiryDate) {
+            // Fiabilisation (signalé par l'utilisateur) : voir le commentaire
+            // identique dans validateInvoice() plus bas dans ce fichier — même
+            // correctif, dupliqué ici car ce chemin (validation immédiate depuis
+            // le formulaire) répète la même logique que validateInvoice().
+            const expiryChangedForLots = item.expiryDate && existingProd.expiryDate !== item.expiryDate;
+            if (expiryChangedForLots) {
               existingProd.expiryDate = item.expiryDate;
               updatedProd = true;
             }
@@ -828,19 +837,20 @@ async function _submitInvoiceImpl(status) {
               await DB.dbPut('products', existingProd);
               window._invoicesProducts = null; // force reload next time
 
-              // Propagation en cascade vers tous les lots actifs du produit
-              try {
-                const allLots = await DB.dbGetAll('lots');
-                const productLots = allLots.filter(l => Number(l.productId) === Number(item.productId) && l.status === 'active');
-                for (const lot of productLots) {
-                  const lotUpdate = { ...lot, updatedAt: Date.now() };
-                  if (item.unitPrice) lotUpdate.purchasePrice = item.unitPrice;
-                  if (item.salePrice) lotUpdate.salePrice = item.salePrice;
-                  if (item.expiryDate) lotUpdate.expiryDate = item.expiryDate;
-                  await DB.dbPut('lots', lotUpdate);
+              // Ne reste ici que la propagation de la date de péremption — le
+              // purchasePrice/salePrice de chaque lot reste celui réellement payé
+              // à sa réception, jamais écrasé par le prix d'une facture ULTÉRIEURE
+              // sur le même produit (faussait Valeur Stock (Achat) de products.js).
+              if (expiryChangedForLots) {
+                try {
+                  const allLots = await DB.dbGetAll('lots');
+                  const productLots = allLots.filter(l => Number(l.productId) === Number(item.productId) && l.status === 'active');
+                  for (const lot of productLots) {
+                    await DB.dbPut('lots', { ...lot, expiryDate: item.expiryDate, updatedAt: Date.now() });
+                  }
+                } catch (cascadeErr) {
+                  console.warn('[Invoice Sync] Erreur cascade lots:', cascadeErr);
                 }
-              } catch (cascadeErr) {
-                console.warn('[Invoice Sync] Erreur cascade lots:', cascadeErr);
               }
             }
           }
@@ -907,7 +917,11 @@ async function validateInvoice(invoiceId) {
         receiptDate: invoice.date,
         status: 'active',
         invoiceId: invoice.id,
-        invoiceRef: invoice.invoiceNumber
+        invoiceRef: invoice.invoiceNumber,
+        // Coût réellement payé pour CE lot précis — plus jamais écrasé
+        // rétroactivement par une facture ultérieure sur le même produit.
+        purchasePrice: item.unitPrice || 0,
+        salePrice: item.salePrice || undefined,
       };
       const lotId = await DB.dbAdd('lots', lotData);
       
@@ -943,7 +957,12 @@ async function validateInvoice(invoiceId) {
             existingProd.salePrice = item.salePrice;
             updatedProd = true;
           }
-          if (item.expiryDate && existingProd.expiryDate !== item.expiryDate) {
+          // Fiabilisation (signalé par l'utilisateur) : l'expiryDate ci-dessous
+          // est celle du PRODUIT (son champ d'affichage catalogue, informatif),
+          // jamais celle d'un lot précis — ne pas confondre avec la cascade vers
+          // les lots retirée plus bas pour cette même raison.
+          const expiryChangedForLots = item.expiryDate && existingProd.expiryDate !== item.expiryDate;
+          if (expiryChangedForLots) {
             existingProd.expiryDate = item.expiryDate;
             updatedProd = true;
           }
@@ -952,19 +971,29 @@ async function validateInvoice(invoiceId) {
             await DB.dbPut('products', existingProd);
             window._invoicesProducts = null;
 
-            // Propagation en cascade vers tous les lots actifs du produit
-            try {
-              const allLots = await DB.dbGetAll('lots');
-              const productLots = allLots.filter(l => Number(l.productId) === Number(item.productId) && l.status === 'active');
-              for (const lot of productLots) {
-                const lotUpdate = { ...lot, updatedAt: Date.now() };
-                if (item.unitPrice) lotUpdate.purchasePrice = item.unitPrice;
-                if (item.salePrice) lotUpdate.salePrice = item.salePrice;
-                if (item.expiryDate) lotUpdate.expiryDate = item.expiryDate;
-                await DB.dbPut('lots', lotUpdate);
+            // Fiabilisation (signalé par l'utilisateur) : cette cascade écrasait
+            // AUTREFOIS le purchasePrice/salePrice de TOUS les lots déjà actifs
+            // du produit avec le prix de CETTE facture — y compris des lots plus
+            // anciens achetés à un prix différent. Un lot doit garder le coût
+            // RÉELLEMENT payé à sa réception (son propre purchasePrice, posé une
+            // fois pour toutes à la création du lot un peu plus haut) ; seul le
+            // prix PAR DÉFAUT du produit (catalogue, prochaine vente) suit le
+            // dernier prix facturé. Cette fausse "synchronisation" faussait la
+            // Valeur Stock (Achat) de products.js, qui multiplie quantité ×
+            // prix produit courant, en appliquant rétroactivement un prix futur
+            // à du stock déjà payé moins cher (ou plus cher). Ne reste ici que
+            // la propagation de la date de péremption, qui n'a pas cette raison
+            // d'être (un lot a sa PROPRE date, fixée à sa création).
+            if (expiryChangedForLots) {
+              try {
+                const allLots = await DB.dbGetAll('lots');
+                const productLots = allLots.filter(l => Number(l.productId) === Number(item.productId) && l.status === 'active');
+                for (const lot of productLots) {
+                  await DB.dbPut('lots', { ...lot, expiryDate: item.expiryDate, updatedAt: Date.now() });
+                }
+              } catch (cascadeErr) {
+                console.warn('[Invoice Sync] Erreur cascade lots:', cascadeErr);
               }
-            } catch (cascadeErr) {
-              console.warn('[Invoice Sync] Erreur cascade lots:', cascadeErr);
             }
           }
         }

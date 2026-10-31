@@ -1594,24 +1594,26 @@ async function updateProduct(id) {
     await DB.writeAudit('EDIT_PRODUCT', 'products', id, { name: updated.name, changes: data });
 
     // ══ PROPAGATION EN CASCADE VERS LES LOTS ACTIFS ══════════════════
-    // Prix de vente, prix d'achat ou date de péremption modifiés ?
-    const salePriceChanged    = updated.salePrice !== original.salePrice;
-    const purchasePriceChanged = updated.purchasePrice !== original.purchasePrice;
-    const expiryChanged        = updated.expiryDate !== original.expiryDate;
+    // Date de péremption modifiée ?
+    //
+    // Fiabilisation (signalé par l'utilisateur) : le prix de vente/d'achat
+    // n'est PLUS propagé ici vers les lots déjà actifs. Avant, modifier le
+    // prix d'un produit dans la fiche catalogue écrasait rétroactivement le
+    // purchasePrice/salePrice de TOUS ses lots déjà en stock — y compris des
+    // lots achetés à un prix différent, perdant leur coût réel d'acquisition
+    // et faussant la Valeur Stock (Achat) de cette même page (qui multiplie
+    // quantité × prix produit courant). Un lot garde désormais le coût
+    // RÉELLEMENT payé à sa réception ; seul le prix PAR DÉFAUT du produit
+    // (catalogue, prochaine vente) change ici.
+    const expiryChanged = updated.expiryDate !== original.expiryDate;
 
-    if (salePriceChanged || purchasePriceChanged || expiryChanged) {
+    if (expiryChanged && updated.expiryDate) {
       try {
         const allLots = await DB.dbGetAll('lots');
         const productLots = allLots.filter(l => l.productId === id && l.status === 'active');
         let lotsUpdated = 0;
         for (const lot of productLots) {
-          const lotUpdate = { ...lot, updatedAt: Date.now() };
-          // Prix : propagation inconditionnelle vers tous les lots actifs
-          if (salePriceChanged)     lotUpdate.salePrice     = updated.salePrice;
-          if (purchasePriceChanged) lotUpdate.purchasePrice  = updated.purchasePrice;
-          // Date : propagation inconditionnelle vers tous les lots actifs
-          if (expiryChanged && updated.expiryDate) lotUpdate.expiryDate = updated.expiryDate;
-          await DB.dbPut('lots', lotUpdate);
+          await DB.dbPut('lots', { ...lot, expiryDate: updated.expiryDate, updatedAt: Date.now() });
           lotsUpdated++;
         }
         if (lotsUpdated > 0) {

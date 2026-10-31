@@ -701,6 +701,15 @@ async function submitStockEntry() {
       const existingProd = await DB.dbGet('products', productId).catch(() => null);
       if (existingProd) {
         let prodChanged = false;
+        // Fiabilisation (signalé par l'utilisateur) : expiryDateForLots est
+        // calculé AVANT la mutation de existingProd.expiryDate ci-dessous, pour
+        // savoir si la date a réellement changé — purchasePrice/salePrice ne
+        // sont plus propagés vers les lots déjà actifs (voir même correctif
+        // dans invoices.js/products.js/suppliers.js : un lot garde le coût
+        // réellement payé à sa réception, jamais écrasé par une saisie de
+        // stock ultérieure sur le même produit — faussait Valeur Stock (Achat)
+        // de products.js).
+        const expiryChangedForLots = data.expiryDate && data.expiryDate !== existingProd.expiryDate;
         if (data.purchasePrice && parseFloat(data.purchasePrice) > 0 && parseFloat(data.purchasePrice) !== existingProd.purchasePrice) {
           existingProd.purchasePrice = parseFloat(data.purchasePrice);
           prodChanged = true;
@@ -709,29 +718,27 @@ async function submitStockEntry() {
           existingProd.salePrice = parseFloat(data.salePrice);
           prodChanged = true;
         }
-        if (data.expiryDate && data.expiryDate !== existingProd.expiryDate) {
+        if (expiryChangedForLots) {
           existingProd.expiryDate = data.expiryDate;
           prodChanged = true;
         }
         if (prodChanged) {
           existingProd.updatedAt = Date.now();
           await DB.dbPut('products', existingProd);
-          // Propager aux lots actifs existants
-          try {
-            const allLots = await DB.dbGetAll('lots');
-            const productLots = allLots.filter(l => l.productId === productId && l.status === 'active');
-            for (const lot of productLots) {
-              const lotUpdate = { ...lot, updatedAt: Date.now() };
-              if (data.purchasePrice && parseFloat(data.purchasePrice) > 0) lotUpdate.purchasePrice = parseFloat(data.purchasePrice);
-              if (data.salePrice && parseFloat(data.salePrice) > 0) lotUpdate.salePrice = parseFloat(data.salePrice);
-              // Date : uniquement si le lot n'a pas sa propre date récente
-              if (data.expiryDate && (!lot.expiryDate || lot.expiryDate === existingProd.expiryDate)) {
-                lotUpdate.expiryDate = data.expiryDate;
+          if (expiryChangedForLots) {
+            // Propager la date de péremption aux lots actifs existants
+            try {
+              const allLots = await DB.dbGetAll('lots');
+              const productLots = allLots.filter(l => l.productId === productId && l.status === 'active');
+              for (const lot of productLots) {
+                // Uniquement si le lot n'a pas sa propre date récente
+                if (!lot.expiryDate || lot.expiryDate === existingProd.expiryDate) {
+                  await DB.dbPut('lots', { ...lot, expiryDate: data.expiryDate, updatedAt: Date.now() });
+                }
               }
-              await DB.dbPut('lots', lotUpdate);
+            } catch (cascadeErr) {
+              console.warn('[StockEntry] Erreur cascade lots:', cascadeErr);
             }
-          } catch (cascadeErr) {
-            console.warn('[StockEntry] Erreur cascade lots:', cascadeErr);
           }
         }
       }
@@ -748,6 +755,11 @@ async function submitStockEntry() {
       status: 'active',
       invoiceRef: data.invoiceNumber || null,
       location: data.location || 'rayon',
+      // Coût réellement payé pour CE lot précis (manquait déjà avant ce
+      // correctif — ce lot est créé APRÈS la cascade ci-dessus, qui ne
+      // pouvait donc jamais l'atteindre).
+      purchasePrice: parseFloat(data.purchasePrice || 0) || undefined,
+      salePrice: parseFloat(data.salePrice || 0) || undefined,
     });
 
     // Smart Invoice Logic

@@ -1687,6 +1687,10 @@ async function _confirmReceiveOrderImpl(orderId) {
           status: 'active',
           invoiceId: invoiceId,
           invoiceRef: createInvoice ? invoiceNum : null,
+          // Coût réellement payé pour CE lot précis — plus jamais écrasé
+          // rétroactivement par une réception ultérieure sur le même produit.
+          purchasePrice: recvPrice,
+          salePrice: recvSalePrice || undefined,
         }
       });
 
@@ -1754,19 +1758,21 @@ async function _confirmReceiveOrderImpl(orderId) {
           window._allProducts = null; // force reload
           window._invoicesProducts = null; // force reload
 
-          // Propagation en cascade vers tous les lots actifs de ce produit
-          try {
-            const allLots = await DB.dbGetAll('lots');
-            const productLots = allLots.filter(l => Number(l.productId) === Number(pc.productId) && l.status === 'active');
-            for (const lot of productLots) {
-              const lotUpdate = { ...lot, updatedAt: Date.now() };
-              if (pc.recvPrice) lotUpdate.purchasePrice = pc.recvPrice;
-              if (pc.recvSalePrice) lotUpdate.salePrice = pc.recvSalePrice;
-              if (pc.expiryDate) lotUpdate.expiryDate = pc.expiryDate;
-              await DB.dbPut('lots', lotUpdate);
+          // Fiabilisation (signalé par l'utilisateur) : purchasePrice/salePrice
+          // ne sont plus propagés ici vers les lots déjà actifs — un lot garde
+          // le coût réellement payé à sa réception (voir même correctif dans
+          // invoices.js/products.js). Ne reste que la date de péremption, qui
+          // n'a pas cette même raison d'être (chaque lot a la sienne).
+          if (pc.expiryDate) {
+            try {
+              const allLots = await DB.dbGetAll('lots');
+              const productLots = allLots.filter(l => Number(l.productId) === Number(pc.productId) && l.status === 'active');
+              for (const lot of productLots) {
+                await DB.dbPut('lots', { ...lot, expiryDate: pc.expiryDate, updatedAt: Date.now() });
+              }
+            } catch (cascadeErr) {
+              console.warn('[Receipt Sync] Erreur cascade lots:', cascadeErr);
             }
-          } catch (cascadeErr) {
-            console.warn('[Receipt Sync] Erreur cascade lots:', cascadeErr);
           }
         }
       }
