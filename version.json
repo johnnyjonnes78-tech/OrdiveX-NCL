@@ -1,5 +1,5 @@
 {
-  "version": "9.12.0",
+  "version": "9.12.1",
   "date": "2026-10-31",
-  "changelog": "v9.12.0 : Un reglement de dette (patient ou assurance) ne revient plus \"en cours\" apres fermeture/reouverture de l'app ; chaque lot de stock garde desormais son propre cout d'achat reel, plus jamais ecrase par une facture ulterieure ; les produits desactives ne comptent plus dans aucun total financier ; le stock perime sans numero de lot est detecte et peut etre detruit depuis Tracabilite. Reçu de vente : les informations assurance/patient ne sont plus coupees sur un ticket thermique. Nouvelle saisie rapide en masse des produits (grille type tableur) pour une pharmacie sans logiciel existant. Alertes purgees automatiquement (lues, ou de plus de 7 jours). Robustesse accrue face aux coupures de courant brutales (ecriture disque forcee, recuperation locale des comptes utilisateur sans reseau) et nouveau bouton \"Reparer l'application\" sur l'ecran de connexion. Page d'accueil enrichie (animations d'introduction, scene a rideau des fonctionnalites, meilleure lisibilite)."
+  "changelog": "v9.12.1 : Page d'accueil - fond eclairci pour une meilleure visibilite, et la presentation des fonctionnalites change desormais au defilement de la page (effet rideau) au lieu d'un defilement automatique independant du scroll."
 }

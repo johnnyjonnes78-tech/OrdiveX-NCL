@@ -1975,13 +1975,17 @@ textarea.form-control {
      des halos trop intenses juste derriere le texte (titre du hero en haut
      a gauche notamment) reduisaient le contraste du blanc par-dessus - les
      cartes/paragraphes compensent en plus avec un fond plus opaque et un
-     texte plus clair (voir .feature-card, .feature-card-text, etc.). */
+     texte plus clair (voir .feature-card, .feature-card-text, etc.).
+     Fond eclairci (signale par l'utilisateur) : le noir pur (#000000)
+     etait trop sombre pour une lecture confortable - remplace par un
+     bleu-ardoise fonce (#0A1420/#152840) qui garde l'esprit "noir profond"
+     sans etre un noir absolu. */
   background:
-    radial-gradient(ellipse 60% 42% at 10% 6%, rgba(10, 132, 255, 0.22), transparent 65%),
-    radial-gradient(ellipse 52% 46% at 94% 26%, rgba(255, 20, 68, 0.18), transparent 65%),
-    radial-gradient(ellipse 58% 44% at 12% 90%, rgba(10, 132, 255, 0.18), transparent 65%),
-    radial-gradient(ellipse 52% 42% at 92% 96%, rgba(255, 20, 68, 0.15), transparent 65%),
-    linear-gradient(180deg, #000000 0%, #040508 50%, #000000 100%);
+    radial-gradient(ellipse 60% 42% at 10% 6%, rgba(10, 132, 255, 0.26), transparent 65%),
+    radial-gradient(ellipse 52% 46% at 94% 26%, rgba(255, 20, 68, 0.2), transparent 65%),
+    radial-gradient(ellipse 58% 44% at 12% 90%, rgba(10, 132, 255, 0.22), transparent 65%),
+    radial-gradient(ellipse 52% 42% at 92% 96%, rgba(255, 20, 68, 0.18), transparent 65%),
+    linear-gradient(180deg, #0A1420 0%, #152840 50%, #0A1420 100%);
   background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 220%;
   background-position: 0 0, 0 0, 0 0, 0 0, 50% 0%;
   animation: mesh-flow-vertical 24s infinite ease-in-out;
@@ -2044,6 +2048,8 @@ textarea.form-control {
     animation: none;
   }
   .landing-reveal { opacity: 1; transform: none; }
+  .feature-curtain-panel { transition: none; }
+  .feature-stage-sticky { position: static; }
 }
 
 /* Lisere rouge neon fin en tete du CTA final : separation de section
@@ -2063,7 +2069,7 @@ textarea.form-control {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 28px;
-  background: rgba(2, 4, 8, 0.7);
+  background: rgba(10, 18, 30, 0.72);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(10, 132, 255, 0.25);
@@ -2175,10 +2181,10 @@ textarea.form-control {
 .landing-mock-window {
   width: 100%;
   max-width: 420px;
-  background: rgba(2, 5, 10, 0.5);
+  background: rgba(16, 28, 46, 0.55);
   border: 1px solid rgba(10, 132, 255, 0.3);
   border-radius: 16px;
-  box-shadow: 0 0 40px rgba(10, 132, 255, 0.15), 0 24px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 40px rgba(10, 132, 255, 0.15), 0 24px 60px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
 
@@ -2186,7 +2192,7 @@ textarea.form-control {
   display: flex;
   gap: 6px;
   padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(10, 18, 30, 0.35);
   border-bottom: 1px solid rgba(255, 20, 68, 0.25);
 }
 .landing-mock-bar span {
@@ -2248,14 +2254,39 @@ textarea.form-control {
   letter-spacing: -0.3px;
 }
 
-/* Scène "rideau" : une fonctionnalité à la fois, les deux pans se referment
-   au centre pour masquer l'ancienne avant de révéler la suivante — remplace
-   l'ancienne grille statique, trop linéaire (signalé par l'utilisateur). */
+.landing-features-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: -22px;
+  margin-bottom: 28px;
+}
+
+/* Scène "rideau" pilotée par le DÉFILEMENT (signalé par l'utilisateur) :
+   .feature-scroll-track réserve une hauteur de défilement proportionnelle
+   au nombre de fonctionnalités : .feature-stage-sticky y reste fixé à
+   l'écran (position:sticky) pendant qu'on défile à travers, et le JS
+   (_landingOnScroll) change de fonctionnalité selon la position atteinte -
+   jamais un minuteur automatique. Une fonctionnalité à la fois, les deux
+   pans du rideau se referment au centre pour masquer l'ancienne avant de
+   révéler la suivante — remplace l'ancienne grille statique, trop linéaire. */
+.feature-scroll-track {
+  position: relative;
+}
+
+.feature-stage-sticky {
+  position: sticky;
+  top: 14vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .feature-stage {
   position: relative;
+  width: 100%;
   max-width: 640px;
   min-height: 260px;
-  margin: 0 auto;
   border-radius: 16px;
   overflow: hidden;
 }
@@ -2276,7 +2307,7 @@ textarea.form-control {
   bottom: 0;
   width: 52%;
   z-index: 2;
-  background: linear-gradient(135deg, #0B1D33 0%, #000000 100%);
+  background: linear-gradient(135deg, #152840 0%, #0A1420 100%);
   border: 1px solid rgba(255, 20, 68, 0.3);
   transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
   pointer-events: none;
@@ -2327,7 +2358,7 @@ textarea.form-control {
 
 .feature-card {
   position: relative;
-  background: rgba(2, 5, 10, 0.62);
+  background: rgba(16, 28, 46, 0.58);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2401,7 +2432,7 @@ textarea.form-control {
 .landing-visibility-list {
   text-align: left;
   list-style: none;
-  background: rgba(2, 5, 10, 0.62);
+  background: rgba(16, 28, 46, 0.58);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2491,7 +2522,7 @@ textarea.form-control {
 
 .step-card {
   position: relative;
-  background: rgba(2, 5, 10, 0.62);
+  background: rgba(16, 28, 46, 0.58);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2537,7 +2568,7 @@ textarea.form-control {
 }
 
 .why-card {
-  background: rgba(2, 5, 10, 0.62);
+  background: rgba(16, 28, 46, 0.58);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2598,9 +2629,9 @@ textarea.form-control {
   gap: 20px;
   padding: 20px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.65);
   border-top: 1px solid rgba(212, 34, 43, 0.2);
-  background: rgba(2, 4, 8, 0.4);
+  background: rgba(10, 18, 30, 0.45);
 }
 
 .landing-footer a {

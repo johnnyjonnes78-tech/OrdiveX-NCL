@@ -2400,10 +2400,14 @@ window._leaveLanding = function() {
 
 // ── Scène "rideau" des fonctionnalités (page vitrine) ──
 // Signalé par l'utilisateur : la grille statique de fonctionnalités était
-// trop linéaire. Remplacée par une scène qui affiche une fonctionnalité à la
-// fois, l'ancienne étant recouverte par deux pans qui se referment au centre
-// (comme un rideau de théâtre) avant de révéler la suivante — voir
-// _landingGoToFeature plus bas, qui pilote l'ouverture/fermeture en CSS.
+// trop linéaire, puis que le changement de fonctionnalité doit être piloté
+// par le DÉFILEMENT (pas un minuteur automatique). La section occupe une
+// hauteur de défilement proportionnelle au nombre de fonctionnalités
+// (.feature-scroll-track), la scène reste fixée à l'écran pendant qu'on
+// défile (.feature-stage-sticky, position:sticky) et _landingOnScroll
+// calcule la fonctionnalité correspondant à la position de défilement
+// actuelle — l'ancienne étant recouverte par deux pans qui se referment au
+// centre (comme un rideau de théâtre) avant de révéler la suivante.
 function _landingFeatureSlideHTML(f, i) {
   return `
     <div class="feature-card feature-stage-card">
@@ -2418,15 +2422,33 @@ function _landingFeatureSlideHTML(f, i) {
 window._landingFeatureSlideHTML = _landingFeatureSlideHTML;
 
 window._landingFeatureIdx = 0;
-window._landingFeatureTimer = null;
+window._landingFeatureBusy = false;
+window._landingFeaturePendingIdx = null;
 
-function _landingGoToFeature(idx, userTriggered) {
+// Point d'entrée : ignore toute demande vers la fonctionnalité déjà
+// affichée, et met en file la dernière demande reçue si une transition est
+// déjà en cours (le défilement peut déclencher plusieurs appels très vite -
+// jamais empiler les transitions, seule la DERNIÈRE position compte).
+function _landingGoToFeature(idx) {
+  const features = window._landingFeatures || [];
+  if (!features.length) return;
+  idx = Math.max(0, Math.min(features.length - 1, idx));
+  if (idx === window._landingFeatureIdx) return;
+
+  if (window._landingFeatureBusy) {
+    window._landingFeaturePendingIdx = idx;
+    return;
+  }
+  _landingRunFeatureTransition(idx);
+}
+window._landingGoToFeature = _landingGoToFeature;
+
+function _landingRunFeatureTransition(idx) {
   const stage = document.getElementById('feature-stage');
   const content = document.getElementById('feature-stage-content');
   if (!stage || !content) return;
   const features = window._landingFeatures || [];
-  if (!features.length) return;
-  idx = ((idx % features.length) + features.length) % features.length;
+  window._landingFeatureBusy = true;
 
   // Fermeture du rideau (les deux pans glissent vers le centre) puis,
   // UNE FOIS masqué, remplacement du contenu et réouverture — la transition
@@ -2439,16 +2461,51 @@ function _landingGoToFeature(idx, userTriggered) {
     window._landingFeatureIdx = idx;
     document.querySelectorAll('.feature-dot').forEach((d, i) => d.classList.toggle('feature-dot-active', i === idx));
     stage.classList.remove('feature-curtain-closing');
-  }, 520);
+    window._landingFeatureBusy = false;
 
-  if (userTriggered) {
-    clearInterval(window._landingFeatureTimer);
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      window._landingFeatureTimer = setInterval(() => _landingGoToFeature(window._landingFeatureIdx + 1), 5500);
-    }
-  }
+    const pending = window._landingFeaturePendingIdx;
+    window._landingFeaturePendingIdx = null;
+    if (pending !== null && pending !== idx) _landingGoToFeature(pending);
+  }, 520);
 }
-window._landingGoToFeature = _landingGoToFeature;
+
+// Calcule la fonctionnalité correspondant à la position de défilement
+// actuelle dans .feature-scroll-track (0% de progression = 1re
+// fonctionnalité, 100% = dernière).
+function _landingOnScroll() {
+  const track = document.getElementById('feature-scroll-track');
+  if (!track) return;
+  const features = window._landingFeatures || [];
+  if (!features.length) return;
+  const viewportH = window.innerHeight;
+  const trackH = track.offsetHeight;
+  const scrollable = trackH - viewportH;
+  if (scrollable <= 0) return;
+  const scrolledInto = -track.getBoundingClientRect().top;
+  const progress = Math.max(0, Math.min(1, scrolledInto / scrollable));
+  const idx = Math.min(features.length - 1, Math.floor(progress * features.length));
+  _landingGoToFeature(idx);
+}
+window._landingOnScroll = _landingOnScroll;
+
+// Clic sur un point : fait défiler la page jusqu'à la position correspondant
+// à cette fonctionnalité (le contenu suit alors le défilement normalement -
+// on ne change jamais le contenu indépendamment de la position de défilement,
+// sinon le prochain scroll l'écraserait immédiatement).
+function _landingScrollToFeature(idx) {
+  const track = document.getElementById('feature-scroll-track');
+  if (!track) return;
+  const features = window._landingFeatures || [];
+  if (!features.length) return;
+  const viewportH = window.innerHeight;
+  const trackH = track.offsetHeight;
+  const scrollable = trackH - viewportH;
+  if (scrollable <= 0) return;
+  const progress = (idx + 0.5) / features.length;
+  const trackTopAbs = track.getBoundingClientRect().top + window.scrollY;
+  window.scrollTo({ top: trackTopAbs + progress * scrollable, behavior: 'smooth' });
+}
+window._landingScrollToFeature = _landingScrollToFeature;
 
 function renderLanding(container) {
   document.getElementById('app-sidebar')?.style.setProperty('display', 'none');
@@ -2550,13 +2607,18 @@ function renderLanding(container) {
 
       <section id="landing-features" class="landing-features">
         <h2 class="landing-features-title">Une gestion complète, pensée pour les pharmacies</h2>
-        <div class="feature-stage" id="feature-stage">
-          <div class="feature-stage-content" id="feature-stage-content">${_landingFeatureSlideHTML(features[0], 0)}</div>
-          <div class="feature-curtain-panel feature-curtain-left"></div>
-          <div class="feature-curtain-panel feature-curtain-right"></div>
-        </div>
-        <div class="feature-stage-dots">
-          ${features.map((f, i) => `<button type="button" class="feature-dot${i === 0 ? ' feature-dot-active' : ''}" onclick="_landingGoToFeature(${i}, true)" aria-label="${f.title}" title="${f.title}"></button>`).join('')}
+        <p class="landing-features-hint">Défilez pour découvrir chaque fonctionnalité</p>
+        <div class="feature-scroll-track" id="feature-scroll-track" style="height:${features.length * 55}vh">
+          <div class="feature-stage-sticky">
+            <div class="feature-stage" id="feature-stage">
+              <div class="feature-stage-content" id="feature-stage-content">${_landingFeatureSlideHTML(features[0], 0)}</div>
+              <div class="feature-curtain-panel feature-curtain-left"></div>
+              <div class="feature-curtain-panel feature-curtain-right"></div>
+            </div>
+            <div class="feature-stage-dots">
+              ${features.map((f, i) => `<button type="button" class="feature-dot${i === 0 ? ' feature-dot-active' : ''}" onclick="_landingScrollToFeature(${i})" aria-label="${f.title}" title="${f.title}"></button>`).join('')}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2630,12 +2692,20 @@ function renderLanding(container) {
     revealTargets.forEach(el => observer.observe(el));
   }
 
-  // Démarrage de la scène "rideau" des fonctionnalités — un seul minuteur à
-  // la fois (évite d'en accumuler si l'utilisateur revient plusieurs fois
-  // sur la page vitrine).
-  clearInterval(window._landingFeatureTimer);
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    window._landingFeatureTimer = setInterval(() => _landingGoToFeature(window._landingFeatureIdx + 1), 5500);
+  // Scène "rideau" pilotée par le défilement — le minuteur automatique a
+  // été retiré (signalé par l'utilisateur) : le changement de fonctionnalité
+  // doit se produire quand on défile, pas tout seul. Un seul listener de
+  // scroll pour toute la session (pas un par rendu de la page vitrine,
+  // sinon ils s'accumuleraient à chaque retour sur cette page).
+  window._landingFeatureIdx = 0;
+  if (!window._landingScrollListenerAttached) {
+    window._landingScrollListenerAttached = true;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { _landingOnScroll(); ticking = false; });
+    }, { passive: true });
   }
 }
 
