@@ -3254,6 +3254,23 @@ async function autoBackupToStorage() {
     const settings = backup.data.settings || [];
     backup.pharmacy = settings.find(s => s.key === 'pharmacy_name')?.value || 'OrdiveX';
 
+    // Fiabilisation (signalé par l'utilisateur) : sur une pharmacie avec
+    // beaucoup de données (ventes/mouvements accumulés), le backup complet
+    // ci-dessous dépasse régulièrement 4 Mo et est alors silencieusement
+    // ABANDONNÉ (voir plus bas) — la récupération locale des comptes
+    // utilisateurs après une coupure de courant (_recoverUsersFromLocalBackup)
+    // ne fonctionnait donc quasiment jamais sur ces pharmacies précisément,
+    // les plus grosses, pas les petites. La table "users" reste minuscule
+    // (quelques comptes du personnel) quelle que soit la taille du reste de
+    // la base : on la sauvegarde ICI séparément, SANS la limite de taille,
+    // pour qu'elle réussisse systématiquement même quand le backup complet
+    // doit être abandonné.
+    try {
+      localStorage.setItem('pharma_users_backup', JSON.stringify({ users: backup.data.users, savedAt: Date.now() }));
+    } catch (e) {
+      console.warn('[Backup] Échec de la sauvegarde dédiée des utilisateurs:', e);
+    }
+
     // Stocker dans localStorage (backup silencieux)
     const key = `pharma_auto_backup_${new Date().toISOString().split('T')[0]}`;
     const json = JSON.stringify(backup);
@@ -3393,6 +3410,24 @@ function startAutoPull() {
  */
 async function _recoverUsersFromLocalBackup() {
   try {
+    // 1. Sauvegarde dédiée "pharma_users_backup" — toujours à jour (posée à
+    // chaque autoBackupToStorage, SANS la limite de 4 Mo du backup complet),
+    // donc la source la plus fiable sur une pharmacie avec beaucoup de
+    // données, où le backup complet ci-dessous est régulièrement abandonné.
+    try {
+      const dedicated = JSON.parse(localStorage.getItem('pharma_users_backup') || 'null');
+      const dedicatedUsers = dedicated && dedicated.users;
+      if (Array.isArray(dedicatedUsers) && dedicatedUsers.length > 0) {
+        for (const u of dedicatedUsers) {
+          await dbPut('users', u);
+        }
+        console.warn(`[Recovery] ${dedicatedUsers.length} utilisateur(s) restauré(s) depuis la sauvegarde dédiée "pharma_users_backup" (hors ligne, sans réseau).`);
+        return dedicatedUsers.length;
+      }
+    } catch (e) { /* sauvegarde dédiée illisible — se replier sur le backup complet */ }
+
+    // 2. Repli : backup complet (pharmacies dont le volume de données reste
+    // sous la limite de 4 Mo — voir autoBackupToStorage).
     const backupKeys = Object.keys(localStorage)
       .filter(k => k.startsWith('pharma_auto_backup_'))
       .sort().reverse();
