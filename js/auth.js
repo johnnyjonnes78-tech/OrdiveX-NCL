@@ -19,7 +19,25 @@ const Auth = {
     // ciblée et immédiate avant d'abandonner, plutôt que d'afficher un message
     // "identifiant incorrect" trompeur sur un poste dont la base locale est vide.
     if (users.length === 0) {
-      console.warn('[Auth] Aucun utilisateur en base locale — tentative de resynchronisation avant échec du login...');
+      // Fiabilisation (signalé par l'utilisateur) : une coupure de courant
+      // brutale peut corrompre IndexedDB et vider la table "users" locale.
+      // Avant d'exiger une resynchronisation RÉSEAU (qui échoue si la box/le
+      // routeur n'est pas non plus encore revenu après la coupure), on
+      // essaie d'abord une récupération 100% locale depuis la sauvegarde
+      // automatique (localStorage, un stockage distinct — voir
+      // autoBackupToStorage/_recoverUsersFromLocalBackup dans db.js).
+      console.warn('[Auth] Aucun utilisateur en base locale — tentative de récupération locale avant réseau...');
+      try {
+        if (typeof DB._recoverUsersFromLocalBackup === 'function') {
+          await DB._recoverUsersFromLocalBackup();
+        }
+      } catch (e) {
+        console.warn('[Auth] Récupération locale impossible:', e?.message || e);
+      }
+      users = await DB.dbGetAll('users');
+    }
+    if (users.length === 0) {
+      console.warn('[Auth] Toujours aucun utilisateur après récupération locale — tentative de resynchronisation réseau avant échec du login...');
       try {
         if (typeof DB._internalPullFromSupabase === 'function') {
           await DB._internalPullFromSupabase(true);

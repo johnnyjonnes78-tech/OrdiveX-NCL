@@ -1287,7 +1287,14 @@ window.addEventListener('pagehide', _flushSyncOnBackground);
 // Used exclusively by syncToSupabase to mark items as synced
 function _dbPutRaw(storeName, data) {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
+    // Fiabilisation (signalé par l'utilisateur) : durability 'strict' force le
+    // navigateur à attendre que l'écriture soit réellement descendue sur le
+    // disque avant de considérer la transaction commitée (au lieu du défaut
+    // 'relaxed', qui peut la laisser en cache quelques instants pour la
+    // performance) — réduit la fenêtre où une coupure de courant brutale peut
+    // corrompre IndexedDB. Sans effet sur les navigateurs qui ne reconnaissent
+    // pas encore cette option (ignorée silencieusement, aucune erreur).
+    const tx = db.transaction(storeName, 'readwrite', { durability: 'strict' });
     const store = tx.objectStore(storeName);
     const req = store.put(data);
     req.onsuccess = () => resolve(req.result);
@@ -1357,7 +1364,7 @@ async function _syncProductExpiryToLots(productId, expiryDate) {
   try {
     if (window._isSyncingExpiry) return;
     window._isSyncingExpiry = true;
-    const tx = db.transaction('lots', 'readwrite');
+    const tx = db.transaction('lots', 'readwrite', { durability: 'strict' });
     const store = tx.objectStore('lots');
     const req = store.openCursor();
     req.onsuccess = (event) => {
@@ -1412,7 +1419,7 @@ function _syncLotExpiryToProduct(productId) {
             ? allDates.sort((a, b) => new Date(a) - new Date(b))[0]
             : null;
           // Mettre a jour products.expiryDate avec cette valeur
-          const txP = db.transaction('products', 'readwrite');
+          const txP = db.transaction('products', 'readwrite', { durability: 'strict' });
           const storeP = txP.objectStore('products');
           const reqP = storeP.get(productId);
           reqP.onsuccess = () => {
@@ -1483,7 +1490,14 @@ async function dbAdd(storeName, data) {
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
     try {
-      const tx = db.transaction(storeName, 'readwrite');
+      // Fiabilisation (signalé par l'utilisateur) : durability 'strict' force le
+    // navigateur à attendre que l'écriture soit réellement descendue sur le
+    // disque avant de considérer la transaction commitée (au lieu du défaut
+    // 'relaxed', qui peut la laisser en cache quelques instants pour la
+    // performance) — réduit la fenêtre où une coupure de courant brutale peut
+    // corrompre IndexedDB. Sans effet sur les navigateurs qui ne reconnaissent
+    // pas encore cette option (ignorée silencieusement, aucune erreur).
+    const tx = db.transaction(storeName, 'readwrite', { durability: 'strict' });
       const store = tx.objectStore(storeName);
       const req = store.add({ ...data, _createdAt: Date.now(), _updatedAt: Date.now(), _synced: false });
       req.onsuccess = () => {
@@ -1520,7 +1534,14 @@ async function dbPut(storeName, data) {
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
     try {
-      const tx = db.transaction(storeName, 'readwrite');
+      // Fiabilisation (signalé par l'utilisateur) : durability 'strict' force le
+    // navigateur à attendre que l'écriture soit réellement descendue sur le
+    // disque avant de considérer la transaction commitée (au lieu du défaut
+    // 'relaxed', qui peut la laisser en cache quelques instants pour la
+    // performance) — réduit la fenêtre où une coupure de courant brutale peut
+    // corrompre IndexedDB. Sans effet sur les navigateurs qui ne reconnaissent
+    // pas encore cette option (ignorée silencieusement, aucune erreur).
+    const tx = db.transaction(storeName, 'readwrite', { durability: 'strict' });
       const store = tx.objectStore(storeName);
       const req = store.put({ ...data, _updatedAt: Date.now(), _synced: false });
       req.onsuccess = () => {
@@ -1744,7 +1765,14 @@ async function dbDelete(storeName, id) {
   _invalidateCache(storeName);
   return new Promise((resolve, reject) => {
     try {
-      const tx = db.transaction(storeName, 'readwrite');
+      // Fiabilisation (signalé par l'utilisateur) : durability 'strict' force le
+    // navigateur à attendre que l'écriture soit réellement descendue sur le
+    // disque avant de considérer la transaction commitée (au lieu du défaut
+    // 'relaxed', qui peut la laisser en cache quelques instants pour la
+    // performance) — réduit la fenêtre où une coupure de courant brutale peut
+    // corrompre IndexedDB. Sans effet sur les navigateurs qui ne reconnaissent
+    // pas encore cette option (ignorée silencieusement, aucune erreur).
+    const tx = db.transaction(storeName, 'readwrite', { durability: 'strict' });
       const store = tx.objectStore(storeName);
       const req = store.delete(id);
       req.onsuccess = () => {
@@ -1849,7 +1877,14 @@ async function dbBulkPut(storeName, dataArray) {
   _invalidateCache(storeName);
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
+    // Fiabilisation (signalé par l'utilisateur) : durability 'strict' force le
+    // navigateur à attendre que l'écriture soit réellement descendue sur le
+    // disque avant de considérer la transaction commitée (au lieu du défaut
+    // 'relaxed', qui peut la laisser en cache quelques instants pour la
+    // performance) — réduit la fenêtre où une coupure de courant brutale peut
+    // corrompre IndexedDB. Sans effet sur les navigateurs qui ne reconnaissent
+    // pas encore cette option (ignorée silencieusement, aucune erreur).
+    const tx = db.transaction(storeName, 'readwrite', { durability: 'strict' });
     const store = tx.objectStore(storeName);
     let count = 0;
     const rejected = []; // {item, error} — enregistrements individuellement rejetés (ex: ConstraintError sur un code dupliqué)
@@ -1918,7 +1953,7 @@ async function dbTransactionBulk(operations) {
   storeNames.forEach(s => _invalidateCache(s));
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeNames, 'readwrite');
+    const tx = db.transaction(storeNames, 'readwrite', { durability: 'strict' });
     const results = new Array(operations.length);
     const now = Date.now();
 
@@ -2764,7 +2799,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
         }
         // Écriture
         await new Promise(function (resolve, reject) {
-          var tx2 = db.transaction(storeName, 'readwrite');
+          var tx2 = db.transaction(storeName, 'readwrite', { durability: 'strict' });
           var store2 = tx2.objectStore(storeName);
           for (var i = 0; i < prepared.length; i++) {
             (function (item, kv) {
@@ -2810,7 +2845,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
         for (var start = 0; start < prepared.length; start += CHUNK) {
           var chunk = prepared.slice(start, start + CHUNK);
           await new Promise(function (resolve, reject) {
-            var tx2 = db.transaction(storeName, 'readwrite');
+            var tx2 = db.transaction(storeName, 'readwrite', { durability: 'strict' });
             var store2 = tx2.objectStore(storeName);
             for (var i = 0; i < chunk.length; i++) {
               (function (item, kv) {
@@ -3336,6 +3371,52 @@ function startAutoPull() {
 }
 
 /**
+ * RÉCUPÉRATION CIBLÉE DES UTILISATEURS DEPUIS UNE SAUVEGARDE LOCALE
+ *
+ * Fiabilisation (signalé par l'utilisateur) : une coupure de courant brutale
+ * peut corrompre IndexedDB (écriture interrompue en plein milieu — voir aussi
+ * durability:'strict' ajouté sur toutes les transactions d'écriture, qui
+ * réduit le RISQUE que ça arrive, mais ne peut pas le garantir à 100%, c'est
+ * en partie un risque matériel/OS hors de portée du JS). Si la table "users"
+ * locale se retrouve vide après coup, Auth.login() exigeait jusqu'ici une
+ * resynchronisation RÉSEAU avant d'abandonner — si le réseau (routeur/box)
+ * n'est pas non plus encore revenu après la coupure, la connexion restait
+ * bloquée malgré des identifiants corrects.
+ *
+ * autoBackupToStorage() (démarrage + toutes les 30 min) garde déjà une copie
+ * de secours de TOUTES les tables dans localStorage, un stockage distinct
+ * d'IndexedDB. On restaure ICI uniquement la table "users" depuis la
+ * sauvegarde la plus récente — jamais les autres tables, pour ne jamais
+ * écraser des ventes/mouvements plus récents que cette sauvegarde avec un
+ * restoreFromBackup() complet, qui lui est un outil bien plus lourd
+ * (confirmation, wipe total) réservé à une action explicite de l'admin.
+ */
+async function _recoverUsersFromLocalBackup() {
+  try {
+    const backupKeys = Object.keys(localStorage)
+      .filter(k => k.startsWith('pharma_auto_backup_'))
+      .sort().reverse();
+    for (const key of backupKeys) {
+      try {
+        const backup = JSON.parse(localStorage.getItem(key) || 'null');
+        const users = backup && backup.data && backup.data.users;
+        if (Array.isArray(users) && users.length > 0) {
+          for (const u of users) {
+            await dbPut('users', u);
+          }
+          console.warn(`[Recovery] ${users.length} utilisateur(s) restauré(s) depuis la sauvegarde locale "${key}" (hors ligne, sans réseau).`);
+          return users.length;
+        }
+      } catch (e) { /* sauvegarde illisible — essayer la suivante */ }
+    }
+    return 0;
+  } catch (e) {
+    console.warn('[Recovery] Échec de la récupération locale:', e?.message || e);
+    return 0;
+  }
+}
+
+/**
  * RESTAURATION SÉCURISÉE "ZERO LOSS"
  * Procédure : Backup de secours auto -> Backup localStorage -> Wipe -> Restore -> Audit
  */
@@ -3373,7 +3454,7 @@ async function restoreFromBackup(backupData) {
     const db = await initDB();
     for (const storeName of storesToClear) {
       await new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
+        const transaction = db.transaction([storeName], 'readwrite', { durability: 'strict' });
         const store = transaction.objectStore(storeName);
         const request = store.clear();
         request.onsuccess = () => resolve();
@@ -3504,7 +3585,7 @@ async function checkStorageHealth() {
   }
 }
 
-const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _generateSyncSafeId, detectOrphanSales, checkStorageHealth };
+const _DBExports = { initDB, dbAdd, dbPut, dbBulkPut, dbTransactionBulk, dbGet, dbGetAll, dbGetRecent, dbGetByKey, dbSearchProducts, dbCountProducts, dbDelete, dbCount, dbStockValue, writeAudit, seedDemoData, syncToSupabase, pullFromSupabase, _internalSyncToSupabase, _internalPullFromSupabase, resetSupabaseClient, forceSyncAll, trackInstallation, getSupabaseClient, STORES, AppState, doBackup, startAutoBackup, startAutoPull, autoBackupToStorage, restoreFromBackup, _recoverUsersFromLocalBackup, _generateSyncSafeId, detectOrphanSales, checkStorageHealth };
 Object.defineProperty(_DBExports, '_isPulling', { get: () => _isPulling });
 Object.defineProperty(_DBExports, '_isSystemOp', { get: () => _isSystemOp, set: (v) => { _isSystemOp = !!v; } });
 // Lot 6 hardening : expose la dernière erreur IndexedDB classifiée (voir
