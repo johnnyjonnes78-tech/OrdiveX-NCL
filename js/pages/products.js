@@ -209,6 +209,7 @@ async function renderProducts(container) {
           <button class="btn btn-secondary" onclick="exportProductsPDF()"><i data-lucide="printer"></i> PDF</button>
           <button class="btn btn-secondary" onclick="exportProducts()"><i data-lucide="download"></i> CSV</button>
         ` : ''}
+        ${Auth.can('products_create') ? `<button class="btn btn-secondary" onclick="showBulkProductEntry()"><i data-lucide="table"></i> Saisie Rapide</button>` : ''}
         ${Auth.can('products_create') ? `<button class="btn btn-primary" onclick="showAddProduct()"><i data-lucide="plus"></i> Nouveau Produit</button>` : ''}
       </div>
     </div>
@@ -1366,6 +1367,216 @@ async function submitProduct() {
     UI.toast('Erreur : ' + (err.message.includes('unique') ? 'Ce code produit existe déjà' : err.message), 'error');
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// SAISIE RAPIDE EN MASSE — pour une pharmacie qui démarre sans logiciel et
+// doit entrer tout son catalogue d'un coup, plus vite qu'un formulaire répété.
+// Grille type tableur : Nom/Prix de vente/Quantité/Date de péremption sont
+// seuls obligatoires (les autres colonnes restent de simples colonnes
+// optionnelles) ; le collage multi-cellules (Tab/retour à la ligne, comme un
+// copier-coller Excel) distribue directement le contenu dans la grille.
+// ═══════════════════════════════════════════════════════════════════════
+
+window._bulkRowCounter = 0;
+
+function _bulkProductRowHTML(idx) {
+  return `
+    <tr id="bulk-row-${idx}">
+      <td class="bulk-rownum">${idx + 1}</td>
+      <td><input type="text" class="form-control bulk-cell" data-col="name" data-idx="${idx}" placeholder="Paracétamol 500mg"></td>
+      <td><input type="text" class="form-control bulk-cell" data-col="dci" data-idx="${idx}" placeholder="Paracétamol"></td>
+      <td><input type="text" class="form-control bulk-cell" data-col="dosage" data-idx="${idx}" placeholder="500mg"></td>
+      <td><input type="text" class="form-control bulk-cell" data-col="form" data-idx="${idx}" placeholder="Comprimé"></td>
+      <td><input type="text" class="form-control bulk-cell" data-col="category" data-idx="${idx}" list="bulk-cat-list" placeholder="Catégorie"></td>
+      <td><input type="number" class="form-control bulk-cell" data-col="purchasePrice" data-idx="${idx}" min="0" placeholder="0"></td>
+      <td><input type="number" class="form-control bulk-cell" data-col="salePrice" data-idx="${idx}" min="0" placeholder="0"></td>
+      <td><input type="number" class="form-control bulk-cell" data-col="quantity" data-idx="${idx}" min="0" placeholder="0"></td>
+      <td><input type="date" class="form-control bulk-cell" data-col="expiryDate" data-idx="${idx}"></td>
+      <td><input type="text" class="form-control bulk-cell" data-col="lotNumber" data-idx="${idx}" placeholder="(optionnel)"></td>
+      <td><button type="button" class="btn btn-xs btn-ghost" onclick="_bulkRemoveProductRow(${idx})" title="Supprimer la ligne"><i data-lucide="x"></i></button></td>
+    </tr>`;
+}
+
+function showBulkProductEntry() {
+  window._bulkRowCounter = 0;
+  const ROWS_INITIAL = 8;
+  let rowsHTML = '';
+  for (let i = 0; i < ROWS_INITIAL; i++) { rowsHTML += _bulkProductRowHTML(window._bulkRowCounter++); }
+
+  UI.modal('<i data-lucide="table" class="modal-icon-inline"></i> Saisie Rapide — Produits en masse', `
+    <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+      Champs obligatoires : <strong>Nom</strong>, <strong>Prix de vente</strong>, <strong>Quantité</strong>, <strong>Date de péremption</strong>.
+      Les autres colonnes sont facultatives. Vous pouvez coller plusieurs lignes copiées depuis un tableur (Excel, Google Sheets) directement dans une cellule.
+    </p>
+    ${_buildCategoryDatalist('bulk-cat-list')}
+    <div style="overflow-x:auto; max-height:55vh;">
+      <table class="data-table" id="bulk-products-table" style="min-width:1100px">
+        <thead>
+          <tr>
+            <th style="width:30px">#</th>
+            <th style="min-width:160px">Nom *</th>
+            <th style="min-width:120px">DCI</th>
+            <th style="min-width:90px">Dosage</th>
+            <th style="min-width:110px">Forme</th>
+            <th style="min-width:130px">Catégorie</th>
+            <th style="min-width:100px">Prix Achat</th>
+            <th style="min-width:100px">Prix Vente *</th>
+            <th style="min-width:90px">Quantité *</th>
+            <th style="min-width:130px">Expiration *</th>
+            <th style="min-width:100px">N° Lot</th>
+            <th style="width:30px"></th>
+          </tr>
+        </thead>
+        <tbody id="bulk-products-tbody">${rowsHTML}</tbody>
+      </table>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="_bulkAddProductRow()"><i data-lucide="plus"></i> Ajouter une ligne</button>
+  `, {
+    size: 'large',
+    footer: `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="submitBulkProducts()"><i data-lucide="check"></i> Enregistrer tout</button>
+    `
+  });
+
+  if (window.lucide) lucide.createIcons();
+  document.getElementById('bulk-products-tbody')?.addEventListener('paste', _bulkHandlePaste);
+}
+
+function _bulkAddProductRow() {
+  const tbody = document.getElementById('bulk-products-tbody');
+  if (!tbody) return;
+  tbody.insertAdjacentHTML('beforeend', _bulkProductRowHTML(window._bulkRowCounter++));
+  if (window.lucide) lucide.createIcons();
+}
+window._bulkAddProductRow = _bulkAddProductRow;
+
+function _bulkRemoveProductRow(idx) {
+  document.getElementById(`bulk-row-${idx}`)?.remove();
+}
+window._bulkRemoveProductRow = _bulkRemoveProductRow;
+
+// Colonnes dans l'ordre d'affichage — sert à distribuer un collage multi-
+// cellules à partir de la cellule ciblée, exactement comme un tableur.
+const _BULK_COLUMNS = ['name', 'dci', 'dosage', 'form', 'category', 'purchasePrice', 'salePrice', 'quantity', 'expiryDate', 'lotNumber'];
+
+function _bulkHandlePaste(event) {
+  const target = event.target;
+  if (!target.classList || !target.classList.contains('bulk-cell')) return;
+  const text = (event.clipboardData || window.clipboardData)?.getData('text') || '';
+  // Un collage d'une seule cellule (pas de tabulation ni de retour à la
+  // ligne) : laisser le comportement natif du navigateur gérer ce cas simple.
+  if (!text.includes('\t') && !text.includes('\n')) return;
+  event.preventDefault();
+
+  const startIdx = parseInt(target.dataset.idx, 10);
+  const startColPos = _BULK_COLUMNS.indexOf(target.dataset.col);
+  if (startColPos === -1) return;
+
+  const rows = text.replace(/\r/g, '').split('\n').filter((r, i, arr) => !(i === arr.length - 1 && r === ''));
+  rows.forEach((rowText, rOffset) => {
+    const cells = rowText.split('\t');
+    let rowIdx = startIdx + rOffset;
+    // Créer les lignes manquantes au fur et à mesure du collage.
+    while (!document.getElementById(`bulk-row-${rowIdx}`)) {
+      if (rowIdx > startIdx + rows.length + 50) return; // garde-fou anti-boucle infinie
+      _bulkAddProductRow();
+    }
+    cells.forEach((cellText, cOffset) => {
+      const colPos = startColPos + cOffset;
+      if (colPos >= _BULK_COLUMNS.length) return;
+      const col = _BULK_COLUMNS[colPos];
+      const input = document.querySelector(`#bulk-row-${rowIdx} [data-col="${col}"]`);
+      if (input) input.value = cellText.trim();
+    });
+  });
+}
+
+async function submitBulkProducts() {
+  const rows = Array.from(document.querySelectorAll('#bulk-products-tbody tr'));
+  const entries = [];
+  const errors = [];
+
+  rows.forEach((tr, displayIdx) => {
+    const get = (col) => tr.querySelector(`[data-col="${col}"]`)?.value?.trim() || '';
+    const name = get('name');
+    // Ligne entièrement vide : ignorée silencieusement (grille toujours
+    // fournie avec plus de lignes que nécessaire).
+    if (!name && !get('quantity') && !get('salePrice') && !get('expiryDate')) return;
+
+    const rowLabel = `Ligne ${displayIdx + 1}`;
+    if (!name) errors.push(`${rowLabel} : le nom est obligatoire.`);
+    const salePrice = parseFloat(get('salePrice'));
+    if (!get('salePrice') || isNaN(salePrice) || salePrice <= 0) errors.push(`${rowLabel} : le prix de vente est obligatoire et doit être > 0.`);
+    const quantity = parseInt(get('quantity'), 10);
+    if (get('quantity') === '' || isNaN(quantity) || quantity < 0) errors.push(`${rowLabel} : la quantité est obligatoire.`);
+    const expiryDate = get('expiryDate');
+    if (!expiryDate) errors.push(`${rowLabel} : la date de péremption est obligatoire.`);
+
+    entries.push({
+      name, dci: get('dci'), dosage: get('dosage'), form: get('form'), category: get('category'),
+      purchasePrice: parseFloat(get('purchasePrice') || 0), salePrice, quantity, expiryDate,
+      lotNumber: get('lotNumber'),
+    });
+  });
+
+  if (entries.length === 0) {
+    UI.toast('Aucune ligne à enregistrer — remplissez au moins une ligne.', 'warning');
+    return;
+  }
+  if (errors.length > 0) {
+    UI.toast(errors.slice(0, 6).join('\n') + (errors.length > 6 ? `\n… et ${errors.length - 6} autre(s) erreur(s).` : ''), 'error', 8000);
+    return;
+  }
+
+  const existingProducts = await DB.dbGetAll('products');
+  let codeCounter = existingProducts.length;
+  const today = new Date().toISOString().split('T')[0];
+  let created = 0;
+
+  try {
+    for (const e of entries) {
+      codeCounter++;
+      const productId = await DB.dbAdd('products', {
+        code: 'P' + String(codeCounter).padStart(4, '0'),
+        name: UI.normalizeText(e.name),
+        dci: e.dci ? UI.normalizeText(e.dci) : '',
+        dosage: e.dosage || '',
+        form: e.form ? UI.normalizeText(e.form) : '',
+        category: e.category ? UI.normalizeText(e.category) : 'Non classé',
+        purchasePrice: e.purchasePrice,
+        salePrice: e.salePrice,
+        minStock: _defaultMinStock(),
+        requiresPrescription: false,
+        expiryDate: e.expiryDate,
+        status: 'active',
+      });
+      await DB.dbAdd('stock', { productId, quantity: e.quantity, reservedQuantity: 0, lastUpdated: Date.now() });
+      await DB.dbAdd('lots', {
+        productId, lotNumber: e.lotNumber || '', expiryDate: e.expiryDate,
+        quantity: e.quantity, initialQuantity: e.quantity,
+        receiptDate: today, status: 'active',
+        purchasePrice: e.purchasePrice || undefined, salePrice: e.salePrice,
+      });
+      await DB.dbAdd('movements', {
+        id: await DB._generateSyncSafeId(),
+        productId, type: 'ENTRY', subType: 'INITIAL_STOCK', quantity: e.quantity,
+        date: today, userId: DB.AppState.currentUser?.id,
+        note: 'Saisie rapide — stock initial',
+      });
+      created++;
+    }
+    await DB.writeAudit('BULK_ADD_PRODUCTS', 'products', null, { count: created });
+    UI.closeModal();
+    UI.toast(`${created} produit(s) créé(s) avec leur stock initial`, 'success');
+    Router.navigate('products');
+  } catch (err) {
+    UI.toast(`Erreur après ${created} produit(s) créé(s) : ${err.message}`, 'error', 8000);
+    if (created > 0) Router.navigate('products');
+  }
+}
+window.showBulkProductEntry = showBulkProductEntry;
+window.submitBulkProducts = submitBulkProducts;
 
 async function editProductForm(id) {
   const p = await DB.dbGet('products', id);
