@@ -1693,6 +1693,25 @@ textarea.form-control {
   border-color: var(--primary);
 }
 
+.login-repair-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px;
+  background: none;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.login-repair-link i { width: 14px; height: 14px; }
+.login-repair-link:hover { color: var(--primary); }
+
 .login-footer-elite {
   display: flex;
   align-items: center;
@@ -1967,6 +1986,55 @@ textarea.form-control {
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-page { animation: none; }
+}
+
+/* ── Animation d'introduction au chargement ──
+   La page ne doit jamais s'afficher d'un bloc : nav puis titre, accroche,
+   detail, bouton et visuel entrent en cascade, chacun avec son propre
+   delai - ca "introduit" la page au lieu de la montrer brutalement. Classes
+   ciblees (pas .landing-cta seul) pour ne jamais rejouer sur le bouton de
+   la section finale, deja visible depuis longtemps quand on y defile. */
+@keyframes landingIntro {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.landing-nav,
+.landing-hero-text .landing-title,
+.landing-hero-text .landing-tagline,
+.landing-hero-text .landing-tagline-sub,
+.landing-hero-text .landing-cta,
+.landing-hero-visual {
+  opacity: 0;
+  animation: landingIntro 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.landing-nav { animation-delay: 0s; }
+.landing-hero-text .landing-title { animation-delay: 0.12s; }
+.landing-hero-text .landing-tagline { animation-delay: 0.26s; }
+.landing-hero-text .landing-tagline-sub { animation-delay: 0.38s; }
+.landing-hero-text .landing-cta { animation-delay: 0.5s; }
+.landing-hero-visual { animation-delay: 0.3s; }
+
+/* ── Revelation au defilement (sections sous la ligne de flottaison) ── */
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing-reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-nav,
+  .landing-hero-text .landing-title,
+  .landing-hero-text .landing-tagline,
+  .landing-hero-text .landing-tagline-sub,
+  .landing-hero-text .landing-cta,
+  .landing-hero-visual {
+    opacity: 1;
+    animation: none;
+  }
+  .landing-reveal { opacity: 1; transform: none; }
 }
 
 /* Lisere rouge neon fin en tete du CTA final : separation de section
@@ -2315,6 +2383,99 @@ textarea.form-control {
 
 .pillar-card p {
   font-size: 13.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.landing-start-steps {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 28px 64px;
+}
+
+.landing-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.step-card {
+  position: relative;
+  background: rgba(2, 5, 10, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 26px 22px 22px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.step-card:hover {
+  border-color: rgba(255, 20, 68, 0.4);
+  box-shadow: 0 0 26px rgba(255, 20, 68, 0.16);
+  transform: translateY(-3px);
+}
+.step-card-num {
+  display: inline-block;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--landing-red-bright);
+  text-shadow: 0 0 16px rgba(255, 20, 68, 0.5);
+  margin-bottom: 10px;
+}
+.step-card h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.step-card p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.landing-why-us {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 28px 64px;
+}
+
+.landing-why-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.why-card {
+  background: rgba(2, 5, 10, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px 22px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.why-card:hover {
+  border-color: rgba(10, 132, 255, 0.5);
+  box-shadow: 0 0 30px rgba(10, 132, 255, 0.25);
+  transform: translateY(-3px);
+}
+.why-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: rgba(10, 132, 255, 0.16);
+  border: 1px solid rgba(10, 132, 255, 0.4);
+  color: var(--landing-blue-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.why-card h3 {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
+}
+.why-card p {
+  font-size: 13px;
   line-height: 1.6;
   color: rgba(255, 255, 255, 0.75);
 }

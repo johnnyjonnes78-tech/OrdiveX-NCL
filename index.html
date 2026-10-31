@@ -753,19 +753,19 @@
       banner.id = 'ordivex-update-banner';
       banner.innerHTML = `
         <div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;animation:slideUpBanner 0.5s cubic-bezier(0.16,1,0.3,1) forwards">
-          <div style="max-width:600px;margin:0 auto 20px;padding:20px 24px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:16px;backdrop-filter:blur(20px);margin-left:16px;margin-right:16px">
-            <div style="flex-shrink:0;width:48px;height:48px;background:linear-gradient(135deg,#10b981,#059669);border-radius:12px;display:flex;align-items:center;justify-content:center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+          <div style="max-width:640px;margin:0 auto 20px;padding:22px 26px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,0.5),0 0 0 1px rgba(16,185,129,0.25);border:1px solid rgba(16,185,129,0.35);display:flex;align-items:center;gap:16px;backdrop-filter:blur(20px);margin-left:16px;margin-right:16px">
+            <div style="flex-shrink:0;width:52px;height:52px;background:linear-gradient(135deg,#10b981,#059669);border-radius:13px;display:flex;align-items:center;justify-content:center;animation:updatePulse 2.2s infinite ease-in-out">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
             </div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:2px">OrdiveX ${versionLabel} disponible</div>
+              <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:2px">Mise à jour OrdiveX ${versionLabel} disponible</div>
               <div style="font-size:12px;color:#94a3b8;line-height:1.4">${changelog || 'Nouvelles fonctionnalités et améliorations de performance.'}</div>
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0">
               <button onclick="_dismissUpdateBanner('${remoteVersion || ''}')" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s">Plus tard</button>
-              <button onclick="_applyUpdate()" style="padding:8px 18px;border-radius:10px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(16,185,129,0.3);transition:all 0.2s;display:flex;align-items:center;gap:6px">
+              <button onclick="_applyUpdate()" style="padding:9px 20px;border-radius:10px;border:none;background:linear-gradient(135deg,#10b981,#059669);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(16,185,129,0.5);transition:all 0.2s;display:flex;align-items:center;gap:6px">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                Installer
+                Installer maintenant
               </button>
             </div>
           </div>
@@ -774,6 +774,10 @@
           @keyframes slideUpBanner {
             from { transform: translateY(100%); opacity: 0; }
             to   { transform: translateY(0); opacity: 1; }
+          }
+          @keyframes updatePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+            50%      { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
           }
         </style>
       `;
@@ -831,22 +835,29 @@
     }
     window._dismissUpdateBanner = _dismissUpdateBanner;
 
-    // ── Vérification proactive au chargement (toutes les 30 min après) ──
+    // ── Vérification proactive au chargement, puis fréquemment ──
+    // Fiabilisation (signalé par l'utilisateur) : une mise à jour disponible
+    // ne doit "pas tarder" à se faire connaître — l'ancien délai de 30 min
+    // pouvait laisser un poste tourner toute une session sur une version
+    // obsolète sans jamais être notifié. Vérification ramenée à 3 min, plus
+    // une vérification immédiate supplémentaire chaque fois que l'onglet
+    // redevient visible ou que la connexion revient (cas typique après une
+    // coupure de courant/réseau) — ces deux évènements ne coïncident pas
+    // forcément avec le prochain tic de l'intervalle.
+    function _checkForUpdateNow() {
+      if (!('serviceWorker' in navigator)) return;
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) { try { reg.update(); } catch (e) { console.warn('[SW] Update skipped:', e); } }
+      }).catch(() => { });
+    }
     window.addEventListener('load', () => {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(reg => {
-          if (reg && reg.active) {
-            try { reg.update(); } catch (e) { console.warn('[SW] Update skipped:', e); }
-          }
-        }).catch(() => { });
-
-        // Revérifier toutes les 30 min
-        setInterval(() => {
-          navigator.serviceWorker.getRegistration().then(reg => {
-            if (reg) { try { reg.update(); } catch(e) {} }
-          }).catch(() => {});
-        }, 30 * 60 * 1000);
-      }
+      if (!('serviceWorker' in navigator)) return;
+      _checkForUpdateNow();
+      setInterval(_checkForUpdateNow, 3 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') _checkForUpdateNow();
+      });
+      window.addEventListener('online', _checkForUpdateNow);
     });
     document.addEventListener('keydown', e => {
       if (!DB.AppState.currentUser) return;

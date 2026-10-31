@@ -54,8 +54,11 @@ function renderLogin(container) {
             </button>
           </form>
 
+          <button type="button" class="login-repair-link" onclick="repairAppState()">
+            <i data-lucide="life-buoy"></i> Un problème de connexion ? Réparer l'application
+          </button>
         </div>
-        
+
         <div class="login-footer-elite">
           <span class="version-tag">OrdiveX v${window.APP_VERSION || '9.8.6'}</span>
           <div class="network-tag ${(window.NM ? window.NM.isOnline() : navigator.onLine) ? 'online' : 'offline'}">
@@ -165,6 +168,134 @@ async function handleLogin(event) {
     if (window.lucide) lucide.createIcons();
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// RÉPARATION DE L'APPLICATION (depuis l'écran de connexion)
+//
+// Signalé par l'utilisateur : certaines pharmacies, après une coupure de
+// courant brutale, ne pouvaient plus se connecter même avec les bons
+// identifiants (table "users" locale vide côté IndexedDB — voir
+// _recoverUsersFromLocalBackup/durability:'strict' dans db.js, qui réduisent
+// déjà le risque mais ne le garantissent pas à 100%, en partie un risque
+// matériel/OS hors de portée du JS). Ce bouton donne au personnel un moyen
+// VISIBLE d'agir lui-même sans attendre le support : récupération locale
+// depuis la sauvegarde, vérification de version applicative, puis
+// resynchronisation complète avec le serveur — avec une vraie barre de
+// progression (même mécanisme onProgress que la restauration d'onboarding),
+// jamais une simple animation cosmétique.
+// ═══════════════════════════════════════════════════════════════════
+
+const _REPAIR_STORE_NAMES = {
+  users: 'Utilisateurs', settings: 'Paramètres généraux', products: 'Catalogue des médicaments',
+  lots: 'Lots et péremptions', stock: 'Niveaux de stock', movements: 'Historique des mouvements',
+  suppliers: 'Fournisseurs', purchaseOrders: 'Bons de commande', sales: 'Historique des ventes',
+  saleItems: 'Détails des ventes', patients: 'Fiches patients', prescriptions: 'Ordonnances',
+  alerts: 'Alertes', cashRegister: 'Sessions de caisse', returns: 'Retours produits',
+  invoices: 'Factures tiers-payant', shifts: 'Planning & Présences',
+  insurances: 'Organismes d\'assurance', insurancePayments: 'Règlements mutuelles',
+  prep_transfers: 'File de préparation', auditLog: 'Journal d\'audit',
+};
+
+async function repairAppState() {
+  UI.modal('<i data-lucide="life-buoy" class="modal-icon-inline"></i> Réparation de l\'application', `
+    <div style="text-align:center; padding:6px 0 10px;">
+      <div id="repair-spinner" style="width:52px;height:52px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:repairSpin 1s linear infinite;margin:0 auto 16px"></div>
+      <p id="repair-status" style="color:var(--text); font-weight:600; font-size:14px; margin-bottom:10px; min-height:20px">Vérification de l'état local...</p>
+      <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:10px 0 14px">
+        <div id="repair-progress-bar" style="width:4%;height:100%;background:var(--primary);transition:width 0.3s ease"></div>
+      </div>
+      <p id="repair-detail" style="color:var(--text-muted); font-size:12.5px; line-height:1.5">Aucune donnée n'est supprimée — cette action tente une récupération locale, puis une resynchronisation complète avec le serveur.</p>
+    </div>
+    <style>@keyframes repairSpin { to { transform: rotate(360deg); } }</style>
+  `, { footer: '' });
+  if (window.lucide) lucide.createIcons();
+
+  const setStatus = (msg) => { const el = document.getElementById('repair-status'); if (el) el.textContent = msg; };
+  const setDetail = (msg) => { const el = document.getElementById('repair-detail'); if (el) el.textContent = msg; };
+  const setProgress = (pct) => { const el = document.getElementById('repair-progress-bar'); if (el) el.style.width = Math.min(100, Math.max(0, pct)) + '%'; };
+  const stopSpinner = () => { const el = document.getElementById('repair-spinner'); if (el) el.style.display = 'none'; };
+
+  const finish = (ok) => {
+    stopSpinner();
+    const footer = document.querySelector('.modal-footer');
+    if (!footer) return;
+    footer.innerHTML = `
+      <button class="btn btn-secondary" onclick="UI.closeModal()">Fermer</button>
+      <button class="btn btn-primary" onclick="window.location.reload()"><i data-lucide="refresh-cw"></i> Recharger l'application</button>
+    `;
+    if (window.lucide) lucide.createIcons();
+  };
+
+  try {
+    setStatus('Vérification de l\'état local...');
+    setProgress(5);
+    let users = await DB.dbGetAll('users').catch(() => []);
+
+    if (users.length === 0) {
+      setStatus('Récupération depuis la sauvegarde locale...');
+      setProgress(15);
+      if (typeof DB._recoverUsersFromLocalBackup === 'function') {
+        await DB._recoverUsersFromLocalBackup().catch(() => {});
+      }
+      users = await DB.dbGetAll('users').catch(() => []);
+    }
+
+    const isOnline = (window.NM ? window.NM.isOnline() : navigator.onLine);
+    if (!isOnline) {
+      setProgress(100);
+      setStatus(users.length > 0 ? 'Récupération locale réussie.' : 'Hors ligne — récupération locale insuffisante.');
+      setDetail(users.length > 0
+        ? 'Les comptes utilisateur ont été restaurés localement. Reconnectez-vous à Internet puis relancez cette réparation pour une resynchronisation complète.'
+        : 'Aucune sauvegarde locale exploitable n\'a été trouvée, et l\'appareil est hors ligne. Reconnectez-vous à Internet puis réessayez.');
+      finish(users.length > 0);
+      return;
+    }
+
+    setStatus('Vérification de la version de l\'application...');
+    setProgress(22);
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) await reg.update();
+      } catch (e) { /* non bloquant */ }
+    }
+
+    setStatus('Préparation de la resynchronisation complète...');
+    setProgress(30);
+    // Redonner sa chance aux tables/colonnes mises en cache comme "absentes" —
+    // ce cache peut être devenu obsolète/erroné après l'incident local.
+    localStorage.removeItem('pharma_missing_tables');
+    localStorage.removeItem('pharma_bad_columns');
+
+    const onProgress = (p) => {
+      const friendly = _REPAIR_STORE_NAMES[p.storeName] || p.storeName;
+      setProgress(30 + Math.round((p.index / p.total) * 65));
+      if (p.status === 'fetching') setStatus(`Téléchargement : ${friendly} (${p.index}/${p.total})...`);
+      else if (p.status === 'completed') setStatus(`${friendly} — ${p.itemCount.toLocaleString()} ligne(s) à jour`);
+      else if (p.status === 'failed') setStatus(`⚠️ ${friendly} ignoré (erreur réseau)`);
+    };
+    await DB._internalPullFromSupabase(true, onProgress);
+
+    users = await DB.dbGetAll('users').catch(() => []);
+    setProgress(100);
+    if (users.length > 0) {
+      setStatus('Réparation terminée avec succès.');
+      setDetail(`${users.length} compte(s) utilisateur disponible(s). Rechargez l'application pour repartir sur une version stable et des données à jour.`);
+      finish(true);
+    } else {
+      setStatus('Resynchronisation terminée, mais aucun utilisateur trouvé.');
+      setDetail('Vérifiez la configuration Cloud de ce poste (Paramètres → Cloud) — l\'URL ou la clé Supabase est peut-être incorrecte.');
+      finish(false);
+    }
+  } catch (err) {
+    setProgress(100);
+    setStatus('La réparation a rencontré un problème.');
+    setDetail(err?.message || String(err));
+    finish(false);
+  }
+}
+window.repairAppState = repairAppState;
+
 // ═══════════════════════════════════════════════════════════════════
 // PIN POST-LOGIN GATE
 // After username+password, user must enter a 4-digit PIN
@@ -2300,6 +2431,19 @@ function renderLanding(container) {
     { icon: 'shield-check', title: 'Renforcez le contrôle interne', text: 'Organisez les accès des utilisateurs et facilitez le suivi des opérations enregistrées.' },
   ];
 
+  const startSteps = [
+    { num: '01', title: 'Configurez votre pharmacie', text: 'Renseignez les informations de votre officine et créez les comptes de votre équipe avec les rôles adaptés à chacun.' },
+    { num: '02', title: 'Constituez votre catalogue', text: 'Importez un fichier existant, ou saisissez rapidement vos produits en masse grâce à la grille de saisie rapide — même sans logiciel au départ.' },
+    { num: '03', title: 'Vendez dès aujourd\'hui', text: 'Le point de vente, le suivi de stock et la traçabilité sont immédiatement disponibles, en ligne comme hors ligne.' },
+  ];
+
+  const whyUs = [
+    { icon: 'server-cog', title: 'Vos données vous appartiennent', text: 'Chaque pharmacie dispose de son propre espace de données. Vos informations commerciales et patients restent celles de votre officine.' },
+    { icon: 'rocket', title: 'Pensé pour le terrain, pas seulement la théorie', text: 'Le mode hors ligne n\'est pas une fonctionnalité secondaire : OrdiveX est conçu pour continuer à fonctionner quand la connexion fait défaut, puis se resynchroniser proprement au retour du réseau.' },
+    { icon: 'scale', title: 'Adapté au contexte réglementaire guinéen', text: 'Licence DNPM, traçabilité des lots et des péremptions, journal d\'audit : des fonctions pensées pour les obligations propres aux officines.' },
+    { icon: 'life-buoy', title: 'Un outil qui se répare lui-même', text: 'En cas d\'incident technique (coupure de courant, problème réseau), l\'application propose des mécanismes de récupération pensés pour limiter l\'impact sur votre activité.' },
+  ];
+
   container.innerHTML = `
     <div class="landing-page">
       <header class="landing-nav">
@@ -2336,6 +2480,19 @@ function renderLanding(container) {
       </div>
 
       <p class="landing-strapline">Votre pharmacie. Vos données. Votre gestion.</p>
+
+      <section class="landing-start-steps">
+        <h2 class="landing-section-title">Démarrez en trois étapes</h2>
+        <div class="landing-steps-grid">
+          ${startSteps.map(s => `
+            <div class="step-card">
+              <span class="step-card-num">${s.num}</span>
+              <h3>${s.title}</h3>
+              <p>${s.text}</p>
+            </div>
+          `).join('')}
+        </div>
+      </section>
 
       <section id="landing-features" class="landing-features">
         <h2 class="landing-features-title">Une gestion complète, pensée pour les pharmacies</h2>
@@ -2374,6 +2531,19 @@ function renderLanding(container) {
         </div>
       </section>
 
+      <section class="landing-why-us">
+        <h2 class="landing-section-title">Pourquoi choisir OrdiveX</h2>
+        <div class="landing-why-grid">
+          ${whyUs.map(w => `
+            <div class="why-card">
+              <div class="why-card-icon"><i data-lucide="${w.icon}"></i></div>
+              <h3>${w.title}</h3>
+              <p>${w.text}</p>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+
       <section class="landing-final-cta">
         <h2>Prenez le contrôle de votre pharmacie</h2>
         <p>Ventes, stock, finances, personnel et suivi des patients : retrouvez les fonctions essentielles de votre gestion dans OrdiveX.</p>
@@ -2389,6 +2559,25 @@ function renderLanding(container) {
     </div>
   `;
   if (window.lucide) lucide.createIcons();
+
+  // Révélation au défilement : les sections sous la ligne de flottaison
+  // apparaissent progressivement à l'approche, plutôt que d'être toutes
+  // visibles d'un bloc — la page "s'introduit" en continu, pas seulement au
+  // chargement initial. Dégradation silencieuse sans IntersectionObserver
+  // (navigateur très ancien) : les sections restent simplement visibles.
+  if (typeof IntersectionObserver === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const revealTargets = container.querySelectorAll('.feature-card, .step-card, .why-card, .pillar-card, .landing-visibility-list, .landing-final-cta');
+    revealTargets.forEach(el => el.classList.add('landing-reveal'));
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('landing-reveal-in');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    revealTargets.forEach(el => observer.observe(el));
+  }
 }
 
 const TERMS_ARTICLES = [
