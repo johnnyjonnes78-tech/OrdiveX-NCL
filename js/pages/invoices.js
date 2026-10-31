@@ -1566,7 +1566,14 @@ async function _unvalidateInvoiceImpl(invoiceId) {
       }
 
       // 2. Déduire ou désactiver les lots correspondants
-      const lot = lotsAll.find(l => l.productId === item.productId && l.lotNumber === item.lotNumber);
+      // Fiabilisation (signalé par l'utilisateur) : scoper par invoiceId en
+      // plus de productId+lotNumber — ce dernier seul était ambigu dès que
+      // PLUSIEURS factures du même produit avaient un N° de lot vide (champ
+      // devenu facultatif) : on pouvait retrouver et décrémenter le lot d'une
+      // AUTRE facture que celle qu'on annule. invoiceId est posé sur chaque
+      // lot dès sa création (voir validateInvoice/_submitInvoiceImpl plus
+      // haut) et scope le match aux seuls lots créés par CETTE facture.
+      const lot = lotsAll.find(l => l.invoiceId === invoice.id && l.productId === item.productId && l.lotNumber === item.lotNumber);
       if (lot) {
         const nq = Math.max(0, lot.quantity - item.quantity);
         lot.quantity = nq;

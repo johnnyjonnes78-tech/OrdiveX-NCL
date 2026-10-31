@@ -507,10 +507,19 @@ async function processReturn(saleId, selectedItems, reason) {
         // sinon un lot rayon existant, sinon un nouveau lot en rayon) — sans
         // cela, le total agrégé ci-dessus augmente mais le produit retourné
         // n'existe dans aucun lot, donc invisible en rayon ET en réserve au POS.
-        const originalLotNumber = saleItemMap.get(ri.saleItemId)?.lotNumber;
-        let targetLot = originalLotNumber
-            ? allLots.find(l => l.productId === ri.productId && l.lotNumber === originalLotNumber && l.status === 'active')
-            : null;
+        //
+        // Fiabilisation (signalé par l'utilisateur) : priorité à lotId (ventes
+        // depuis ce correctif) avant le repli sur productId+lotNumber (ventes
+        // antérieures) — ce dernier était ambigu dès que plusieurs lots du
+        // même produit partageaient un N° de lot vide (champ facultatif).
+        const originalSaleItem = saleItemMap.get(ri.saleItemId);
+        const originalLotId = originalSaleItem?.lotId;
+        const originalLotNumber = originalSaleItem?.lotNumber;
+        let targetLot = originalLotId
+            ? allLots.find(l => l.id === originalLotId && l.status === 'active')
+            : (originalLotNumber
+                ? allLots.find(l => l.productId === ri.productId && l.lotNumber === originalLotNumber && l.status === 'active')
+                : null);
         if (!targetLot) {
             targetLot = allLots.find(l => l.productId === ri.productId && l.status === 'active' && (!l.location || l.location === 'rayon'));
         }

@@ -2793,6 +2793,13 @@ async function _validerVenteLogic() {
 
       // FEFO: décrémentation du lot le plus proche de l'expiration
       let assignedLotNumber = item.fefoLotNumber || null;
+      // Fiabilisation (signalé par l'utilisateur) : lotId est l'IDENTIFIANT
+      // réel du lot (toujours défini, même quand son N° de lot humain est
+      // resté vide — ce champ est facultatif). annulerVente() s'en sert pour
+      // retrouver le BON lot sans ambiguïté, au lieu de chercher par
+      // productId+lotNumber, qui matchait n'importe quel autre lot vide du
+      // même produit dès que plusieurs lots partagent un N° de lot absent.
+      let assignedLotId = item.fefoLotId || null;
       let remainingQty = deductQty;
       try {
         const productLots = posLots
@@ -2804,6 +2811,7 @@ async function _validerVenteLogic() {
           lot.quantity -= take;
           remainingQty -= take;
           assignedLotNumber = assignedLotNumber || lot.lotNumber;
+          assignedLotId = assignedLotId || lot.id;
           txOps.push({ store: 'lots', type: 'put', data: lot });
         }
       } catch (e) { console.warn('[FEFO] Erreur décrément lot:', e); }
@@ -2825,7 +2833,7 @@ async function _validerVenteLogic() {
           saleId, productId: item.productId, productName: item.name,
           quantity: item.qty, unitPrice: item.unitPrice,
           purchasePrice: item.purchasePrice, total: item.total,
-          lotNumber: assignedLotNumber, saleMode: item.saleMode || 'box'
+          lotNumber: assignedLotNumber, lotId: assignedLotId, saleMode: item.saleMode || 'box'
         }
       });
 

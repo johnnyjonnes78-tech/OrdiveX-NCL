@@ -845,8 +845,17 @@ async function _annulerVenteImpl(saleId) {
       }
 
       // 2. Restaurer le lot
-      if (item.lotNumber) {
-        const lot = lotsAll.find(l => l.productId === item.productId && l.lotNumber === item.lotNumber);
+      // Fiabilisation (signalé par l'utilisateur) : priorité à lotId (ventes
+      // depuis ce correctif — identifiant réel du lot, fiable même quand son
+      // N° de lot humain est resté vide, ce champ étant facultatif) ; repli
+      // sur l'ancien matching par productId+lotNumber pour les ventes
+      // antérieures à ce correctif, qui n'ont pas encore de lotId. Avant,
+      // ce repli était le SEUL chemin — ambigu dès que plusieurs lots du
+      // même produit partageaient un N° de lot vide.
+      if (item.lotId || item.lotNumber) {
+        const lot = item.lotId
+          ? lotsAll.find(l => l.id === item.lotId)
+          : lotsAll.find(l => l.productId === item.productId && l.lotNumber === item.lotNumber);
         if (lot) {
           lot.quantity = (lot.quantity || 0) + deductQty;
           lot.status = 'active';
