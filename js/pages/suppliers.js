@@ -1359,6 +1359,16 @@ async function receiveOrder(orderId) {
     origCloseReceive.call(UI);
     UI.closeModal = origCloseReceive;
   };
+  // Fiabilisation (signalé par l'utilisateur) : filet de sécurité si la
+  // modale est quittée sans passer par UI.closeModal (ex. navigation vers
+  // une autre page via la sidebar pendant une réception en cours) - sans
+  // ça, ce scanner restait actif indéfiniment sur TOUTES les pages.
+  if (typeof Router !== 'undefined' && Router.onLeave) {
+    Router.onLeave(() => {
+      if (window._receiveScanWatcher) { window._receiveScanWatcher.stop(); window._receiveScanWatcher = null; }
+      if (window._receiveScannerCamera) { window._receiveScannerCamera.stop(); window._receiveScannerCamera = null; }
+    });
+  }
 }
 
 function _resolveReceiveItemIndexByCode(code) {

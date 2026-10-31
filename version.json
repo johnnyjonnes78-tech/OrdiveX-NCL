@@ -1,5 +1,5 @@
 {
-  "version": "9.12.1",
+  "version": "9.12.2",
   "date": "2026-10-31",
-  "changelog": "v9.12.1 : Page d'accueil - fond eclairci pour une meilleure visibilite, et la presentation des fonctionnalites change desormais au defilement de la page (effet rideau) au lieu d'un defilement automatique independant du scroll."
+  "changelog": "v9.12.2 : Correctif critique - le scanner de code-barres physique (douchette) et les raccourcis clavier du Point de Vente (F2/F5/Echap) pouvaient rester actifs en arriere-plan apres avoir quitte la page (notamment vers le Tableau de bord), provoquant un bip sonore et des actions POS declenchees depuis n'importe quelle autre page. Corrige avec un garde-fou systematique sur la page active, en plus du nettoyage normal."
 }

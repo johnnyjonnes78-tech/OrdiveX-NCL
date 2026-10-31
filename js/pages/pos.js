@@ -3457,6 +3457,15 @@ window.showQuickNewRx = showQuickNewRx;
 window.saveQuickRx = saveQuickRx;
 
 async function searchByBarcode(code) {
+  // Fiabilisation (signalé par l'utilisateur — bip répété sur le tableau de
+  // bord) : cette fonction ne doit jamais s'exécuter hors de la page POS.
+  // Le watcher clavier physique (watchKeyboardWedge) est censé être arrêté
+  // en quittant le POS (Router.onLeave), mais cette garde protège aussi
+  // contre tout appel résiduel si ce nettoyage venait à échouer — sans
+  // elle, un scan physique capté pendant qu'on consulte une autre page
+  // ajoutait silencieusement un article au panier ET jouait le bip sonore
+  // (posAddFeedback) alors que le POS n'était même pas affiché à l'écran.
+  if (typeof Router !== 'undefined' && Router.currentPage && Router.currentPage !== 'pos') return;
   if (!code || !code.trim()) { UI.toast('Veuillez entrer un code', 'warning'); return; }
   code = code.trim().toUpperCase();
   let product = posProducts.find(p =>
@@ -3580,8 +3589,22 @@ function posAddFeedback(productName) {
 // ═══════════════════════════════════════════════════════════════════
 // RACCOURCIS CLAVIER — F2 = Scan, F5 = Valider, Échap = Vider
 // ═══════════════════════════════════════════════════════════════════
+// Fiabilisation (signalé par l'utilisateur — actions POS déclenchées
+// depuis d'autres pages) : cette fonction est appelée à CHAQUE visite du
+// POS (renderFullPOSUI), mais posait un nouveau listener global à chaque
+// fois, sans jamais le retirer — aucun Router.onLeave contrairement au
+// scanner physique juste au-dessus. Après plusieurs visites du POS dans la
+// même session, autant de listeners restaient actifs indéfiniment, y
+// compris sur le Tableau de bord ou n'importe quelle autre page, prêts à
+// réagir à F2/F5/Échap. Un seul listener désormais (garde globale), et il
+// ignore tout événement tant que le POS n'est pas réellement affiché.
+let _posKeyboardShortcutsAttached = false;
 function initKeyboardShortcuts() {
+  if (_posKeyboardShortcutsAttached) return;
+  _posKeyboardShortcutsAttached = true;
   document.addEventListener('keydown', function _posKeys(e) {
+    if (typeof Router !== 'undefined' && Router.currentPage !== 'pos') return;
+
     // Ne pas interférer si on est dans un input/textarea/modal
     const tag = document.activeElement?.tagName?.toLowerCase();
     const inInput = tag === 'input' || tag === 'textarea' || tag === 'select';

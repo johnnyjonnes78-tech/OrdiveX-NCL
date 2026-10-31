@@ -303,6 +303,16 @@ async function showNewInvoiceForm(invoiceId = null) {
     origCloseInvoice.call(UI);
     UI.closeModal = origCloseInvoice;
   };
+  // Fiabilisation (signalé par l'utilisateur) : filet de sécurité si la
+  // modale est quittée sans passer par UI.closeModal (ex. navigation vers
+  // une autre page via la sidebar pendant une saisie de facture en cours) -
+  // sans ça, ce scanner restait actif indéfiniment sur TOUTES les pages.
+  if (typeof Router !== 'undefined' && Router.onLeave) {
+    Router.onLeave(() => {
+      if (window._invoiceScanWatcher) { window._invoiceScanWatcher.stop(); window._invoiceScanWatcher = null; }
+      if (window._invoiceScannerCamera) { window._invoiceScannerCamera.stop(); window._invoiceScannerCamera = null; }
+    });
+  }
 }
 
 function _resolveInvoiceProductByCode(code) {
