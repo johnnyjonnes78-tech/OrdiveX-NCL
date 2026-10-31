@@ -1935,13 +1935,17 @@ textarea.form-control {
    blanc partout. Le degrade est pose UNE SEULE FOIS sur .landing-page (pas
    repete section par section) pour rester parfaitement continu au defilement. */
 .landing-page {
-  --landing-accent-dark: #0F4C75;
+  --landing-red: #D4222B;
+  --landing-red-bright: #F23D42;
   min-height: 100vh;
-  /* Progression verticale deliberee (bleu profond en haut -> plus clair en
-     descendant), jamais une teinte plate - plus la meme technique mesh-flow
-     que l'ecran de connexion pour une transition animee, douce, qui respire
-     au lieu d'etre figee. */
-  background: linear-gradient(180deg, #0B2E4A 0%, #0F4C75 22%, #1B6FAE 48%, #2E86C1 72%, #5BA7D6 100%);
+  /* Identite bleu/noir/rouge voulue : le fond reste exclusivement noir <->
+     bleu profond (jamais de bleu clair ni de melange avec le rouge dans le
+     degrade, qui tournerait au violet terne) - le rouge n'intervient qu'en
+     accent pose par-dessus (CTA, icones, liserets), jamais dans le fond.
+     Oscillation noir -> bleu -> noir : la zone la plus sombre du degrade
+     revient systematiquement vers le bas, le CTA final et le pied de page
+     n'ont donc plus besoin d'un voile de lisibilite separe. */
+  background: linear-gradient(180deg, #05080E 0%, #0B1D33 28%, #102A4A 50%, #0B1D33 72%, #05080E 100%);
   background-size: 100% 220%;
   animation: mesh-flow-vertical 20s infinite ease-in-out;
   overflow-y: auto;
@@ -1956,12 +1960,11 @@ textarea.form-control {
   .landing-page { animation: none; }
 }
 
-/* Voile sombre leger derriere le CTA final et le pied de page : la zone la
-   plus claire du degrade est en bas, ce voile garde le texte blanc lisible
-   sans jamais repasser a une couleur unie. */
-.landing-final-cta,
-.landing-footer {
-  background: rgba(5, 20, 33, 0.22);
+/* Lisere rouge fin en tete du CTA final : separation de section discrete qui
+   porte la couleur de marque, remplace l'ancien voile d'opacite devenu
+   inutile une fois le fond ramene au noir/bleu sur toute la hauteur. */
+.landing-final-cta {
+  border-top: 1px solid rgba(212, 34, 43, 0.28);
 }
 
 .landing-nav {
@@ -1973,10 +1976,10 @@ textarea.form-control {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 28px;
-  background: rgba(11, 36, 54, 0.55);
+  background: rgba(3, 6, 11, 0.65);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(212, 34, 43, 0.22);
 }
 
 .landing-nav-brand {
@@ -1988,9 +1991,9 @@ textarea.form-control {
   color: #fff;
 }
 
-.landing-nav-logo { width: 34px; height: 34px; margin: 0; border-radius: 9px; background: rgba(255, 255, 255, 0.15); }
-.landing-nav-logo i { width: 18px; height: 18px; }
-.landing-nav-x { opacity: 0.65; }
+.landing-nav-logo { width: 34px; height: 34px; margin: 0; border-radius: 9px; background: rgba(212, 34, 43, 0.16); border: 1px solid rgba(212, 34, 43, 0.4); }
+.landing-nav-logo i { width: 18px; height: 18px; color: var(--landing-red-bright); }
+.landing-nav-x { color: var(--landing-red-bright); opacity: 1; font-weight: 900; }
 
 .landing-nav-links {
   display: flex;
@@ -2054,16 +2057,16 @@ textarea.form-control {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
-  color: var(--landing-accent-dark);
+  background: linear-gradient(135deg, var(--landing-red-bright), var(--landing-red));
+  color: #fff;
   border: none;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 26px rgba(212, 34, 43, 0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .landing-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.26);
+  box-shadow: 0 14px 34px rgba(212, 34, 43, 0.5);
 }
 
 .landing-hero-visual { display: flex; justify-content: center; }
@@ -2075,10 +2078,10 @@ textarea.form-control {
 .landing-mock-window {
   width: 100%;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(2, 5, 10, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   overflow: hidden;
 }
 
@@ -2086,12 +2089,15 @@ textarea.form-control {
   display: flex;
   gap: 6px;
   padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.12);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(212, 34, 43, 0.25);
 }
 .landing-mock-bar span {
   width: 9px; height: 9px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+}
+.landing-mock-bar span:first-child {
+  background: var(--landing-red-bright);
 }
 
 .landing-mock-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
@@ -2116,6 +2122,16 @@ textarea.form-control {
   letter-spacing: 0.8px;
   color: rgba(255, 255, 255, 0.85);
   padding: 0 24px 48px;
+  position: relative;
+}
+.landing-strapline::before {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 3px;
+  margin: 0 auto 14px;
+  border-radius: 2px;
+  background: var(--landing-red-bright);
 }
 
 .landing-features {
@@ -2142,18 +2158,26 @@ textarea.form-control {
 
 .feature-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(2, 5, 10, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 24px 22px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.feature-card:hover {
+  border-color: rgba(212, 34, 43, 0.45);
+  box-shadow: 0 16px 40px rgba(212, 34, 43, 0.18);
+  transform: translateY(-3px);
 }
 
 .feature-card-icon {
   width: 42px;
   height: 42px;
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: rgba(212, 34, 43, 0.16);
+  border: 1px solid rgba(212, 34, 43, 0.3);
+  color: var(--landing-red-bright);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2166,7 +2190,7 @@ textarea.form-control {
   right: 22px;
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(212, 34, 43, 0.55);
 }
 
 .feature-card h3 {
@@ -2206,8 +2230,9 @@ textarea.form-control {
 .landing-visibility-list {
   text-align: left;
   list-style: none;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(2, 5, 10, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid var(--landing-red);
   border-radius: 16px;
   padding: 24px 28px;
   display: flex;
@@ -2244,6 +2269,12 @@ textarea.form-control {
 .pillar-card {
   text-align: center;
   padding: 28px 20px;
+  border-radius: 16px;
+  transition: background 0.25s ease;
+}
+
+.pillar-card:hover {
+  background: rgba(212, 34, 43, 0.06);
 }
 
 .pillar-card-icon {
@@ -2251,8 +2282,9 @@ textarea.form-control {
   height: 48px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: rgba(212, 34, 43, 0.14);
+  border: 1px solid rgba(212, 34, 43, 0.35);
+  color: var(--landing-red-bright);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2295,13 +2327,17 @@ textarea.form-control {
   gap: 20px;
   padding: 20px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.55);
+  border-top: 1px solid rgba(212, 34, 43, 0.2);
+  background: rgba(2, 4, 8, 0.4);
 }
 
 .landing-footer a {
   color: rgba(255, 255, 255, 0.6);
   text-decoration: underline;
+}
+.landing-footer a:hover {
+  color: var(--landing-red-bright);
 }
 
 @media (max-width: 860px) {
