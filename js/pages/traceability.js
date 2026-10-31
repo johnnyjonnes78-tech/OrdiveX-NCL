@@ -18,23 +18,34 @@ async function renderTraceability(container) {
 
   UI.loading(container, 'Chargement du module traçabilité...');
 
-  // Chargement léger : seulement lots + produits. Mouvements/prescriptions/patients en lazy-load.
-  const [lots, products] = await Promise.all([
+  // Chargement léger : lots + produits + stock agrégé. Mouvements/prescriptions/patients en lazy-load.
+  const [lots, products, stockAll] = await Promise.all([
     DB.dbGetAll('lots'),
     DB.dbGetAll('products'),
+    DB.dbGetAll('stock'),
   ]);
   await new Promise(r => setTimeout(r, 0));
 
   const productMap = {};
   products.forEach(p => { productMap[p.id] = p; });
+  const stockMap = {};
+  stockAll.forEach(s => { stockMap[s.productId] = s.quantity || 0; });
   const today = new Date();
   const expiryGroups = {};
-  
+
+  // Quantité déjà couverte par un lot actif/bloqué, par produit — nécessaire
+  // pour détecter plus bas le stock agrégé qui n'a AUCUN lot derrière lui.
+  const lotQtyByProduct = {};
+  lots.forEach(l => {
+    if (l.status !== 'active' && l.status !== 'blocked') return;
+    lotQtyByProduct[l.productId] = (lotQtyByProduct[l.productId] || 0) + (l.quantity || 0);
+  });
+
   lots.forEach(l => {
     if (l.status !== 'active' && l.status !== 'blocked') return;
     const d = UI.daysUntilExpiry(l.expiryDate);
     if (d === null || d > 90) return;
-    
+
     const prod = productMap[l.productId];
     if (!prod) return;
 
@@ -56,16 +67,51 @@ async function renderTraceability(container) {
     expiryGroups[key].lotIds.push(l.id);
   });
 
+  // Fiabilisation (signalé par l'utilisateur) : du stock agrégé (table
+  // "stock") peut exister SANS AUCUN lot pour le couvrir — produit créé avec
+  // un stock initial saisi directement, ou vente/retour annulé sans N° de lot
+  // (champ désormais facultatif). Ce stock restait invisible ici : sans lot,
+  // aucune date de péremption n'était détectée, donc jamais proposé à la
+  // destruction malgré une péremption bien réelle. On le détecte via
+  // product.expiryDate (seule date disponible dans ce cas) et on le signale
+  // comme groupe "sans lot" — voir destroyOrphanGroup plus bas.
+  products.forEach(p => {
+    const totalQty = stockMap[p.id] || 0;
+    const orphanQty = totalQty - (lotQtyByProduct[p.id] || 0);
+    if (orphanQty <= 0 || !p.expiryDate) return;
+    const d = UI.daysUntilExpiry(p.expiryDate);
+    if (d === null || d > 90) return;
+
+    expiryGroups['orphan_' + p.id] = {
+      id: 'orphan_' + p.id,
+      productId: p.id,
+      expiryDate: p.expiryDate,
+      days: d,
+      totalQuantity: orphanQty,
+      lotIds: [],
+      isOrphan: true,
+      productName: p.name || 'Inconnu',
+      category: p.category || '',
+      purchasePrice: parseFloat(p.purchasePrice) || 0
+    };
+  });
+
   const allExpiryGroups = Object.values(expiryGroups);
-  
+
   let totalLoss = 0;
   const expiredGroups = [];
   const soonExpiryGroups = [];
 
   allExpiryGroups.forEach(g => {
     g.loss = g.totalQuantity * g.purchasePrice;
+    // Fiabilisation (signalé par l'utilisateur) : un médicament désactivé
+    // (supprimé) ne doit plus jamais compter dans aucun total financier —
+    // on le laisse néanmoins dans la liste pour que son stock physique
+    // périmé reste destructible (obligation réglementaire indépendante du
+    // statut catalogue).
+    const isInactive = productMap[g.productId]?.status === 'inactive';
     if (g.days <= 0) {
-      totalLoss += g.loss;
+      if (!isInactive) totalLoss += g.loss;
       expiredGroups.push(g);
     } else {
       soonExpiryGroups.push(g);
@@ -886,13 +932,25 @@ async function confirmDestroyLot(lotId) {
 async function blockExpiredLots() {
   const expired = window._expiredGroups || [];
   if (expired.length === 0) return;
-  const totalLoss = expired.reduce((sum, g) => sum + g.loss, 0);
+  const productMap = window._traceProductMap || {};
+  // Même exclusion que l'affichage principal : un produit désactivé ne compte
+  // plus dans aucun total financier, même si son stock périmé reste détruit.
+  const totalLoss = expired.reduce((sum, g) => sum + (productMap[g.productId]?.status === 'inactive' ? 0 : g.loss), 0);
   
   const ok = await UI.confirm(`Détruire tous les médicaments expirés ?\n\nCela va détruire définitivement le stock de ${expired.length} produits périmés.\nPerte financière totale enregistrée : ${UI.formatCurrency(totalLoss)}`);
   if (!ok) return;
   
   let count = 0;
   for (const g of expired) {
+    // Fiabilisation (signalé par l'utilisateur) : un groupe "sans lot" (stock
+    // agrégé périmé sans aucun lot pour le couvrir) n'a pas de lotIds à
+    // parcourir — sans ce cas, il restait silencieusement non détruit malgré
+    // le message annonçant "tous les médicaments expirés".
+    if (g.isOrphan) {
+      await _regularizeAndDestroyOrphanStock(g);
+      count++;
+      continue;
+    }
     for (const lid of g.lotIds) {
       const lot = await DB.dbGet('lots', lid);
       if (lot && lot.status === 'active') {
@@ -1292,14 +1350,16 @@ window.renderExpiryTable = function() {
         <tbody>
           ${groups.map(g => `
             <tr class="${g.days <= 0 ? 'row-danger' : ''}">
-              <td><strong>${g.productName}</strong><br><span class="text-muted text-sm">${g.category}</span></td>
+              <td><strong>${g.productName}</strong>${g.isOrphan ? ' <span class="badge badge-warning" style="font-size:0.7em">Sans lot</span>' : ''}<br><span class="text-muted text-sm">${g.category}</span></td>
               <td><span style="font-size:1.1em; font-weight:600">${g.totalQuantity}</span></td>
               <td>${UI.formatDate(g.expiryDate)} <br> ${UI.expiryBadge(g.expiryDate)}</td>
               <td><strong style="color:var(--danger-color)">${UI.formatCurrency(g.loss)}</strong></td>
               <td>
                 <div class="actions-cell">
-                  ${g.days <= 0 
-                    ? `<button class="btn btn-xs btn-danger" onclick="initDestroyGroup('${g.id}')"><i data-lucide="trash-2"></i> Détruire (${g.lotIds.length})</button>` 
+                  ${g.days <= 0
+                    ? (g.isOrphan
+                        ? `<button class="btn btn-xs btn-danger" onclick="destroyOrphanGroup('${g.id}')"><i data-lucide="trash-2"></i> Détruire (sans lot)</button>`
+                        : `<button class="btn btn-xs btn-danger" onclick="initDestroyGroup('${g.id}')"><i data-lucide="trash-2"></i> Détruire (${g.lotIds.length})</button>`)
                     : `<button class="btn btn-xs btn-warning" onclick="promoteGroup('${g.id}')"><i data-lucide="megaphone"></i> Promouvoir (${g.lotIds.length})</button>`}
                 </div>
               </td>
@@ -1338,6 +1398,71 @@ window.initDestroyGroup = async function(groupId) {
 
 window.promoteGroup = function(groupId) {
   UI.toast('Fonctionnalité de promotion groupée à venir.', 'info');
+};
+
+// Fiabilisation (signalé par l'utilisateur) : détruit un groupe "sans lot"
+// (stock agrégé périmé sans aucun lot pour le couvrir — voir renderTraceability
+// ci-dessus). Matérialise d'abord un lot réel pour cette quantité afin que la
+// destruction passe par le MÊME mécanisme tracé (mouvement, audit, PV) que
+// n'importe quel autre lot, puis le détruit immédiatement.
+async function _regularizeAndDestroyOrphanStock(g) {
+  const lotId = await DB.dbAdd('lots', {
+    productId: g.productId,
+    lotNumber: '',
+    expiryDate: g.expiryDate,
+    quantity: g.totalQuantity,
+    initialQuantity: g.totalQuantity,
+    status: 'active',
+    receiptDate: null,
+    note: 'Régularisation — stock sans lot détecté en traçabilité',
+  });
+  await DB.writeAudit('ORPHAN_STOCK_REGULARIZED', 'lots', lotId, { productId: g.productId, productName: g.productName, quantity: g.totalQuantity });
+
+  const lot = await DB.dbGet('lots', lotId);
+  await DB.writeAudit('LOT_DESTRUCTION', 'lots', lotId, { productName: g.productName, lotNumber: lot.lotNumber, quantity: lot.quantity });
+  await DB.dbPut('lots', {
+    ...lot,
+    quantity: 0,
+    status: 'destroyed',
+    destroyedQty: g.totalQuantity,
+    destructionDate: new Date().toISOString().split('T')[0],
+    destructionReason: 'Péremption (stock sans lot régularisé)',
+    destructionBy: DB.AppState.currentUser?.name,
+  });
+
+  await DB.dbAdd('movements', {
+    id: await DB._generateSyncSafeId(),
+    productId: g.productId,
+    type: 'EXIT',
+    subType: 'DESTRUCTION',
+    quantity: -g.totalQuantity,
+    date: new Date().toISOString(),
+    userId: DB.AppState.currentUser?.id,
+    note: 'Destruction stock sans lot (régularisé)',
+  });
+
+  const stockAll = await DB.dbGetAll('stock');
+  const stockEntry = stockAll.find(s => s.productId === g.productId);
+  if (stockEntry) {
+    await DB.dbPut('stock', { ...stockEntry, quantity: Math.max(0, (stockEntry.quantity || 0) - g.totalQuantity) });
+  }
+}
+
+window.destroyOrphanGroup = async function(groupId) {
+  if (window.Auth && !Auth.can('traceability_destroy_lot') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de détruire des lots.', 'error', 4000);
+    return;
+  }
+  const g = (window._allExpiryGroups || []).find(x => x.id === groupId);
+  if (!g || !g.isOrphan) return;
+  const ok = await UI.confirm(`Confirmer la destruction de ce stock sans lot (${g.productName}) ?\n\nQuantité : ${g.totalQuantity}\nPerte enregistrée : ${UI.formatCurrency(g.loss)}\n\nCe stock n'était rattaché à aucun lot — une fiche de régularisation sera créée puis détruite pour garder une trace réglementaire.`);
+  if (!ok) return;
+
+  await _regularizeAndDestroyOrphanStock(g);
+
+  if (window._softRefreshStock) await window._softRefreshStock();
+  Router.navigate('traceability');
+  UI.toast('Destruction du stock sans lot enregistrée', 'success');
 };
 
 window.showPharmacovigilanceForm = showPharmacovigilanceForm;

@@ -326,11 +326,16 @@ const PrintEngine = {
     await this.loadSettings();
     UI.toast('Préparation du rapport...', 'info');
 
-    const [products, stockAll, lots] = await Promise.all([
+    const [productsAll, stockAll, lots] = await Promise.all([
       DB.dbGetAll('products'),
       DB.dbGetAll('stock'),
       DB.dbGetAll('lots'),
     ]);
+    // Fiabilisation (signalé par l'utilisateur) : un produit désactivé
+    // (supprimé) ne doit plus jamais compter dans aucun total financier —
+    // ce rapport incluait son stock résiduel dans Valeur achat/vente globale
+    // et le listait dans l'inventaire complet / ruptures / stocks bas.
+    const products = productsAll.filter(p => p.status !== 'inactive');
 
     const stockMap = {};
     stockAll.forEach(s => { stockMap[s.productId] = s.quantity; });

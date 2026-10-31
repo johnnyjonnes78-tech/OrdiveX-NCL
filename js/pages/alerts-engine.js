@@ -136,10 +136,11 @@ const AlertsEngine = {
   },
 
   async checkExpiryAlerts() {
-    const [lots, products, existingAlerts] = await Promise.all([
+    const [lots, products, existingAlerts, stockAll] = await Promise.all([
       DB.dbGetAll('lots'),
       DB.dbGetAll('products'),
       DB.dbGetAll('alerts'),
+      DB.dbGetAll('stock'),
     ]);
 
     const productMap = {};
@@ -193,6 +194,69 @@ const AlertsEngine = {
           lotId: lot.id,
           productName: prod.name,
           message: `Expiration dans ${days} jours — ${prod.name} (Lot ${lot.lotNumber})`,
+          status: 'unread',
+          date: Date.now(),
+          priority: days <= 60 ? 'medium' : 'low',
+        });
+      }
+    }
+
+    // Fiabilisation (signalé par l'utilisateur) : du stock agrégé (table
+    // "stock") peut exister SANS AUCUN lot pour le couvrir (produit créé avec
+    // un stock initial saisi directement, ou vente/retour annulé sans N° de
+    // lot — champ désormais facultatif). Sans lot, la boucle ci-dessus ne
+    // détecte jamais sa péremption — ce stock n'alertait jamais personne,
+    // malgré une péremption bien réelle. On le détecte via product.expiryDate
+    // (seule date disponible dans ce cas) — voir même correctif dans
+    // traceability.js (groupes "sans lot", onglet Destruction).
+    const lotQtyByProduct = {};
+    lots.forEach(l => {
+      if (l.status !== 'active' && l.status !== 'blocked') return;
+      lotQtyByProduct[l.productId] = (lotQtyByProduct[l.productId] || 0) + (l.quantity || 0);
+    });
+    const stockMap = {};
+    stockAll.forEach(s => { stockMap[s.productId] = s.quantity || 0; });
+
+    for (const prod of products) {
+      if (prod.status === 'inactive') continue;
+      const orphanQty = (stockMap[prod.id] || 0) - (lotQtyByProduct[prod.id] || 0);
+      if (orphanQty <= 0 || !prod.expiryDate) continue;
+      const days = UI.daysUntilExpiry(prod.expiryDate);
+      if (days === null || days > 90) continue;
+
+      const hasAlert = existingAlerts.some(a =>
+        a.productId === prod.id && !a.lotId &&
+        a.status === 'unread' &&
+        new Date(a.date).toISOString().split('T')[0] === today
+      );
+      if (hasAlert) continue;
+
+      if (days <= 0) {
+        await DB.dbAdd('alerts', {
+          type: 'EXPIRY_CRITICAL',
+          productId: prod.id,
+          productName: prod.name,
+          message: `STOCK SANS LOT EXPIRÉ : ${prod.name} — ${orphanQty} unités à régulariser et détruire (voir Traçabilité > Destruction)`,
+          status: 'unread',
+          date: Date.now(),
+          priority: 'critical',
+        });
+      } else if (days <= 30) {
+        await DB.dbAdd('alerts', {
+          type: 'EXPIRY_CRITICAL',
+          productId: prod.id,
+          productName: prod.name,
+          message: `Expiration dans ${days} jours — ${prod.name} (sans lot) — ${orphanQty} unités`,
+          status: 'unread',
+          date: Date.now(),
+          priority: 'high',
+        });
+      } else {
+        await DB.dbAdd('alerts', {
+          type: 'EXPIRY_SOON',
+          productId: prod.id,
+          productName: prod.name,
+          message: `Expiration dans ${days} jours — ${prod.name} (sans lot)`,
           status: 'unread',
           date: Date.now(),
           priority: days <= 60 ? 'medium' : 'low',
