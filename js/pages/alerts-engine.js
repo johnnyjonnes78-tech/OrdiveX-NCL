@@ -32,8 +32,39 @@ const AlertsEngine = {
         this.checkPendingOrders(),
         this.checkCaisseReminder(),
       ]);
+      await this.cleanupOldAlerts();
     } catch (e) {
       console.warn('[AlertsEngine] Erreur:', e.message);
+    }
+  },
+
+  // Fiabilisation (signalé par l'utilisateur) : avant, les alertes
+  // s'accumulaient indéfiniment en base — seule une purge manuelle ("Purger
+  // les lues", alerts.js) les supprimait. Purge automatique désormais, au
+  // plus une fois par jour (run() tourne toutes les 15 min, inutile de
+  // relire toute la table à chaque cycle) : toute alerte LUE est supprimée
+  // (elle a déjà été traitée), et toute alerte — lue ou non — datant de plus
+  // de 7 jours l'est aussi, filet de sécurité pour les alertes jamais
+  // consultées. Sans danger de perdre un problème toujours en cours : tant
+  // que la condition qui a déclenché l'alerte persiste, une alerte plus
+  // récente que 7 jours existe déjà (checkExpiryAlerts/checkStockAlerts
+  // réémettent régulièrement tant que le problème n'est pas résolu).
+  async cleanupOldAlerts() {
+    const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    const lastCleanup = parseInt(localStorage.getItem('pharma_last_alerts_cleanup') || '0', 10);
+    if (Date.now() - lastCleanup < CLEANUP_INTERVAL_MS) return;
+
+    const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const allAlerts = await DB.dbGetAll('alerts');
+    const toDelete = allAlerts.filter(a => a.status === 'read' || (now - (a.date || 0)) > MAX_AGE_MS);
+
+    for (const a of toDelete) {
+      await DB.dbDelete('alerts', a.id);
+    }
+    localStorage.setItem('pharma_last_alerts_cleanup', String(now));
+    if (toDelete.length > 0) {
+      console.log(`[AlertsEngine] Purge automatique : ${toDelete.length} alerte(s) supprimée(s) (lues ou > 7 jours).`);
     }
   },
 

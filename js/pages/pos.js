@@ -3044,15 +3044,22 @@ async function afficherRecu(saleId, items, saleData) {
 
       ${saleData.paymentMethod === 'assurance' ? `
       <!-- ENCART ASSURANCE / PATIENT (FORMAT FACTURE) -->
-      <div style="display:flex; justify-content:space-between; margin-bottom:15px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);">
-        <div>
+      <!-- Fiabilisation (signalé par l'utilisateur) : ces deux blocs étaient
+           côte à côte en flex sans repli possible sur un ticket de 72mm —
+           un nom d'assurance long repoussait le patient hors de la largeur
+           imprimable (sur une thermique, pas juste coupé visuellement :
+           jamais imprimé, la tête n'atteint pas au-delà du papier). Empilés
+           verticalement : aucune limite de largeur ne peut plus être
+           dépassée, quelle que soit la longueur des noms. -->
+      <div style="margin-bottom:15px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);">
+        <div style="margin-bottom:10px;">
           <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Facturé à (Prise en charge)</div>
-          <div style="font-size:16px; font-weight:800; color:var(--primary-color);">${saleData.assuranceName || "Nom de l'assurance"}</div>
-          <div style="font-size:13px; color:var(--text); margin-top:2px;">N° Prise en Charge : <strong>${saleData.assuranceRef || "Non Renseigné"}</strong></div>
+          <div style="font-size:16px; font-weight:800; color:var(--primary-color); overflow-wrap:break-word;">${saleData.assuranceName || "Nom de l'assurance"}</div>
+          <div style="font-size:13px; color:var(--text); margin-top:2px; overflow-wrap:break-word;">N° Prise en Charge : <strong>${saleData.assuranceRef || "Non Renseigné"}</strong></div>
         </div>
-        <div style="text-align:right;">
+        <div>
           <div style="font-size:10px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Patient Bénéficiaire</div>
-          <div style="font-size:16px; font-weight:700; color:var(--text-color);">${saleData.patientName || 'Nom du patient'}</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text-color); overflow-wrap:break-word;">${saleData.patientName || 'Nom du patient'}</div>
           ${saleData.patientPhone ? `<div style="font-size:13px; color:var(--text-muted); margin-top:2px;">Contact : ${saleData.patientPhone}</div>` : ''}
         </div>
       </div>

@@ -681,8 +681,16 @@ const PrintEngine = {
         .ticket-addr, .ticket-phone { font-size: 11px; text-align: center; color: #000 !important; margin: 0; }
         .ticket-divider { text-align: center; font-size: 11px; margin: 3px 0; color: #000 !important; font-weight: bold; letter-spacing: -1px; }
         .ticket-meta { margin: 3px 0; }
-        .ticket-row { display: flex; justify-content: space-between; font-size: 12px; padding: 1px 0; color: #000 !important; font-weight: bold !important; }
+        /* Fiabilisation (signalé par l'utilisateur) : une valeur longue (nom
+           d'assurance, de patient, référence de prise en charge...) poussait
+           l'autre moitié de la ligne hors des 72mm du ticket — coupée
+           silencieusement par le overflow:hidden du conteneur. flex-wrap +
+           le repli en ligne sur la valeur évitent toute perte de texte, au
+           prix d'un simple passage à la ligne quand c'est trop long. */
+        .ticket-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px; font-size: 12px; padding: 1px 0; color: #000 !important; font-weight: bold !important; }
         .ticket-row span { color: #000 !important; font-weight: bold !important; }
+        .ticket-row span:first-child { flex-shrink: 0; }
+        .ticket-row span:last-child { text-align: right; overflow-wrap: break-word; word-break: break-word; min-width: 0; flex: 1 1 auto; }
         .ticket-items { width: 100%; font-size: 12px; border-collapse: collapse; color: #000 !important; margin: 2px 0; font-weight: bold !important; }
         .ticket-items td { padding: 2px 1px; color: #000 !important; border-bottom: 1px dotted #333; vertical-align: top; font-weight: bold !important; }
         .ticket-items tr:last-child td { border-bottom: none; }
