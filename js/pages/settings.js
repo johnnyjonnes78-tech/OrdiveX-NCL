@@ -220,7 +220,7 @@ async function repairAppState() {
     const footer = document.querySelector('.modal-footer');
     if (!footer) return;
     footer.innerHTML = `
-      <button class="btn btn-secondary" onclick="UI.closeModal()">Fermer</button>
+      <button class="btn btn-secondary" onclick="UI.closeModal()"><i data-lucide="log-out"></i> Quitter</button>
       <button class="btn btn-primary" onclick="window.location.reload()"><i data-lucide="refresh-cw"></i> Recharger l'application</button>
     `;
     if (window.lucide) lucide.createIcons();
@@ -2398,6 +2398,58 @@ window._leaveLanding = function() {
   Router.navigate(onboardingDone ? 'login' : 'onboarding');
 };
 
+// ── Scène "rideau" des fonctionnalités (page vitrine) ──
+// Signalé par l'utilisateur : la grille statique de fonctionnalités était
+// trop linéaire. Remplacée par une scène qui affiche une fonctionnalité à la
+// fois, l'ancienne étant recouverte par deux pans qui se referment au centre
+// (comme un rideau de théâtre) avant de révéler la suivante — voir
+// _landingGoToFeature plus bas, qui pilote l'ouverture/fermeture en CSS.
+function _landingFeatureSlideHTML(f, i) {
+  return `
+    <div class="feature-card feature-stage-card">
+      <div class="feature-card-icon"><i data-lucide="${f.icon}"></i></div>
+      <span class="feature-card-num">${String(i + 1).padStart(2, '0')}</span>
+      <h3>${f.title}</h3>
+      <p class="feature-card-hook">${f.hook}</p>
+      <p class="feature-card-text">${f.text}</p>
+    </div>
+  `;
+}
+window._landingFeatureSlideHTML = _landingFeatureSlideHTML;
+
+window._landingFeatureIdx = 0;
+window._landingFeatureTimer = null;
+
+function _landingGoToFeature(idx, userTriggered) {
+  const stage = document.getElementById('feature-stage');
+  const content = document.getElementById('feature-stage-content');
+  if (!stage || !content) return;
+  const features = window._landingFeatures || [];
+  if (!features.length) return;
+  idx = ((idx % features.length) + features.length) % features.length;
+
+  // Fermeture du rideau (les deux pans glissent vers le centre) puis,
+  // UNE FOIS masqué, remplacement du contenu et réouverture — la transition
+  // CSS (feature-curtain-panel) gère les deux sens via la seule classe
+  // feature-curtain-closing, posée puis retirée.
+  stage.classList.add('feature-curtain-closing');
+  setTimeout(() => {
+    content.innerHTML = window._landingFeatureSlideHTML(features[idx], idx);
+    if (window.lucide) lucide.createIcons({ root: content });
+    window._landingFeatureIdx = idx;
+    document.querySelectorAll('.feature-dot').forEach((d, i) => d.classList.toggle('feature-dot-active', i === idx));
+    stage.classList.remove('feature-curtain-closing');
+  }, 520);
+
+  if (userTriggered) {
+    clearInterval(window._landingFeatureTimer);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      window._landingFeatureTimer = setInterval(() => _landingGoToFeature(window._landingFeatureIdx + 1), 5500);
+    }
+  }
+}
+window._landingGoToFeature = _landingGoToFeature;
+
 function renderLanding(container) {
   document.getElementById('app-sidebar')?.style.setProperty('display', 'none');
   document.getElementById('app-topbar')?.style.setProperty('display', 'none');
@@ -2415,6 +2467,8 @@ function renderLanding(container) {
     { icon: 'users', title: 'Dossiers patients et créances', hook: 'Retrouvez les informations nécessaires au suivi de vos patients.', text: 'Consultez les dossiers et historiques enregistrés dans l\'application. Suivez les créances et les informations associées aux règlements en espèces ou aux prises en charge par des organismes tiers, selon les fonctionnalités activées.' },
     { icon: 'shield-check', title: 'Sécurité et contrôle des accès', hook: 'Définissez qui peut accéder aux différentes fonctions.', text: 'Attribuez des rôles et des permissions adaptés aux responsabilités de chaque utilisateur. Les codes PIN, les contrôles d\'accès et le journal d\'audit permettent de mieux encadrer l\'utilisation de l\'application et de retracer les opérations sensibles prises en charge.' },
   ];
+  window._landingFeatures = features;
+  window._landingFeatureIdx = 0;
 
   const visibility = [
     { label: 'Ventes', text: 'retrouvez les opérations commerciales enregistrées.' },
@@ -2496,16 +2550,13 @@ function renderLanding(container) {
 
       <section id="landing-features" class="landing-features">
         <h2 class="landing-features-title">Une gestion complète, pensée pour les pharmacies</h2>
-        <div class="landing-features-grid">
-          ${features.map((f, i) => `
-            <div class="feature-card">
-              <div class="feature-card-icon"><i data-lucide="${f.icon}"></i></div>
-              <span class="feature-card-num">${String(i + 1).padStart(2, '0')}</span>
-              <h3>${f.title}</h3>
-              <p class="feature-card-hook">${f.hook}</p>
-              <p class="feature-card-text">${f.text}</p>
-            </div>
-          `).join('')}
+        <div class="feature-stage" id="feature-stage">
+          <div class="feature-stage-content" id="feature-stage-content">${_landingFeatureSlideHTML(features[0], 0)}</div>
+          <div class="feature-curtain-panel feature-curtain-left"></div>
+          <div class="feature-curtain-panel feature-curtain-right"></div>
+        </div>
+        <div class="feature-stage-dots">
+          ${features.map((f, i) => `<button type="button" class="feature-dot${i === 0 ? ' feature-dot-active' : ''}" onclick="_landingGoToFeature(${i}, true)" aria-label="${f.title}" title="${f.title}"></button>`).join('')}
         </div>
       </section>
 
@@ -2577,6 +2628,14 @@ function renderLanding(container) {
       });
     }, { threshold: 0.15 });
     revealTargets.forEach(el => observer.observe(el));
+  }
+
+  // Démarrage de la scène "rideau" des fonctionnalités — un seul minuteur à
+  // la fois (évite d'en accumuler si l'utilisateur revient plusieurs fois
+  // sur la page vitrine).
+  clearInterval(window._landingFeatureTimer);
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    window._landingFeatureTimer = setInterval(() => _landingGoToFeature(window._landingFeatureIdx + 1), 5500);
   }
 }
 

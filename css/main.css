@@ -1693,24 +1693,28 @@ textarea.form-control {
   border-color: var(--primary);
 }
 
+/* Rendu plus present (signale par l'utilisateur) : un simple lien discret
+   se faisait manquer par les personnes qui en avaient le plus besoin -
+   vrai bouton secondaire avec bordure/fond, pas juste du texte souligne. */
 .login-repair-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  margin-top: 14px;
-  padding: 8px;
-  background: none;
-  border: none;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-light);
+  margin-top: 16px;
+  padding: 11px;
+  background: rgba(27, 111, 174, 0.08);
+  border: 1px solid rgba(27, 111, 174, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
-.login-repair-link i { width: 14px; height: 14px; }
-.login-repair-link:hover { color: var(--primary); }
+.login-repair-link i { width: 15px; height: 15px; }
+.login-repair-link:hover { background: rgba(27, 111, 174, 0.15); border-color: var(--primary); }
 
 .login-footer-elite {
   display: flex;
@@ -1966,12 +1970,17 @@ textarea.form-control {
      tournerait au violet terne. Les 4 halos restent fixes (leur propre
      background-size/position) ; seul le calque noir du bas respire tres
      legerement via mesh-flow-vertical, pour un fond qui reste vivant sans
-     jamais faire bouger les halos eux-memes. */
+     jamais faire bouger les halos eux-memes.
+     Opacite volontairement reduite (signale par l'utilisateur, lisibilite) :
+     des halos trop intenses juste derriere le texte (titre du hero en haut
+     a gauche notamment) reduisaient le contraste du blanc par-dessus - les
+     cartes/paragraphes compensent en plus avec un fond plus opaque et un
+     texte plus clair (voir .feature-card, .feature-card-text, etc.). */
   background:
-    radial-gradient(ellipse 60% 42% at 10% 6%, rgba(10, 132, 255, 0.4), transparent 70%),
-    radial-gradient(ellipse 52% 46% at 94% 26%, rgba(255, 20, 68, 0.32), transparent 70%),
-    radial-gradient(ellipse 58% 44% at 12% 90%, rgba(10, 132, 255, 0.32), transparent 70%),
-    radial-gradient(ellipse 52% 42% at 92% 96%, rgba(255, 20, 68, 0.26), transparent 70%),
+    radial-gradient(ellipse 60% 42% at 10% 6%, rgba(10, 132, 255, 0.22), transparent 65%),
+    radial-gradient(ellipse 52% 46% at 94% 26%, rgba(255, 20, 68, 0.18), transparent 65%),
+    radial-gradient(ellipse 58% 44% at 12% 90%, rgba(10, 132, 255, 0.18), transparent 65%),
+    radial-gradient(ellipse 52% 42% at 92% 96%, rgba(255, 20, 68, 0.15), transparent 65%),
     linear-gradient(180deg, #000000 0%, #040508 50%, #000000 100%);
   background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 220%;
   background-position: 0 0, 0 0, 0 0, 0 0, 50% 0%;
@@ -2111,7 +2120,11 @@ textarea.form-control {
   letter-spacing: -0.5px;
   line-height: 1.2;
   margin-bottom: 18px;
-  text-shadow: 0 0 28px rgba(10, 132, 255, 0.35);
+  /* Lueur tres attenuee (lisibilite signalee par l'utilisateur) : un halo
+     trop marque juste derriere du texte blanc reduit son contraste au lieu
+     de le mettre en valeur - un leger ombrage noir porte mieux le texte
+     qu'un halo colore intense. */
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
 }
 
 .landing-tagline {
@@ -2120,14 +2133,16 @@ textarea.form-control {
   font-weight: 600;
   line-height: 1.5;
   margin-bottom: 12px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
 .landing-tagline-sub {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 14.5px;
   line-height: 1.65;
   margin-bottom: 28px;
   max-width: 520px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .landing-cta {
@@ -2233,15 +2248,88 @@ textarea.form-control {
   letter-spacing: -0.3px;
 }
 
-.landing-features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 18px;
+/* Scène "rideau" : une fonctionnalité à la fois, les deux pans se referment
+   au centre pour masquer l'ancienne avant de révéler la suivante — remplace
+   l'ancienne grille statique, trop linéaire (signalé par l'utilisateur). */
+.feature-stage {
+  position: relative;
+  max-width: 640px;
+  min-height: 260px;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.feature-stage-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+}
+
+.feature-stage-card {
+  height: 100%;
+}
+
+.feature-curtain-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 52%;
+  z-index: 2;
+  background: linear-gradient(135deg, #0B1D33 0%, #000000 100%);
+  border: 1px solid rgba(255, 20, 68, 0.3);
+  transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+  pointer-events: none;
+}
+.feature-curtain-left {
+  left: 0;
+  border-radius: 16px 0 0 16px;
+  border-right: 1px solid rgba(255, 20, 68, 0.45);
+  transform: translateX(-101%);
+}
+.feature-curtain-right {
+  right: 0;
+  border-radius: 0 16px 16px 0;
+  border-left: 1px solid rgba(10, 132, 255, 0.45);
+  transform: translateX(101%);
+}
+.feature-curtain-closing .feature-curtain-left,
+.feature-curtain-closing .feature-curtain-right {
+  transform: translateX(0);
+}
+
+.feature-stage-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.feature-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+.feature-dot:hover { background: rgba(255, 255, 255, 0.4); }
+.feature-dot-active {
+  background: var(--landing-red-bright);
+  box-shadow: 0 0 8px rgba(255, 20, 68, 0.7);
+  transform: scale(1.25);
+}
+
+@media (max-width: 640px) {
+  .feature-stage { min-height: 320px; }
 }
 
 .feature-card {
   position: relative;
-  background: rgba(2, 5, 10, 0.4);
+  background: rgba(2, 5, 10, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 24px 22px;
@@ -2294,7 +2382,7 @@ textarea.form-control {
 .feature-card-text {
   font-size: 13px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .landing-visibility {
@@ -2305,7 +2393,7 @@ textarea.form-control {
 }
 
 .landing-section-lead {
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.88);
   font-size: 14.5px;
   margin-bottom: 24px;
 }
@@ -2313,7 +2401,9 @@ textarea.form-control {
 .landing-visibility-list {
   text-align: left;
   list-style: none;
-  background: rgba(2, 5, 10, 0.4);
+  background: rgba(2, 5, 10, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-left: 3px solid var(--landing-blue);
   border-radius: 16px;
@@ -2326,12 +2416,12 @@ textarea.form-control {
 .landing-visibility-list li {
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.88);
 }
 .landing-visibility-list li strong { color: #fff; }
 
 .landing-section-footnote {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 13.5px;
   font-style: italic;
   margin-top: 20px;
@@ -2384,7 +2474,7 @@ textarea.form-control {
 .pillar-card p {
   font-size: 13.5px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .landing-start-steps {
@@ -2401,7 +2491,9 @@ textarea.form-control {
 
 .step-card {
   position: relative;
-  background: rgba(2, 5, 10, 0.4);
+  background: rgba(2, 5, 10, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 26px 22px 22px;
@@ -2429,7 +2521,7 @@ textarea.form-control {
 .step-card p {
   font-size: 13px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .landing-why-us {
@@ -2445,7 +2537,9 @@ textarea.form-control {
 }
 
 .why-card {
-  background: rgba(2, 5, 10, 0.4);
+  background: rgba(2, 5, 10, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 24px 22px;
@@ -2477,7 +2571,7 @@ textarea.form-control {
 .why-card p {
   font-size: 13px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .landing-final-cta {
