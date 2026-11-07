@@ -9,7 +9,7 @@ de la création du projet Supabase jusqu'à la synchronisation vérifiée. Suive
 | Fichier | Rôle |
 |---|---|
 | `supabase_schema.sql` | Schéma principal (quasi toutes les tables + RLS + GRANT) |
-| `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`, colonnes `app_users.termsAccepted`/`termsAcceptedAt`, **toutes** les colonnes `sales` liées au règlement de dette/assurance, et la table `stockValueSnapshots` (historique de la valeur du stock) — voir ci-dessous) |
+| `supabase_nouvelle_pharmacie_complements.sql` | Tous les ajouts manquants dans le schéma principal (`prep_transfers`, colonnes `invoices` dont le statut de paiement fournisseur, colonne `saleItems.lotNumber`, colonne `cashRegister.category`, colonnes `app_users.termsAccepted`/`termsAcceptedAt`, **toutes** les colonnes `sales` liées au règlement de dette/assurance, la table `stockValueSnapshots` (historique de la valeur du stock), et les colonnes `sales.amountPaid`/`patients.deletedAt` (paiement partiel + suppression patient) — voir ci-dessous) |
 
 💡 **Raccourci** : `supabase_installation_complete_nouvelle_pharmacie.sql` contient la
 fusion exacte, dans l'ordre, de ces deux fichiers — un seul copier-coller au lieu
@@ -23,9 +23,10 @@ Aucun autre fichier `.sql` du dépôt n'est nécessaire pour une pharmacie neuve
 `reparer_table_invoices.sql`, `reparer_ventes_paiements_lots.sql`,
 `ajout_colonnes_paiement_facture_categorie_caisse.sql`,
 `ajout_colonnes_sales_dettes_assurance.sql`,
-`creer_table_stock_value_snapshots.sql` — sont des scripts de réparation
-pour d'anciennes pharmacies déjà en place, déjà couverts par les deux
-fichiers ci-dessus pour une installation neuve).
+`creer_table_stock_value_snapshots.sql`,
+`ajout_paiement_partiel_et_suppression_patient.sql` — sont des scripts de
+réparation pour d'anciennes pharmacies déjà en place, déjà couverts par
+les deux fichiers ci-dessus pour une installation neuve).
 
 ### Pharmacie déjà en place avant le 29/10/2026 ?
 
@@ -61,6 +62,20 @@ existant :
    script, la fonctionnalité continue de fonctionner en local sur chaque
    appareil (IndexedDB), elle attend juste silencieusement avant de se
    synchroniser entre les postes de la pharmacie.
+
+### Pharmacie déjà en place avant le paiement partiel / la suppression patient (v9.13.3) ?
+
+Si la pharmacie a été installée **avant** ces deux fonctionnalités, exécutez
+en plus, dans son projet Supabase existant :
+
+1. **`ajout_paiement_partiel_et_suppression_patient.sql`** — ajoute
+   `sales.amountPaid`/`lastPaymentAt`/`lastPaymentMethod` (acompte à la
+   vente à crédit, règlements de dette en plusieurs fois) et
+   `patients.deletedAt`/`deletedBy` (suppression douce d'un patient — son
+   historique d'achat reste intact). Même conséquence que les autres
+   colonnes manquantes sans ce script : ces deux fonctionnalités marchent
+   en local sur chaque appareil, mais ne se synchronisent jamais entre
+   postes ni vers le cloud.
 
 ⚠️ **Étape supplémentaire OBLIGATOIRE après le script n°2, sur CHAQUE
 appareil de la pharmacie** (pas seulement celui où le SQL a été exécuté) :
@@ -186,3 +201,4 @@ encore sur Supabase — la synchronisation n'envoie que ce qui existe localement
 | Ticket/devis imprimé illisible à un endroit précis | Bug d'affichage ponctuel déjà corrigé (v9.10.30+) | Vérifier que l'app est à jour |
 | Une dette (créance patient/assurance) réglée revient "en cours" après fermeture/réouverture de l'app ou sur un autre poste | Colonnes `sales` manquantes côté Supabase (corrigé v9.11.0+) | `ajout_colonnes_sales_dettes_assurance.sql` **puis** "Réparer l'envoi Cloud" sur CHAQUE appareil — voir section "Pharmacie déjà en place" ci-dessus |
 | Historique de la valeur du stock (Pilotage & Contrôle de Gestion) vide ou jamais synchronisé entre postes | Table `stockValueSnapshots` absente côté Supabase (pharmacie installée avant v9.13.0) | `creer_table_stock_value_snapshots.sql` — voir section "Pharmacie déjà en place avant le 07/11/2026" ci-dessus |
+| Un acompte à la vente à crédit, ou un règlement de dette partiel, n'apparaît que sur l'appareil où il a été saisi | Colonnes `sales.amountPaid`/`patients.deletedAt` absentes côté Supabase (pharmacie installée avant v9.13.3) | `ajout_paiement_partiel_et_suppression_patient.sql` — voir section "Pharmacie déjà en place avant le paiement partiel" ci-dessus |

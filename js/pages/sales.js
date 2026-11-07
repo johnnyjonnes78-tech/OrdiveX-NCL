@@ -626,8 +626,10 @@ async function settleDebt(saleId) {
   if (!sale) { UI.toast('Vente introuvable', 'error'); return; }
 
   const isAssurance = sale.paymentMethod === 'assurance';
-  const debtAmount = isAssurance ? (sale.assuranceAmount || sale.total) : sale.total;
-  const patientPart = isAssurance ? Math.max(0, sale.total - debtAmount) : 0;
+  const owedAmount = isAssurance ? (sale.assuranceAmount || sale.total) : sale.total;
+  const alreadyPaid = sale.amountPaid || 0;
+  const debtAmount = Math.max(0, owedAmount - alreadyPaid);
+  const patientPart = isAssurance ? Math.max(0, sale.total - owedAmount) : 0;
 
   UI.modal('<i data-lucide="receipt" class="modal-icon-inline"></i> Encaissement', `
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -635,13 +637,14 @@ async function settleDebt(saleId) {
       <!-- MONTANT PRINCIPAL -->
       <div style="text-align:center;padding:20px;background:#F8FAFC;border-radius:14px;border:2px solid #E2E8F0">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#64748B;font-weight:700;margin-bottom:6px">
-          ${isAssurance ? '\ud83d\udee1\ufe0f Montant d\u00fb par l\'entreprise' : '\ud83d\udcb0 Montant total \u00e0 encaisser'}
+          ${isAssurance ? '\ud83d\udee1\ufe0f Reste d\u00fb par l\'entreprise' : '\ud83d\udcb0 Reste \u00e0 encaisser'}
         </div>
         <div style="font-size:38px;font-weight:900;color:#0F172A;letter-spacing:-1px">${UI.formatCurrency(debtAmount)}</div>
         <div style="font-size:12px;color:#94A3B8;margin-top:6px">
           Vente <strong style="color:#475569">#${String(saleId).padStart(6, '0')}</strong>
           ${sale.patientName ? ' \u00b7 <strong style="color:#475569">' + sale.patientName + '</strong>' : ''}
         </div>
+        ${alreadyPaid > 0 ? `<div style="font-size:12px;color:#16A34A;margin-top:6px;font-weight:600">D\u00e9j\u00e0 vers\u00e9 : ${UI.formatCurrency(alreadyPaid)} sur ${UI.formatCurrency(owedAmount)}</div>` : ''}
       </div>
 
       ${isAssurance ? `
@@ -649,7 +652,7 @@ async function settleDebt(saleId) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div style="background:#EBF5FB;border-radius:10px;padding:14px;text-align:center;border:2px solid #BEE3F8">
           <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#1E40AF;font-weight:800;margin-bottom:5px">\ud83d\udee1\ufe0f PART ENTREPRISE</div>
-          <div style="font-size:20px;font-weight:900;color:#1E40AF">${UI.formatCurrency(debtAmount)}</div>
+          <div style="font-size:20px;font-weight:900;color:#1E40AF">${UI.formatCurrency(owedAmount)}</div>
           <div style="font-size:10px;color:#6B7280;margin-top:3px">${sale.assuranceName || 'Assurance'}</div>
         </div>
         <div style="background:#ECFDF5;border-radius:10px;padding:14px;text-align:center;border:2px solid #A7F3D0">
@@ -659,6 +662,17 @@ async function settleDebt(saleId) {
         </div>
       </div>
       ` : ''}
+
+      <!-- MONTANT \u00c0 ENCAISSER AUJOURD'HUI (paiement partiel possible) -->
+      <div>
+        <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#64748B;margin-bottom:8px;display:block">Montant encaiss\u00e9 aujourd'hui</label>
+        <input type="number" id="debt-pay-amount" class="pay-input" style="width:100%;padding:12px 14px;border:2px solid #1E40AF;border-radius:10px;font-size:18px;font-weight:700;font-family:inherit;text-align:center" min="1" max="${debtAmount}" step="1" value="${debtAmount}" oninput="updateDebtPayButtonLabel(${debtAmount})">
+        <div id="debt-pay-remaining-note" style="font-size:12px;color:#94A3B8;margin-top:6px;text-align:center"></div>
+        <div class="info-box-small" style="margin-top:10px">
+          <i data-lucide="info"></i>
+          <span>Montant inf\u00e9rieur au reste d\u00fb = r\u00e8glement partiel, la dette reste ouverte pour le solde. Laissez le montant complet pour tout solder.</span>
+        </div>
+      </div>
 
       <!-- MODE DE PAIEMENT -->
       <div>
@@ -697,11 +711,31 @@ async function settleDebt(saleId) {
   `, {
     footer: `
       <button class="btn btn-secondary" onclick="UI.closeModal()">Annuler</button>
-      <button class="btn btn-success" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="confirmSettleDebt(${saleId}, this)"><i data-lucide="check-circle"></i> Encaisser ${UI.formatCurrency(debtAmount)}</button>
+      <button class="btn btn-success" id="debt-pay-confirm-btn" style="padding:10px 20px;font-size:13px;font-weight:700" onclick="confirmSettleDebt(${saleId}, this, ${debtAmount})"><i data-lucide="check-circle"></i> Encaisser ${UI.formatCurrency(debtAmount)}</button>
     `
   });
 
   if (window.lucide) lucide.createIcons();
+}
+
+// Paiement partiel (demandé par l'utilisateur) : met à jour le texte du
+// bouton de confirmation en direct pendant la saisie, pour que le montant
+// réellement encaissé (potentiellement inférieur au reste dû) soit
+// toujours clairement affiché avant validation.
+function updateDebtPayButtonLabel(maxRemaining) {
+  const input = document.getElementById('debt-pay-amount');
+  const btn = document.getElementById('debt-pay-confirm-btn');
+  const note = document.getElementById('debt-pay-remaining-note');
+  if (!input || !btn) return;
+  let amt = parseFloat(input.value || 0);
+  if (amt > maxRemaining) { amt = maxRemaining; input.value = maxRemaining; }
+  const isFull = amt >= maxRemaining;
+  btn.innerHTML = `<i data-lucide="check-circle"></i> ${isFull ? 'Solder' : 'Encaisser'} ${UI.formatCurrency(amt)}`;
+  if (note) {
+    const left = Math.max(0, maxRemaining - amt);
+    note.textContent = isFull || left <= 0 ? '' : `Il restera ${UI.formatCurrency(left)} dû après ce paiement.`;
+  }
+  if (window.lucide) lucide.createIcons({ root: btn });
 }
 
 function selectDebtPayMethod(btn) {
@@ -715,7 +749,7 @@ function selectDebtPayMethod(btn) {
   btn.style.background = '#EBF5FB';
 }
 
-async function confirmSettleDebt(saleId, btn) {
+async function confirmSettleDebt(saleId, btn, maxRemaining) {
   if (window.Auth && !Auth.can('patients_debt_settle') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Action non autorisée.', 'error', 4000);
     return;
@@ -724,13 +758,33 @@ async function confirmSettleDebt(saleId, btn) {
   const paymentMethod = methodBtn ? methodBtn.dataset.method : 'cash';
   const reference = document.getElementById('debt-pay-ref')?.value || '';
 
-  const ok = await UI.confirm('Confirmer l\'encaissement de cette dette ?\n\nLa vente sera marquée comme réglée.');
+  // Paiement partiel (demandé par l'utilisateur) : le montant saisi peut
+  // être inférieur au reste dû — validé ici contre la valeur maximale
+  // connue au moment de l'ouverture du modal ; _confirmSettleDebtImpl
+  // revalide de toute façon contre l'état ACTUEL de la vente juste avant
+  // d'écrire, au cas où un autre règlement serait survenu entre-temps
+  // (autre poste, ActionGuard déjà présent contre le double-clic local).
+  const amountInput = document.getElementById('debt-pay-amount');
+  const amount = parseFloat(amountInput?.value || 0);
+  if (!(amount > 0)) {
+    UI.toast('Le montant encaissé doit être supérieur à zéro', 'error');
+    return;
+  }
+  if (amount > maxRemaining + 0.01) {
+    UI.toast('Le montant encaissé ne peut pas dépasser le reste dû (' + UI.formatCurrency(maxRemaining) + ')', 'error');
+    return;
+  }
+
+  const isFull = amount >= maxRemaining - 0.01;
+  const ok = await UI.confirm(isFull
+    ? 'Confirmer l\'encaissement de cette dette ?\n\nLa vente sera marquée comme réglée.'
+    : `Confirmer le règlement partiel de ${UI.formatCurrency(amount)} ?\n\nLa dette restera ouverte pour le solde de ${UI.formatCurrency(maxRemaining - amount)}.`);
   if (!ok) return;
 
-  return ActionGuard.run('settle-debt-' + saleId, () => _confirmSettleDebtImpl(saleId, paymentMethod, reference), btn, 'Encaissement...');
+  return ActionGuard.run('settle-debt-' + saleId, () => _confirmSettleDebtImpl(saleId, paymentMethod, reference, amount), btn, 'Encaissement...');
 }
 
-async function _confirmSettleDebtImpl(saleId, paymentMethod, reference) {
+async function _confirmSettleDebtImpl(saleId, paymentMethod, reference, paymentAmount) {
   try {
     const sale = await DB.dbGet('sales', saleId);
     if (!sale) throw new Error('Vente introuvable');
@@ -743,22 +797,46 @@ async function _confirmSettleDebtImpl(saleId, paymentMethod, reference) {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const debtAmount = sale.paymentMethod === 'assurance' ? (sale.assuranceAmount || sale.total) : sale.total;
+    const owedAmount = sale.paymentMethod === 'assurance' ? (sale.assuranceAmount || sale.total) : sale.total;
+    const alreadyPaid = sale.amountPaid || 0;
+    const remainingBefore = Math.max(0, owedAmount - alreadyPaid);
+
+    // Revalidation finale contre l'état FRAIS de la vente (pas celui capturé
+    // à l'ouverture du modal) : protège contre un règlement concurrent
+    // depuis un autre poste entre l'ouverture du modal et la confirmation.
+    const amount = Math.min(paymentAmount, remainingBefore);
+    if (!(amount > 0)) {
+      UI.toast('Cette dette a déjà été réglée entre-temps.', 'warning');
+      UI.closeModal();
+      return;
+    }
+    const newAmountPaid = alreadyPaid + amount;
+    const isFullySettled = (owedAmount - newAmountPaid) < 1; // < 1 GNF : arrondi, pas de décimales
 
     // 1. Update the sale status
-    sale.status = 'paid';
-    sale.creditStatus = 'paid'; // aligné avec le filtre patients.js
-    sale.paidAt = Date.now();
-    sale.paidDate = today;
-    sale.paidMethod = paymentMethod;
+    sale.amountPaid = newAmountPaid;
+    if (isFullySettled) {
+      sale.status = 'paid';
+      sale.creditStatus = 'paid'; // aligné avec le filtre patients.js
+      sale.paidAt = Date.now();
+      sale.paidDate = today;
+      sale.paidMethod = paymentMethod;
+    } else {
+      sale.creditStatus = 'partial';
+      sale.lastPaymentAt = Date.now();
+      sale.lastPaymentMethod = paymentMethod;
+    }
     await DB.dbPut('sales', sale);
 
-    // 2. Record payment in cashRegister so it appears in today's caisse
+    // 2. Record payment in cashRegister so it appears in today's caisse —
+    // seulement le montant RÉELLEMENT encaissé par CE règlement, pas le
+    // solde total de la dette (qui peut dépasser ce qui a été payé
+    // aujourd'hui, en cas de règlement partiel).
     await DB.dbAdd('cashRegister', {
       type: 'debt_in',
-      amount: debtAmount,
+      amount: amount,
       paymentMethod: paymentMethod,
-      reason: `Règlement dette — Vente #${String(saleId).padStart(6, '0')}${sale.patientName ? ' · ' + sale.patientName : ''}${sale.paymentMethod === 'assurance' ? ' ('+sale.assuranceName+')' : ''}`,
+      reason: `${isFullySettled ? 'Règlement dette' : 'Règlement partiel dette'} — Vente #${String(saleId).padStart(6, '0')}${sale.patientName ? ' · ' + sale.patientName : ''}${sale.paymentMethod === 'assurance' ? ' ('+sale.assuranceName+')' : ''}`,
       reference: reference,
       saleId: saleId,
       date: today,
@@ -766,10 +844,19 @@ async function _confirmSettleDebtImpl(saleId, paymentMethod, reference) {
       userId: DB.AppState.currentUser?.id,
     });
 
-    // 3. Audit trace
-    await DB.writeAudit('DEBT_REFUND', 'sales', saleId, { amount: sale.total, patient: sale.patientName, paymentMethod });
+    // 3. Audit trace — DEBT_REFUND conservé tel quel pour un règlement
+    // complet (compatibilité avec tout audit/rapport existant qui
+    // s'appuie sur ce nom d'événement) ; nouvel événement dédié pour un
+    // règlement partiel, pour que l'historique distingue clairement les deux.
+    await DB.writeAudit(isFullySettled ? 'DEBT_REFUND' : 'DEBT_PARTIAL_PAYMENT', 'sales', saleId, {
+      amount,
+      totalPaid: newAmountPaid,
+      remaining: Math.max(0, owedAmount - newAmountPaid),
+      patient: sale.patientName,
+      paymentMethod
+    });
 
-    UI.toast('Dette réglée avec succès !', 'success');
+    UI.toast(isFullySettled ? 'Dette réglée avec succès !' : `Paiement partiel de ${UI.formatCurrency(amount)} enregistré — reste ${UI.formatCurrency(owedAmount - newAmountPaid)} dû.`, 'success');
     UI.closeModal();
 
     // Refresh view

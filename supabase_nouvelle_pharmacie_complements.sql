@@ -44,6 +44,12 @@
 --      v9.13.0) n'existe pas du tout dans supabase_schema.sql — ajoutée en
 --      novembre 2026. Voir aussi le script dédié
 --      creer_table_stock_value_snapshots.sql (pharmacies déjà en place).
+--   8. "sales" n'a pas amountPaid/lastPaymentAt/lastPaymentMethod (paiement
+--      partiel sur une dette crédit/assurance) et "patients" n'a pas
+--      deletedAt/deletedBy (suppression douce d'un patient — son historique
+--      d'achat reste intact) — ajoutées en novembre 2026. Voir aussi le
+--      script dédié ajout_paiement_partiel_et_suppression_patient.sql
+--      (pharmacies déjà en place).
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────────────────────────────────────────────
@@ -153,6 +159,15 @@ CREATE POLICY "stockValueSnapshots_all" ON "stockValueSnapshots" FOR ALL USING (
 GRANT SELECT, INSERT, UPDATE, DELETE ON "stockValueSnapshots" TO anon, authenticated, service_role;
 
 -- ───────────────────────────────────────────────────────────────
+-- 8. TABLE : sales (paiement partiel) + patients (suppression douce)
+-- ───────────────────────────────────────────────────────────────
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "amountPaid" NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "lastPaymentAt" BIGINT;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "lastPaymentMethod" TEXT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS "deletedAt" BIGINT;
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS "deletedBy" BIGINT;
+
+-- ───────────────────────────────────────────────────────────────
 -- Vérification finale
 -- ───────────────────────────────────────────────────────────────
 SELECT table_name FROM information_schema.tables
@@ -169,5 +184,7 @@ WHERE table_schema = 'public'
     OR (table_name = 'app_users' AND column_name IN ('termsAccepted', 'termsAcceptedAt'))
     OR (table_name = 'sales' AND column_name IN ('creditStatus', 'paidAt', 'paidDate', 'paidMethod',
         'preparerId', 'preparerName', 'insuranceId', 'assuranceName', 'assuranceRef',
-        'assuranceAmount', 'insurancePaidAmount', 'paymentDetails')))
+        'assuranceAmount', 'insurancePaidAmount', 'paymentDetails',
+        'amountPaid', 'lastPaymentAt', 'lastPaymentMethod'))
+    OR (table_name = 'patients' AND column_name IN ('deletedAt', 'deletedBy')))
 ORDER BY table_name, column_name;

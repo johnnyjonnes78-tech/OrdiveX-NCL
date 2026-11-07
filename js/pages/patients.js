@@ -21,8 +21,17 @@ function _isUnsettledDebtSale(s) {
 // vente assurance surestimerait la dette de la part déjà payée par le
 // patient. Même champ que sales.js (settleDebt/confirmSettleDebt) — source
 // unique, pas de recalcul divergent via paymentDetails.
+//
+// Paiement partiel (demandé par l'utilisateur) : sale.amountPaid cumule
+// tout ce qui a déjà été réglé sur cette dette précise — un acompte versé
+// à la vente à crédit (pos.js), et/ou un ou plusieurs règlements partiels
+// ultérieurs (sales.js settleDebt). Le reste dû est TOUJOURS owed - payé,
+// jamais recalculé autrement : seule cette fonction connaît la formule,
+// tous les écrans (liste patients, dossier, "Tout solder") passent par
+// elle - aucun risque de divergence entre deux affichages du même chiffre.
 function _debtAmountForSale(s) {
-  return s.paymentMethod === 'assurance' ? (s.assuranceAmount || s.total || 0) : (s.total || 0);
+  const owed = s.paymentMethod === 'assurance' ? (s.assuranceAmount || s.total || 0) : (s.total || 0);
+  return Math.max(0, owed - (s.amountPaid || 0));
 }
 
 async function renderPatients(container) {
@@ -47,7 +56,14 @@ async function renderPatients(container) {
   ]);
   window._allInsurances = insurances || [];
 
-  const sorted = patients.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  // Suppression (demandée par l'utilisateur) : un patient supprimé disparaît
+  // du dossier/répertoire, mais son historique d'achat reste intact dans
+  // Historique Ventes — sale.patientName/patientPhone sont déjà dénormalisés
+  // sur la vente à la création (pos.js), donc leur affichage ne dépend
+  // jamais de l'existence du patient. Suppression douce (deletedAt), pas de
+  // dbDelete réel : conserve la traçabilité complète et évite toute
+  // référence cassée côté sales.patientId.
+  const sorted = patients.filter(p => !p.deletedAt).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const canCreate = Auth.can('patients_create') || DB.AppState.currentUser?.role === 'admin';
   const canExport = Auth.can('patients_export') || DB.AppState.currentUser?.role === 'admin';
 
@@ -55,7 +71,7 @@ async function renderPatients(container) {
     <div class="page-header">
       <div>
         <h1 class="page-title">Dossiers Patients</h1>
-        <p class="page-subtitle">${patients.length} patients enregistrés — Données confidentielles</p>
+        <p class="page-subtitle">${sorted.length} patients enregistrés — Données confidentielles</p>
       </div>
       <div class="header-actions">
         ${canExport ? `
@@ -238,6 +254,10 @@ async function viewPatient(patientId) {
               ${patient.assurances.map(a => `<span class="badge badge-info"><i data-lucide="shield" style="width:12px;height:12px;margin-right:4px;"></i> <b>${a.name}</b> ${a.enterprise ? `[${a.enterprise}]` : ''} (${a.coverage}%) ${a.ref ? `- Police: ${a.ref}` : ''}</span>`).join('')}
             </div>
           ` : ''}
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+            ${(Auth.can('patients_edit') || DB.AppState.currentUser?.role === 'admin') ? `<button class="btn btn-xs btn-secondary" onclick="UI.closeModal();editPatient(${patient.id})"><i data-lucide="edit-3"></i> Modifier</button>` : ''}
+            ${(Auth.can('patients_delete') || DB.AppState.currentUser?.role === 'admin') ? `<button class="btn btn-xs btn-danger" onclick="deletePatient(${patient.id})"><i data-lucide="trash-2"></i> Supprimer</button>` : ''}
+          </div>
         </div>
       </div>
 
@@ -729,15 +749,16 @@ async function _confirmSettleAllDebtsImpl(patientId, paymentMethod, reference) {
     const today = new Date().toISOString().split('T')[0];
 
     for (const sale of creditSales) {
-      // Montant réellement encaissé : pour une vente assurance, seule la
-      // part assureur (sale.assuranceAmount) — la part patient a déjà été
-      // encaissée à la vente. Enregistrer sale.total ici surestimerait le
-      // montant réellement reçu lors de ce règlement.
+      // Montant réellement encaissé PAR CE règlement : le reste dû, qui
+      // tient déjà compte d'un éventuel acompte/règlement partiel antérieur
+      // (sale.amountPaid) — pas le montant initial total de la dette.
       const debtAmount = _debtAmountForSale(sale);
+      const owed = sale.paymentMethod === 'assurance' ? (sale.assuranceAmount || sale.total || 0) : (sale.total || 0);
 
       // 1. Update status
       sale.status = 'paid';
       sale.creditStatus = 'paid'; // aligné avec le filtre patients.js
+      sale.amountPaid = owed; // solde à 0 : la dette est intégralement réglée
       sale.paidAt = Date.now();
       sale.paidDate = today;
       sale.paidMethod = paymentMethod;
@@ -1035,6 +1056,46 @@ async function updatePatient(patientId) {
   UI.toast('Dossier patient mis à jour', 'success');
   Router.navigate('patients');
 }
+
+// Suppression (demandée par l'utilisateur) : suppression douce uniquement
+// (deletedAt, jamais dbDelete) — le patient disparaît de Dossiers Patients
+// et des recherches de sélection (POS, Ordonnances), mais son historique
+// d'achat reste visible et correct dans Historique Ventes, Comptabilité,
+// Pilotage, etc. (sale.patientName/patientPhone/patientId déjà dénormalisés
+// sur chaque vente à sa création — aucun de ces écrans ne dépend de
+// l'existence du dossier patient). Se synchronise comme n'importe quel
+// autre champ patient (storesToSync générique, js/db.js).
+async function deletePatient(patientId) {
+  if (window.Auth && !Auth.can('patients_delete') && DB.AppState.currentUser?.role !== 'admin') {
+    UI.toast('⛔ Vous n\'avez pas la permission de supprimer un patient.', 'error', 4000);
+    return;
+  }
+  const patient = await DB.dbGet('patients', patientId);
+  if (!patient) return;
+
+  const allSales = await DB.dbGetAll('sales');
+  const patientSales = allSales.filter(s => s.patientId === patientId || s.patientName === patient.name);
+  const unsettled = patientSales.filter(_isUnsettledDebtSale);
+  const unsettledTotal = unsettled.reduce((sum, s) => sum + _debtAmountForSale(s), 0);
+
+  let warning = `Supprimer le dossier de ${patient.name} ?\n\nSon historique d'achat (${patientSales.length} vente(s)) restera visible dans Historique Ventes — seul le dossier patient disparaît.`;
+  if (unsettled.length > 0) {
+    warning += `\n\n⚠️ ATTENTION : ce patient a ${unsettled.length} dette(s) en cours pour un total de ${UI.formatCurrency(unsettledTotal)}. La suppression ne l'annule PAS — la dette reste due et trouvable via Historique Ventes, mais ce patient ne sera plus facilement visible dans la liste des Dossiers Patients.`;
+  }
+
+  const ok = await UI.confirm(warning);
+  if (!ok) return;
+
+  patient.deletedAt = Date.now();
+  patient.deletedBy = DB.AppState.currentUser?.id || null;
+  await DB.dbPut('patients', patient);
+  await DB.writeAudit('DELETE_PATIENT', 'patients', patientId, { name: patient.name, unsettledDebt: unsettledTotal });
+
+  UI.closeModal();
+  UI.toast('Dossier patient supprimé (historique d\'achat conservé)', 'success');
+  Router.navigate('patients');
+}
+
 function exportPatients() {
   if (window.Auth && !Auth.can('patients_view') && DB.AppState.currentUser?.role !== 'admin') {
     UI.toast('⛔ Vous n\'avez pas la permission d\'exporter.', 'error', 4000);
@@ -1350,6 +1411,7 @@ window.showAddPatient = showAddPatient;
 window.submitPatient = submitPatient;
 window.editPatient = editPatient;
 window.updatePatient = updatePatient;
+window.deletePatient = deletePatient;
 window.exportPatients = exportPatients;
 window.openSmsModal = openSmsModal;
 window.sendPatientSms = sendPatientSms;

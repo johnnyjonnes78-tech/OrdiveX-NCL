@@ -498,7 +498,7 @@ function searchPatientForRx(query) {
 
   const patients = Object.values(window._rxPatientMap || {});
   const matches = patients.filter(p =>
-    (p.name || '').toLowerCase().includes(q) || (p.phone || '').includes(q)
+    !p.deletedAt && ((p.name || '').toLowerCase().includes(q) || (p.phone || '').includes(q))
   ).slice(0, 20); // Pagination : max 20 résultats
 
   if (matches.length === 0) {

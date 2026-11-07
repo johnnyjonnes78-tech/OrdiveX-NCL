@@ -589,11 +589,14 @@ function renderFullPOSUI(container) {
           </div>
 
           <div id="pay-credit" class="pay-detail" style="display:none">
-            <label class="pay-detail-label">Date d'échéance du crédit</label>
+            <label class="pay-detail-label">Montant payé maintenant (acompte) <span style="color:var(--text-muted);font-weight:400">— optionnel</span></label>
+            <input id="credit-acompte" type="number" class="pay-input" min="0" step="1" placeholder="0" oninput="refreshCreditAcompteNote()">
+            <div id="credit-acompte-note" style="font-size:12px;color:var(--text-muted);margin-top:4px"></div>
+            <label class="pay-detail-label" style="margin-top:10px">Date d'échéance du crédit</label>
             <input id="credit-date" type="date" class="pay-input" value="${new Date(Date.now() + 30 * 864e5).toISOString().split('T')[0]}">
             <div class="info-box-small" style="margin-top:10px">
               <i data-lucide="info"></i>
-              <span>Le patient doit être identifié pour valider une vente à crédit.</span>
+              <span>Le patient doit être identifié pour valider une vente à crédit. Laissez l'acompte à 0 pour tout mettre en crédit, comme avant — le reste après acompte sera enregistré comme dette.</span>
             </div>
           </div>
         </div>
@@ -1503,6 +1506,30 @@ function refreshTotals() {
     const splitBanner = document.getElementById('assur-split-banner');
     if (splitBanner) splitBanner.style.display = 'none';
   }
+  if (getPayMethod() === 'credit') refreshCreditAcompteNote();
+}
+
+// Paiement partiel à la vente à crédit (demandé par l'utilisateur) :
+// affiche en direct le reste qui sera mis en dette pendant la saisie de
+// l'acompte, sur le même principe que la ventilation assurance
+// (patientPart = total - part prise en charge).
+function refreshCreditAcompteNote() {
+  const note = document.getElementById('credit-acompte-note');
+  if (!note) return;
+  const sub = posCart.reduce((a, c) => a + c.total, 0);
+  const disc = Math.max(0, parseFloat(document.getElementById('pos-discount')?.value || 0));
+  const total = Math.max(0, sub - disc);
+  const input = document.getElementById('credit-acompte');
+  let acompte = parseFloat(input?.value || 0);
+  if (acompte < 0) acompte = 0;
+  if (acompte >= total && total > 0) {
+    note.innerHTML = `<span style="color:var(--danger)">L'acompte ne peut pas atteindre le total (${UI.formatCurrency(total)}) — utilisez Espèces si le client règle tout.</span>`;
+    return;
+  }
+  const remaining = Math.max(0, total - acompte);
+  note.textContent = acompte > 0
+    ? `Reste en crédit : ${UI.formatCurrency(remaining)}`
+    : `Mode crédit classique — ${UI.formatCurrency(total)} enregistré en dette.`;
 }
 
 function quickDiscount(pct) {
@@ -1550,6 +1577,9 @@ function selectPay(btn) {
       const ph = document.getElementById('assur-patient-phone');
       if (ph && !ph.value) ph.value = posCurrentPatient.phone;
     }
+  }
+  if (m === 'credit') {
+    refreshCreditAcompteNote();
   }
 }
 
@@ -1879,7 +1909,7 @@ function calcAge(dob) {
 
 async function showPatientRepertory() {
   const patients = await DB.dbGetAll('patients');
-  window._repertoryPatients = patients.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+  window._repertoryPatients = patients.filter(p => !p.deletedAt).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
   window._repertoryPage = 1;
 
   const content = `
@@ -2594,7 +2624,17 @@ async function _validerVenteLogic() {
     }
   }
 
+  // Paiement partiel à la vente à crédit (demandé par l'utilisateur) :
+  // acompte optionnel, encaissé immédiatement, le reste part en dette —
+  // même logique que la ventilation assurance (patientPart = total - part
+  // prise en charge), mais ici c'est le patient lui-même qui paie une part.
+  let creditAcompte = 0;
   if (method === 'credit') {
+    creditAcompte = Math.max(0, parseFloat(document.getElementById('credit-acompte')?.value || 0));
+    if (creditAcompte >= total && total > 0) {
+      UI.toast('⛔ L\'acompte ne peut pas atteindre le total — utilisez Espèces si le client règle tout.', 'error', 5000);
+      return;
+    }
     // Vérifier la permission de vente à crédit
     if (window.Auth && !Auth.can('pos_pay_credit') && DB.AppState.currentUser?.role !== 'admin') {
       UI.toast('⛔ Vous n\'avez pas la permission d\'effectuer des ventes à crédit. Contactez le responsable.', 'error', 5000);
@@ -2608,14 +2648,17 @@ async function _validerVenteLogic() {
       UI.toast('⛔ Le crédit est bloqué pour ce patient (Plafond à 0).', 'error', 5000); return;
     }
 
-    // Check pending debt
+    // Check pending debt — reste réellement dû par dette (total - ce qui a
+    // déjà été versé en acompte/règlement partiel), pas le montant brut
+    // initial, sous peine de compter deux fois ce que le patient a déjà payé.
     try {
       const allSales = await DB.dbGetAll('sales', 'patientId', posCurrentPatient.id);
       const pendingSales = allSales.filter(s => s.status === 'pending' && s.paymentMethod === 'credit');
-      const totalDebt = pendingSales.reduce((a, s) => a + (s.total || 0), 0);
+      const totalDebt = pendingSales.reduce((a, s) => a + Math.max(0, (s.total || 0) - (s.amountPaid || 0)), 0);
+      const remainingOwed = total - creditAcompte;
 
-      if ((totalDebt + total) > limit) {
-        UI.toast(`⛔ Plafond de crédit dépassé.\n\nDettes actuelles: ${UI.formatCurrency(totalDebt)}\nTotal demandé: ${UI.formatCurrency(total)}\n\nPlafond autorisé: ${UI.formatCurrency(limit)}`, 'error', 10000);
+      if ((totalDebt + remainingOwed) > limit) {
+        UI.toast(`⛔ Plafond de crédit dépassé.\n\nDettes actuelles: ${UI.formatCurrency(totalDebt)}\nNouveau crédit demandé: ${UI.formatCurrency(remainingOwed)}\n\nPlafond autorisé: ${UI.formatCurrency(limit)}`, 'error', 10000);
         return;
       }
     } catch (e) {
@@ -2709,12 +2752,20 @@ async function _validerVenteLogic() {
         cashRcv = parseFloat(document.getElementById('assur-patient-recv')?.value || 0);
       }
     }
+    else if (method === 'credit' && creditAcompte > 0) cashRcv = creditAcompte;
 
-    // Status: credit = pending debt for FULL total
+    // Status: credit = pending debt for FULL total (ou le reste après acompte)
     // assurance = pending debt ONLY for assurance portion (patient part is paid)
     const assurAmt = method === 'assurance' ? parseFloat(document.getElementById('assur-amount')?.value || 0) : 0;
     const patientPart = method === 'assurance' ? Math.max(0, total - assurAmt) : 0;
     const finalStatus = method === 'credit' ? 'pending' : (method === 'assurance' ? 'pending' : 'completed');
+
+    // Traçabilité de l'acompte à la vente à crédit (demandé par l'utilisateur) :
+    // même principe que combinedDetails pour l'assurance — un enregistrement
+    // explicite de la ventilation, pas juste un total opaque.
+    const creditDetails = (method === 'credit' && creditAcompte > 0)
+      ? [{ method: 'cash', amount: creditAcompte, label: 'Acompte versé à la vente' }, { method: 'credit', amount: Math.max(0, total - creditAcompte), label: 'Mis en crédit' }]
+      : null;
 
     // ID généré AVANT l'écriture (voir audit factures / Lot 1 hardening) : un
     // id assigné après coup par le compteur autoIncrement local d'IndexedDB
@@ -2736,7 +2787,7 @@ async function _validerVenteLogic() {
       preparerName: window._heldCartPreparer?.name || null,
       total, subtotal: sub, discount: disc,
       paymentMethod: method,
-      paymentDetails: combinedDetails,
+      paymentDetails: method === 'credit' ? creditDetails : combinedDetails,
       mmPhone: method === 'combined' || method === 'assurance' ? combinedMmPhone : (['orange_money', 'mtn_momo'].includes(method) ? document.getElementById('mm-phone')?.value : null),
       status: finalStatus,
       prescriptionId: posCurrentRx?.id || null,
@@ -2745,6 +2796,7 @@ async function _validerVenteLogic() {
       itemCount: posCart.length,
       creditDueDate: method === 'credit' ? document.getElementById('credit-date')?.value : null,
       cashReceived: cashRcv > 0 ? cashRcv : null,
+      amountPaid: method === 'credit' ? creditAcompte : 0,
       insuranceDetails: assurData.insuranceDetails || null
     };
 
