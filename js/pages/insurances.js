@@ -409,7 +409,8 @@ function renderInsuranceSalesTable(sales) {
 
   UI.table(container, columns, sales, {
     emptyMessage: "Aucune facture trouvée pour la période.",
-    emptyIcon: 'file-text'
+    emptyIcon: 'file-text',
+    wide: true
   });
 }
 
@@ -462,7 +463,8 @@ function renderInsurancePaymentsTable(payments) {
 
   UI.table(container, columns, payments, {
     emptyMessage: "Aucun règlement enregistré pour cette assurance.",
-    emptyIcon: 'banknote'
+    emptyIcon: 'banknote',
+    wide: true
   });
 }
 
@@ -505,7 +507,8 @@ function renderGroupedInvoices() {
 
   UI.table(container, columns, filteredSales, {
     emptyMessage: "Aucune facture trouvée pour la période sélectionnée.",
-    emptyIcon: 'calendar'
+    emptyIcon: 'calendar',
+    wide: true
   });
 }
 

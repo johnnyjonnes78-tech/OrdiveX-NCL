@@ -1,5 +1,5 @@
 {
-  "version": "9.13.1",
+  "version": "9.13.2",
   "date": "2026-11-07",
-  "changelog": "v9.13.1 : POS - badge produit (OTC/Rx/SC) qui masquait la fin du nom sur les produits aux noms les plus longs, corrige ; Inventaire - defilement horizontal du tableau de saisie restaure (bloque meme en rotation d'ecran)."
+  "changelog": "v9.13.2 : Assurance & Tiers Payant - defilement horizontal restaure sur les tableaux Historique Factures, Reglements et Facturation Groupee (meme systeme que Pilotage & Controle de Gestion)."
 }

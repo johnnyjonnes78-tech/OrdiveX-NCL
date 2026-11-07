@@ -304,10 +304,23 @@ const UI = {
     var frag = document.createDocumentFragment();
 
     var wrapper = document.createElement('div');
-    wrapper.className = 'table-wrapper';
-
     var table = document.createElement('table');
-    table.className = 'data-table';
+    if (options.wide) {
+      // Tableau large a nombreuses colonnes (signale par l'utilisateur,
+      // Assurance & Tiers Payant) : le mode carte mobile standard masque
+      // trop d'informations a la fois pour etre pratique sur un tableau
+      // financier a 5-8 colonnes - meme traitement que les tableaux larges
+      // de Pilotage & Controle de Gestion (defilement horizontal reel,
+      // en-tetes visibles, plutot qu'un empilement de cartes). Pas de
+      // classe table-wrapper ici : mobile.css la desactive systematiquement
+      // en mode carte (overflow-x:visible!important), ce qui bloquerait
+      // precisement le defilement qu'on veut restaurer.
+      wrapper.style.cssText = 'overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);';
+      table.className = 'data-table wide-data-table';
+    } else {
+      wrapper.className = 'table-wrapper';
+      table.className = 'data-table';
+    }
 
     // THEAD
     var thead = document.createElement('thead');
