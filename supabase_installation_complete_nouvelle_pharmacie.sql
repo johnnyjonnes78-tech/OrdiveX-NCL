@@ -4,7 +4,8 @@
 -- Ce fichier est la fusion, dans l'ordre, de :
 --   1. supabase_schema.sql                         (schéma principal)
 --   2. supabase_nouvelle_pharmacie_complements.sql (compléments : prep_transfers,
---      colonnes invoices/saleItems/cashRegister/app_users/sales manquantes)
+--      colonnes invoices/saleItems/cashRegister/app_users/sales manquantes,
+--      table stockValueSnapshots)
 --
 -- Objectif : exécuter UN SEUL script (au lieu de deux, dans l'ordre) dans le SQL
 -- Editor d'un projet Supabase TOUT NEUF, pour une pharmacie qui n'a encore jamais
@@ -1276,6 +1277,10 @@ ORDER BY table_name;
 --      ajout_colonnes_sales_dettes_assurance.sql (pharmacies déjà en place),
 --      qui explique l'étape "Réparer l'envoi Cloud" obligatoire en plus de
 --      ce script SQL.
+--   7. La table "stockValueSnapshots" (historique de la valeur du stock,
+--      v9.13.0) n'existe pas du tout dans supabase_schema.sql — ajoutée en
+--      novembre 2026. Voir aussi le script dédié
+--      creer_table_stock_value_snapshots.sql (pharmacies déjà en place).
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- ───────────────────────────────────────────────────────────────
@@ -1364,10 +1369,34 @@ ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "insurancePaidAmount" NUMERIC;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS "paymentDetails" JSONB;
 
 -- ───────────────────────────────────────────────────────────────
+-- 7. TABLE : stockValueSnapshots — Historique de la valeur du stock
+-- ───────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS "stockValueSnapshots" (
+  id              BIGINT PRIMARY KEY,
+  date            TEXT NOT NULL,
+  "purchaseValue" NUMERIC(15,2) DEFAULT 0,
+  "saleValue"     NUMERIC(15,2) DEFAULT 0,
+  "productCount"  BIGINT DEFAULT 0,
+  "updatedAt"     BIGINT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stockvaluesnapshots_date ON "stockValueSnapshots" (date);
+CREATE INDEX IF NOT EXISTS idx_stockvaluesnapshots_updatedat ON "stockValueSnapshots" ("updatedAt");
+
+ALTER TABLE "stockValueSnapshots" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "stockValueSnapshots_all" ON "stockValueSnapshots";
+CREATE POLICY "stockValueSnapshots_all" ON "stockValueSnapshots" FOR ALL USING (auth.role() = 'authenticated');
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON "stockValueSnapshots" TO anon, authenticated, service_role;
+
+-- ───────────────────────────────────────────────────────────────
 -- Vérification finale
 -- ───────────────────────────────────────────────────────────────
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public' AND table_name = 'prep_transfers';
+
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public' AND table_name = 'stockValueSnapshots';
 
 SELECT table_name, column_name, data_type FROM information_schema.columns
 WHERE table_schema = 'public'
