@@ -1,5 +1,5 @@
 {
-  "version": "9.12.5",
+  "version": "9.13.0",
   "date": "2026-11-07",
-  "changelog": "v9.12.5 : Point de Vente - les noms de produits les plus longs (souvent les 2 premiers affiches) etaient coupes avec des points de suspension sur mobile et tablette (regle de troncature a 2 lignes heritee jamais annulee pour ces largeurs) ; le nom s'affiche desormais en entier, sur autant de lignes que necessaire."
+  "changelog": "v9.13.0 : Correctifs mobile majeurs (inventaire, saisie rapide, assurances, facture fournisseur, pilotage, detail vente, panier, retours, paie RH) + nouvelle fonctionnalite : historique de la valeur du stock au fil du temps."
 }
