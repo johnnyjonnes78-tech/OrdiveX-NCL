@@ -460,6 +460,24 @@ img, canvas, video, iframe {
   .wide-data-table tbody td::before {
     content: none !important;
   }
+  /* Fiabilisation (signalé par l'utilisateur, capture d'écran à l'appui) :
+     sans white-space:nowrap, table-layout:auto (par défaut) préfère faire
+     retourner à la ligne un texte trop long plutôt que d'élargir le
+     tableau au-delà du viewport — le tableau ne dépassait donc jamais
+     assez pour déclencher le défilement horizontal qu'on venait
+     d'activer (ex. "#179323643218091" coupé sur 2 lignes dans la
+     cellule au lieu de forcer la colonne/le tableau plus large). Même
+     correctif que .hr-payroll-table plus haut. */
+  #entry-inventory-table th,
+  #entry-inventory-table td,
+  .wide-data-table th,
+  .wide-data-table td {
+    white-space: nowrap !important;
+  }
+  #entry-inventory-table td[style*="max-width"],
+  .wide-data-table td[style*="max-width"] {
+    white-space: normal !important;
+  }
 
   /* Tableaux RH (bulletins de paie, contrats, évaluations, sanctions,
      documents) : classe autonome .hr-payroll-table, jamais passée par
