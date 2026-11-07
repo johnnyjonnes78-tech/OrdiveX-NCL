@@ -2067,9 +2067,22 @@ img, canvas, video, iframe {
     white-space: nowrap !important;
   }
 
-  /* Grille Assurance & Tiers Payant — passage à 1 colonne sur mobile */
+  /* Grille Assurance & Tiers Payant — passage à 1 colonne sur mobile.
+     Fiabilisation (signalé par l'utilisateur, très cherché) : un simple
+     "1fr" équivaut à minmax(auto, 1fr) en CSS Grid — sa largeur MINIMALE
+     reste "auto", c'est-à-dire la largeur intrinsèque du plus large
+     contenu qu'il contient. Avec un tableau large forcé en
+     white-space:nowrap (wide-data-table), ce minimum "auto" est énorme :
+     au lieu que le TABLEAU déborde et défile dans son propre wrapper
+     (overflow-x:auto déjà en place), c'est la PISTE DE GRILLE elle-même
+     qui s'élargissait pour l'accueillir — poussant toute la page plus
+     large que l'écran, que l'overflow-x:hidden global de la page
+     rognait ensuite silencieusement, sans aucune barre de défilement
+     nulle part. minmax(0, 1fr) (déjà utilisé sur desktop, jamais repris
+     ici) autorise la piste à descendre à 0 : c'est alors le tableau,
+     et lui seul, qui gère son propre débordement. */
   .insurances-layout-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 16px !important;
   }
   .insurances-layout-grid .card {
