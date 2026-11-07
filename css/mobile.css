@@ -539,8 +539,12 @@ img, canvas, video, iframe {
     gap: 12px !important;
   }
 
+  /* Fiabilisation (signalé par l'utilisateur) : .form-row est en
+     display:grid (voir main.css), pas flex — flex-direction:column n'a
+     donc AUCUN effet sur un conteneur grid, cette règle ne faisait rien.
+     Les formulaires restaient forcés sur 2 colonnes serrées sur mobile. */
   .form-row {
-    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
 
@@ -1119,7 +1123,12 @@ img, canvas, video, iframe {
   }
 
   /* Formulaires dans les paramètres — pleine largeur */
-  .settings-card .form-row,
+  /* Fiabilisation (signalé par l'utilisateur) : .form-row est en
+     display:grid, pas flex — même correctif que plus haut. */
+  .settings-card .form-row {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
   .settings-card .form-grid {
     flex-direction: column !important;
     gap: 12px !important;
