@@ -1,5 +1,5 @@
 {
-  "version": "9.13.4",
+  "version": "9.13.5",
   "date": "2026-11-07",
-  "changelog": "v9.13.4 : Assurance & Tiers Payant - vraie cause du defilement horizontal jamais fonctionnel sur mobile trouvee et corrigee (piste de grille CSS qui s'elargissait au lieu de laisser le tableau deborder dans son propre wrapper)."
+  "changelog": "v9.13.5 : Dossier Patient - noms de medicaments qui s'entremelaient dans l'onglet Dette corriges (un medicament par ligne, lisible quelle que soit la largeur d'ecran)."
 }
