@@ -1,5 +1,5 @@
 {
-  "version": "9.13.0",
+  "version": "9.13.1",
   "date": "2026-11-07",
-  "changelog": "v9.13.0 : Correctifs mobile majeurs (inventaire, saisie rapide, assurances, facture fournisseur, pilotage, detail vente, panier, retours, paie RH) + nouvelle fonctionnalite : historique de la valeur du stock au fil du temps."
+  "changelog": "v9.13.1 : POS - badge produit (OTC/Rx/SC) qui masquait la fin du nom sur les produits aux noms les plus longs, corrige ; Inventaire - defilement horizontal du tableau de saisie restaure (bloque meme en rotation d'ecran)."
 }
