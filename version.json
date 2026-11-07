@@ -1,5 +1,5 @@
 {
-  "version": "9.13.3",
+  "version": "9.13.4",
   "date": "2026-11-07",
-  "changelog": "v9.13.3 : Paiement partiel sur vente a credit (acompte) et reglement de dette en plusieurs fois ; suppression douce d'un patient (historique d'achat conserve) ; defilement horizontal corrige sur les tableaux larges d'Assurance & Tiers Payant."
+  "changelog": "v9.13.4 : Assurance & Tiers Payant - vraie cause du defilement horizontal jamais fonctionnel sur mobile trouvee et corrigee (piste de grille CSS qui s'elargissait au lieu de laisser le tableau deborder dans son propre wrapper)."
 }
