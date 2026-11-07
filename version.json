@@ -1,5 +1,5 @@
 {
-  "version": "9.13.2",
+  "version": "9.13.3",
   "date": "2026-11-07",
-  "changelog": "v9.13.2 : Assurance & Tiers Payant - defilement horizontal restaure sur les tableaux Historique Factures, Reglements et Facturation Groupee (meme systeme que Pilotage & Controle de Gestion)."
+  "changelog": "v9.13.3 : Paiement partiel sur vente a credit (acompte) et reglement de dette en plusieurs fois ; suppression douce d'un patient (historique d'achat conserve) ; defilement horizontal corrige sur les tableaux larges d'Assurance & Tiers Payant."
 }
