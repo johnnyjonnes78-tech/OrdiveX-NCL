@@ -1,5 +1,5 @@
 /**
- * OrdiveX â€” Module Impressions & Documents
+ * OrdiveX — Module Impressions & Documents
  * Tickets, factures, PV destruction, rapports officiels DNPM
  */
 
@@ -286,7 +286,7 @@ const PrintEngine = {
           </div>
           <div class="inv-pbox">
             <div class="inv-plbl">Vendeur / Dispensation</div>
-            <div class="inv-pnm">${sale.sellerName || DB.AppState.currentUser?.name || 'â€”'}</div>
+            <div class="inv-pnm">${sale.sellerName || DB.AppState.currentUser?.name || '—'}</div>
             ${sale.preparerName ? '<div class="inv-pd">Préparateur: ' + sale.preparerName + '</div>' : ''}
             ${sale.prescriptionRef ? '<div class="inv-pd">Ordonnance: ' + sale.prescriptionRef + '</div>' : ''}
             ${sale.doctorName ? '<div class="inv-pd">Médecin: Dr. ' + sale.doctorName + '</div>' : ''}
@@ -295,7 +295,7 @@ const PrintEngine = {
         <table class="inv-tbl">
           <thead><tr><th style="width:30px">#</th><th>Désignation</th><th class="inv-ac">Qté</th><th class="inv-ar">Prix unit.</th><th class="inv-ar">Total</th></tr></thead>
           <tbody>
-            ${items.map((it, idx) => '<tr><td>' + (idx+1) + '</td><td><div class="inv-im">' + (it.productName || 'â€”') + '</div>' + (it.dci || it.dosage ? '<div class="inv-is">' + [it.dci, it.dosage].filter(Boolean).join(' · ') + '</div>' : '') + '</td><td class="inv-ac">' + it.quantity + '</td><td class="inv-ar">' + UI.formatCurrency(it.unitPrice) + '</td><td class="inv-ar"><strong>' + UI.formatCurrency(it.total) + '</strong></td></tr>').join('')}
+            ${items.map((it, idx) => '<tr><td>' + (idx+1) + '</td><td><div class="inv-im">' + (it.productName || '—') + '</div>' + (it.dci || it.dosage ? '<div class="inv-is">' + [it.dci, it.dosage].filter(Boolean).join(' · ') + '</div>' : '') + '</td><td class="inv-ac">' + it.quantity + '</td><td class="inv-ar">' + UI.formatCurrency(it.unitPrice) + '</td><td class="inv-ar"><strong>' + UI.formatCurrency(it.total) + '</strong></td></tr>').join('')}
           </tbody>
         </table>
         <div class="inv-tots"><div class="inv-tb">
@@ -304,11 +304,11 @@ const PrintEngine = {
           ${tva > 0 ? '<div class="inv-tr"><span>TVA (' + tvaSetting + (!isNaN(tvaSetting) ? '%' : '') + ')</span><span>' + UI.formatCurrency(tva) + '</span></div>' : ''}
           <div class="inv-tr gt"><span>TOTAL TTC</span><span>${UI.formatCurrency(finalTotal)}</span></div>
         </div></div>
-        <div class="inv-pb">Mode de paiement : ${payLabels[sale.paymentMethod] || sale.paymentMethod || 'â€”'}</div>
+        <div class="inv-pb">Mode de paiement : ${payLabels[sale.paymentMethod] || sale.paymentMethod || '—'}</div>
         ${sale.paymentMethod === 'cash' && sale.cashReceived ? '<div style="font-size:11px;color:#555;margin-bottom:4px;">Reçu: ' + UI.formatCurrency(sale.cashReceived) + ' · Monnaie: ' + UI.formatCurrency(sale.cashReceived - finalTotal) + '</div>' : ''}
         ${sale.paymentMethod === 'combined' && sale.paymentDetails ? '<div style="font-size:11px;color:#555;margin-bottom:4px;">' + (sale.paymentDetails.method1 || 'Mode 1') + ': ' + UI.formatCurrency(sale.paymentDetails.amount1 || 0) + ' · ' + (sale.paymentDetails.method2 || 'Mode 2') + ': ' + UI.formatCurrency(sale.paymentDetails.amount2 || 0) + '</div>' : ''}
         ${sale.paymentMethod === 'assurance' && sale.insuranceDetails ? '<div style="font-size:11px;color:#1B4F72;margin-bottom:4px;">Assurance: ' + (sale.insuranceDetails.name || sale.assuranceName || '') + ' · N° ' + (sale.insuranceDetails.ref || sale.assuranceRef || '') + '<br>Part Entreprise: ' + UI.formatCurrency(sale.insuranceDetails.amount || 0) + ' · Part Patient: ' + UI.formatCurrency(finalTotal - (sale.insuranceDetails.amount || 0)) + '</div>' : ''}
-        ${sale.paymentMethod === 'credit' && sale.creditDueDate ? '<div style="font-size:11px;color:#e74c3c;margin-bottom:4px;">Ã‰chéance: ' + UI.formatDate(sale.creditDueDate) + '</div>' : ''}
+        ${sale.paymentMethod === 'credit' && sale.creditDueDate ? '<div style="font-size:11px;color:#e74c3c;margin-bottom:4px;">Échéance : ' + UI.formatDate(sale.creditDueDate) + '</div>' : ''}
         <div class="inv-ft">
           <div class="inv-sig"><div class="inv-sl"></div><div class="inv-sn">${pResp}</div><div class="inv-sr">Pharmacien responsable</div></div>
           <div style="text-align:center"><div style="font-size:10px;color:#888">Ce document tient lieu de facture officielle.</div><div style="font-size:10px;color:#888">Conservez-le comme preuve d'achat.</div></div>
@@ -628,7 +628,7 @@ const PrintEngine = {
 
   _openPrintWindow(title) {
     const win = window.open('', '_blank', 'width=900,height=700');
-    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${title} â€” ${this.pharmacyInfo.name}</title></head><body>`);
+    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${title} — ${this.pharmacyInfo.name}</title></head><body>`);
     return win;
   },
 

@@ -1,5 +1,5 @@
 {
-  "version": "9.12.3",
-  "date": "2026-10-31",
-  "changelog": "v9.12.3 : Page d'accueil - le rideau des fonctionnalites laissait parfois un grand vide sans texte (mecanisme de defilement trop fragile) ; remplace par une version robuste ou chaque fonctionnalite garde sa propre carte et son propre rideau, qui s'ouvre a l'entree dans l'ecran en defilant."
+  "version": "9.12.4",
+  "date": "2026-11-07",
+  "changelog": "v9.12.4 : Facture A4 - correction d'un caractere parasite code en dur (encodage corrompu) affichant un tiret illisible en haut du document, pres du nom de la pharmacie et de la reference, ainsi que dans certains champs de repli (vendeur, produit, mode de paiement, echeance de credit non renseignes)."
 }
