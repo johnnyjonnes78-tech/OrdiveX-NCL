@@ -488,7 +488,15 @@ img, canvas, video, iframe {
     white-space: normal;
   }
 
-  /* Wrapper du tableau — scroll horizontal désactivé en card mode */
+  /* Wrapper du tableau — scroll horizontal désactivé en card mode.
+     Exception (signalé par l'utilisateur, inventaire) : cette règle
+     désactivait aussi le défilement du wrapper de #entry-inventory-table,
+     qui portait par erreur la même classe générique .table-wrapper — le
+     tableau restait large et illisible, sans AUCUN moyen de voir les
+     colonnes restantes, même en rotation d'écran. Corrigé en retirant
+     cette classe du wrapper dans inventory.js (son style inline
+     overflow-x:auto suffit déjà, même pattern que management-control.js
+     pour ses tableaux larges). */
   .table-wrapper {
     overflow-x: visible !important;
     border: none !important;

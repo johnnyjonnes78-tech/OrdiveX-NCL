@@ -521,7 +521,7 @@ function renderEntryView(container) {
     </div>
 
     <div class="settings-card2">
-      <div class="table-wrapper" style="border: 1px solid var(--border); border-radius: 8px; overflow-x: auto;">
+      <div style="border: 1px solid var(--border); border-radius: 8px; overflow-x: auto;">
         <table class="data-table" id="entry-inventory-table">
           <thead>
             <tr>

@@ -7357,6 +7357,16 @@ a:focus-visible {
 }
 
 .prod-top {
+  /* Fiabilisation (signalé par l'utilisateur, POS) : une règle .prod-top
+     plus ancienne (non scopée elle non plus, plus haut dans ce fichier)
+     posait position:absolute;top:5px;right:5px - jamais annulée ici,
+     elle survivait silencieusement sous cette version "en flux normal".
+     Résultat : les badges (OTC/Rx/SC) flottaient réellement au-dessus du
+     coin supérieur droit de CHAQUE carte, masquant visuellement la fin
+     du nom du produit chaque fois que son texte était assez long pour
+     atteindre ce coin - typiquement les produits aux noms les plus longs
+     du catalogue (souvent les 2 premiers par ordre alphabétique). */
+  position: static;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
