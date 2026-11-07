@@ -1,5 +1,5 @@
 {
-  "version": "9.12.4",
+  "version": "9.12.5",
   "date": "2026-11-07",
-  "changelog": "v9.12.4 : Facture A4 - correction d'un caractere parasite code en dur (encodage corrompu) affichant un tiret illisible en haut du document, pres du nom de la pharmacie et de la reference, ainsi que dans certains champs de repli (vendeur, produit, mode de paiement, echeance de credit non renseignes)."
+  "changelog": "v9.12.5 : Point de Vente - les noms de produits les plus longs (souvent les 2 premiers affiches) etaient coupes avec des points de suspension sur mobile et tablette (regle de troncature a 2 lignes heritee jamais annulee pour ces largeurs) ; le nom s'affiche desormais en entier, sur autant de lignes que necessaire."
 }
