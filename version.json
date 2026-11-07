@@ -1,5 +1,5 @@
 {
-  "version": "9.13.5",
+  "version": "9.13.6",
   "date": "2026-11-07",
-  "changelog": "v9.13.5 : Dossier Patient - noms de medicaments qui s'entremelaient dans l'onglet Dette corriges (un medicament par ligne, lisible quelle que soit la largeur d'ecran)."
+  "changelog": "v9.13.6 : Dossier Patient - texte superpose (label sur valeur) corrige dans les onglets Achats/Dettes/Ordonnances (code mort - un second mecanisme mobile en conflit avec le mecanisme global, supprime)."
 }
