@@ -413,6 +413,74 @@ img, canvas, video, iframe {
     gap: 6px;
   }
 
+  /* Exception (signalé par l'utilisateur) : certains tableaux denses à
+     nombreuses colonnes numériques/saisies (saisie d'inventaire, pilotage,
+     paie RH) n'ont jamais eu de data-label posé sur leurs cellules — sans
+     en-tête ET sans repli data-label, leurs valeurs s'affichaient sans
+     aucun nom de colonne, illisibles. Plutôt que transformer ces tableaux
+     en liste de cartes (peu adapté - trop de colonnes à comparer côte à
+     côte), on leur restaure le défilement horizontal normal avec en-tête
+     visible, déjà prévu par leur propre .table-wrapper. */
+  #entry-inventory-table,
+  .wide-data-table {
+    display: table !important;
+    width: auto !important;
+    min-width: 100%;
+  }
+  #entry-inventory-table thead,
+  .wide-data-table thead {
+    display: table-header-group !important;
+  }
+  #entry-inventory-table tbody,
+  .wide-data-table tbody {
+    display: table-row-group !important;
+  }
+  #entry-inventory-table tbody tr,
+  .wide-data-table tbody tr {
+    display: table-row !important;
+    background: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin-bottom: 0 !important;
+  }
+  #entry-inventory-table tbody td,
+  .wide-data-table tbody td {
+    display: table-cell !important;
+    justify-content: initial !important;
+  }
+  #entry-inventory-table tbody td::before,
+  .wide-data-table tbody td::before {
+    content: none !important;
+  }
+
+  /* Tableaux RH (bulletins de paie, contrats, évaluations, sanctions,
+     documents) : classe autonome .hr-payroll-table, jamais passée par
+     .data-table → jamais transformée en cartes, mais sans défilement
+     propre non plus (largeur forcée à 100%, colonnes écrasées = texte
+     qui s'empile verticalement dans chaque cellule). On la rend
+     elle-même défilante horizontalement, sans toucher au balisage. */
+  .hr-payroll-table {
+    display: block !important;
+    width: auto !important;
+    max-width: 100%;
+    min-width: 520px;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hr-payroll-table thead,
+  .hr-payroll-table tbody,
+  .hr-payroll-table tr {
+    width: 100%;
+  }
+  .hr-payroll-table th,
+  .hr-payroll-table td {
+    white-space: nowrap;
+  }
+  .hr-payroll-table td[style*="max-width"] {
+    white-space: normal;
+  }
+
   /* Wrapper du tableau — scroll horizontal désactivé en card mode */
   .table-wrapper {
     overflow-x: visible !important;
@@ -921,14 +989,51 @@ img, canvas, video, iframe {
     display: none !important;
   }
 
-  /* Items du panier */
+  /* Items du panier — empilés sur 2 lignes (signalé par l'utilisateur) :
+     nom/qté/prix côte à côte sur une seule ligne ne laissait presque plus
+     de largeur au nom (overflow:hidden + ellipsis le coupait presque
+     toujours). Le nom occupe désormais sa propre ligne en entier, qté et
+     prix se partagent la ligne suivante. */
   .cart-line {
     padding: 10px 14px !important;
     font-size: 13px;
+    flex-wrap: wrap !important;
+  }
+
+  .cart-line-info {
+    flex: 1 1 100% !important;
   }
 
   .cart-line-name {
     font-size: 13px !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .cart-line-qty,
+  .cart-line-right {
+    margin-top: 4px;
+  }
+
+  /* Retour médicament — même défaut que le panier : .return-item-qty-wrap
+     a une largeur minimale de 130px (fixe) qui, sur un écran étroit, ne
+     laissait presque plus de place au nom du produit (signalé par
+     l'utilisateur). Le sélecteur de quantité passe sur sa propre ligne. */
+  .return-item-row {
+    flex-wrap: wrap !important;
+  }
+
+  .return-item-name {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .return-item-qty-wrap {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    margin-top: 8px;
   }
 
   /* Boutons +/- du panier — gros */

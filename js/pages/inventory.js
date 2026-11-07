@@ -1013,13 +1013,13 @@ function renderValidateView(container) {
             <tbody>
               ${gaps.map(g => `
                 <tr>
-                  <td><strong>${g.name}</strong></td>
-                  <td class="ta-c text-muted">${g.systemQty}</td>
-                  <td class="ta-c"><strong>${g.physicalQty}</strong></td>
-                  <td class="ta-c">
+                  <td data-label="Médicament"><strong>${g.name}</strong></td>
+                  <td data-label="Théorique" class="ta-c text-muted">${g.systemQty}</td>
+                  <td data-label="Physique" class="ta-c"><strong>${g.physicalQty}</strong></td>
+                  <td data-label="Écart" class="ta-c">
                     <span class="badge ${g.gap > 0 ? 'badge-info' : 'badge-danger'}">${g.gap > 0 ? '+' : ''}${g.gap}</span>
                   </td>
-                  <td class="ta-r ${g.gap > 0 ? 'text-info' : 'text-danger'}"><strong>${UI.formatCurrency(g.gapValue)}</strong></td>
+                  <td data-label="Valeur" class="ta-r ${g.gap > 0 ? 'text-info' : 'text-danger'}"><strong>${UI.formatCurrency(g.gapValue)}</strong></td>
                 </tr>
               `).join('')}
               ${gaps.length === 0 ? '<tr><td colspan="5" class="ta-c text-success">Aucun écart détecté — Le stock théorique correspond à 100% au stock physique.</td></tr>' : ''}
@@ -1373,14 +1373,14 @@ window.viewInventoryDetails = async function(inventoryId) {
           <tbody>
             ${gaps.map(g => `
               <tr>
-                <td><strong>${g.name}</strong><br><code style="font-size:11px">${g.code}</code></td>
-                <td class="text-muted text-sm">${g.supplierName || 'Aucun'}</td>
-                <td class="ta-c text-muted">${g.systemQty}</td>
-                <td class="ta-c"><strong>${g.physicalQty}</strong></td>
-                <td class="ta-c">
+                <td data-label="Médicament"><strong>${g.name}</strong><br><code style="font-size:11px">${g.code}</code></td>
+                <td data-label="Fournisseur" class="text-muted text-sm">${g.supplierName || 'Aucun'}</td>
+                <td data-label="Théorique" class="ta-c text-muted">${g.systemQty}</td>
+                <td data-label="Physique" class="ta-c"><strong>${g.physicalQty}</strong></td>
+                <td data-label="Écart" class="ta-c">
                   <span class="badge ${g.gap > 0 ? 'badge-info' : 'badge-danger'}">${g.gap > 0 ? '+' : ''}${g.gap}</span>
                 </td>
-                <td class="ta-r ${g.gap > 0 ? 'text-info' : 'text-danger'}"><strong>${UI.formatCurrency(g.gapValue)}</strong></td>
+                <td data-label="Valeur" class="ta-r ${g.gap > 0 ? 'text-info' : 'text-danger'}"><strong>${UI.formatCurrency(g.gapValue)}</strong></td>
               </tr>
             `).join('')}
             ${gaps.length === 0 ? '<tr><td colspan="6" class="ta-c text-success">Aucun écart de stock constaté.</td></tr>' : ''}

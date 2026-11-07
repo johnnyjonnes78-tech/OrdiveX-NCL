@@ -366,7 +366,7 @@ function mcRenderDashboard(contentEl) {
         ${Object.keys(payBreakdown).length === 0 ? '<p class="text-muted">Aucune vente sur cette periode</p>' :
           `<table class="data-table" style="margin:0;"><thead><tr><th>Mode</th><th style="text-align:right">Nombre</th><th style="text-align:right">Montant</th></tr></thead><tbody>
           ${Object.entries(payBreakdown).map(([k, v]) =>
-            `<tr><td>${payLabels[k] || k}</td><td style="text-align:right"><strong>${v.count}</strong></td><td style="text-align:right">${UI.formatCurrency(v.total)}</td></tr>`
+            `<tr><td data-label="Mode">${payLabels[k] || k}</td><td data-label="Nombre" style="text-align:right"><strong>${v.count}</strong></td><td data-label="Montant" style="text-align:right">${UI.formatCurrency(v.total)}</td></tr>`
           ).join('')}
           </tbody></table>`
         }
@@ -376,7 +376,7 @@ function mcRenderDashboard(contentEl) {
         ${topProducts.length === 0 ? '<p class="text-muted">Aucune vente sur cette periode</p>' :
           `<table class="data-table" style="margin:0;"><thead><tr><th>Produit</th><th style="text-align:right">Quantite</th><th style="text-align:right">Revenu</th></tr></thead><tbody>
           ${topProducts.map((p, i) =>
-            `<tr><td><span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:${i < 3 ? 'var(--primary)' : 'var(--text-muted)'};color:white;text-align:center;line-height:20px;font-size:10px;font-weight:700;margin-right:8px;">${i + 1}</span>${p.name}</td><td style="text-align:right"><strong>${p.qty}</strong></td><td style="text-align:right">${UI.formatCurrency(p.revenue)}</td></tr>`
+            `<tr><td data-label="Produit"><span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:${i < 3 ? 'var(--primary)' : 'var(--text-muted)'};color:white;text-align:center;line-height:20px;font-size:10px;font-weight:700;margin-right:8px;">${i + 1}</span>${p.name}</td><td data-label="Quantite" style="text-align:right"><strong>${p.qty}</strong></td><td data-label="Revenu" style="text-align:right">${UI.formatCurrency(p.revenue)}</td></tr>`
           ).join('')}
           </tbody></table>`
         }
@@ -392,7 +392,7 @@ function mcRenderDashboard(contentEl) {
         ${ruptures.length === 0 ? '<p class="text-muted">Aucune rupture detectee</p>' :
           `<div style="max-height:250px;overflow-y:auto;">
           <table class="data-table" style="margin:0;"><thead><tr><th>Produit</th><th>Categorie</th></tr></thead><tbody>
-          ${ruptures.slice(0, 30).map(p => `<tr><td><strong>${p.name}</strong></td><td><span class="category-tag">${p.category || '—'}</span></td></tr>`).join('')}
+          ${ruptures.slice(0, 30).map(p => `<tr><td data-label="Produit"><strong>${p.name}</strong></td><td data-label="Categorie"><span class="category-tag">${p.category || '—'}</span></td></tr>`).join('')}
           ${ruptures.length > 30 ? `<tr><td colspan="2" class="text-muted text-center">... et ${ruptures.length - 30} autres</td></tr>` : ''}
           </tbody></table></div>`
         }
@@ -404,7 +404,7 @@ function mcRenderDashboard(contentEl) {
         ${lowStock.length === 0 ? '<p class="text-muted">Aucun stock bas detecte</p>' :
           `<div style="max-height:250px;overflow-y:auto;">
           <table class="data-table" style="margin:0;"><thead><tr><th>Produit</th><th style="text-align:right">Stock</th><th style="text-align:right">Seuil</th></tr></thead><tbody>
-          ${lowStock.slice(0, 30).map(p => `<tr><td><strong>${p.name}</strong></td><td style="text-align:right;color:var(--warning);font-weight:700;">${stockMap[p.id]?.quantity || 0}</td><td style="text-align:right">${p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10)}</td></tr>`).join('')}
+          ${lowStock.slice(0, 30).map(p => `<tr><td data-label="Produit"><strong>${p.name}</strong></td><td data-label="Stock" style="text-align:right;color:var(--warning);font-weight:700;">${stockMap[p.id]?.quantity || 0}</td><td data-label="Seuil" style="text-align:right">${p.minStock || (window._defaultMinStock ? window._defaultMinStock() : 10)}</td></tr>`).join('')}
           ${lowStock.length > 30 ? `<tr><td colspan="3" class="text-muted text-center">... et ${lowStock.length - 30} autres</td></tr>` : ''}
           </tbody></table></div>`
         }
@@ -420,7 +420,7 @@ function mcRenderDashboard(contentEl) {
         `<div style="max-height:300px;overflow-y:auto;">
         <table class="data-table" style="margin:0;"><thead><tr><th>Produit</th><th>Categorie</th><th style="text-align:right">Stock</th><th style="text-align:right">Val. Stock (achat)</th></tr></thead><tbody>
         ${unsoldProducts.slice(0, 50).map(p =>
-          `<tr><td><strong>${p.name}</strong></td><td><span class="category-tag">${p.category || '—'}</span></td><td style="text-align:right">${stockMap[p.id]?.quantity || 0}</td><td style="text-align:right">${UI.formatCurrency((stockMap[p.id]?.quantity || 0) * (p.purchasePrice || 0))}</td></tr>`
+          `<tr><td data-label="Produit"><strong>${p.name}</strong></td><td data-label="Categorie"><span class="category-tag">${p.category || '—'}</span></td><td data-label="Stock" style="text-align:right">${stockMap[p.id]?.quantity || 0}</td><td data-label="Val. Stock" style="text-align:right">${UI.formatCurrency((stockMap[p.id]?.quantity || 0) * (p.purchasePrice || 0))}</td></tr>`
         ).join('')}
         ${unsoldProducts.length > 50 ? `<tr><td colspan="4" class="text-muted text-center">... et ${unsoldProducts.length - 50} autres</td></tr>` : ''}
         </tbody></table></div>`
@@ -559,7 +559,7 @@ function mcRenderDetail(contentEl) {
 
     <!-- Tableau -->
     <div style="overflow-x:auto;">
-      <table class="data-table">
+      <table class="data-table wide-data-table">
         <thead>
           <tr>
             <th>Designation</th>
@@ -782,7 +782,7 @@ function mcRenderReorder(contentEl) {
 
     <!-- Tableau -->
     <div style="overflow-x:auto;">
-      <table class="data-table">
+      <table class="data-table wide-data-table">
         <thead>
           <tr>
             <th>Produit</th>
