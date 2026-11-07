@@ -336,63 +336,6 @@ async function viewPatient(patientId) {
       </div>
     </div>
 
-    <!-- Styles CSS Responsive et Mobile-First spécifiques à la fiche Patient 360 -->
-    <style>
-      /* Adaptation des tableaux sur mobile : cartes fluides */
-      @media (max-width: 768px) {
-        .responsive-table-card table, 
-        .responsive-table-card thead, 
-        .responsive-table-card tbody, 
-        .responsive-table-card th, 
-        .responsive-table-card td, 
-        .responsive-table-card tr { 
-          display: block; 
-        }
-        .responsive-table-card thead tr { 
-          position: absolute;
-          top: -9999px;
-          left: -9999px;
-        }
-        .responsive-table-card tr { 
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          background: var(--bg-card);
-          margin-bottom: 12px;
-          padding: 12px;
-          box-shadow: var(--shadow-sm);
-        }
-        .responsive-table-card td { 
-          border: none;
-          border-bottom: 1px solid var(--border-light); 
-          position: relative;
-          padding-left: 50% !important; 
-          text-align: right;
-          font-size: 13px;
-          min-height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-        }
-        .responsive-table-card td:last-child {
-          border-bottom: none;
-        }
-        .responsive-table-card td:before { 
-          position: absolute;
-          left: 12px;
-          width: 45%; 
-          padding-right: 10px; 
-          white-space: nowrap;
-          text-align: left;
-          font-weight: 700;
-          color: var(--text-muted);
-          content: attr(data-label);
-        }
-        .responsive-table-card td .action-btn-group {
-          justify-content: flex-end;
-          width: 100%;
-        }
-      }
-    </style>
   `, { size: 'large' });
 
   // Initialiser les tables paginées
