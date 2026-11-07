@@ -426,7 +426,7 @@ function addInvoiceItem(itemData = null) {
   // Ligne 1: Produit, Qté, Prix Achat, Prix Vente
   // Ligne 2: N° Lot, Date d'expiration
   div.innerHTML = `
-    <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
+    <div class="inv-item-main-row" style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
       <div class="form-group flex-grow" style="position:relative; margin-bottom:0;">
         <label style="font-size:11px; margin-bottom:2px;">Produit *</label>
         <input type="text" class="form-control" id="inv-search-${idx}" placeholder="Rechercher..." autocomplete="off" oninput="invoiceProductSearch(${idx})">

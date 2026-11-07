@@ -1410,7 +1410,7 @@ function showBulkProductEntry() {
     </p>
     ${_buildCategoryDatalist('bulk-cat-list')}
     <div style="overflow-x:auto; max-height:55vh;">
-      <table class="data-table" id="bulk-products-table" style="min-width:1100px">
+      <table class="data-table wide-data-table" id="bulk-products-table" style="min-width:1100px">
         <thead>
           <tr>
             <th style="width:30px">#</th>

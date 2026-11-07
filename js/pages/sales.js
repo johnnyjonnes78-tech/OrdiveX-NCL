@@ -300,10 +300,10 @@ async function viewSaleDetail(saleId) {
         <tbody>
           ${items.map(i => `
             <tr>
-              <td>${i.productName}</td>
-              <td>${i.quantity}</td>
-              <td>${UI.formatCurrency(i.unitPrice)}</td>
-              <td><strong>${UI.formatCurrency(i.total)}</strong></td>
+              <td data-label="Médicament">${i.productName}</td>
+              <td data-label="Qté">${i.quantity}</td>
+              <td data-label="Prix unit.">${UI.formatCurrency(i.unitPrice)}</td>
+              <td data-label="Total"><strong>${UI.formatCurrency(i.total)}</strong></td>
             </tr>`).join('')}
         </tbody>
         <tfoot>

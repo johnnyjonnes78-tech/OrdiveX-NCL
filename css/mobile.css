@@ -383,6 +383,13 @@ img, canvas, video, iframe {
     min-height: 36px;
     gap: 8px;
     flex-wrap: wrap;
+    max-width: 100%;
+    /* Une valeur longue et non sécable (référence, n° de chèque, code...)
+       ne se coupait pas à l'intérieur de la cellule et débordait, invisible
+       car le défilement horizontal est désactivé en mode carte (cf plus bas)
+       et la page a un overflow-x:hidden global qui rogne silencieusement.
+       Signalé sur le tableau "Règlements" (colonne Référence / Chèque). */
+    overflow-wrap: anywhere;
   }
 
   .data-table tbody td:last-child {
@@ -1034,6 +1041,25 @@ img, canvas, video, iframe {
     flex: 1 1 100% !important;
     min-width: 0 !important;
     margin-top: 8px;
+  }
+
+  /* Facture Fournisseur — ligne d'article (addInvoiceItem) : rangée interne
+     en display:flex SANS flex-wrap, avec 3 champs à largeur fixe (Qté 80px,
+     P.Achat 120px, P.Vente 120px) qui, faute de flex-shrink:0, se faisaient
+     écraser sur mobile (encoches non respectées, aucune responsivité —
+     signalé par l'utilisateur). On autorise le retour à la ligne et on
+     laisse les champs numériques partager la largeur au lieu d'être
+     comprimés en dessous de leur taille utilisable. */
+  .inv-item-main-row {
+    flex-wrap: wrap !important;
+  }
+  .inv-item-main-row .form-group.flex-grow {
+    flex: 1 1 100% !important;
+  }
+  .inv-item-main-row .form-group:not(.flex-grow) {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 90px;
   }
 
   /* Boutons +/- du panier — gros */
