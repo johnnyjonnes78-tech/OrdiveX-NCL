@@ -133,7 +133,7 @@
 
 
 const DB_NAME = 'OrdiveXDB';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 
 const STORES = {
   products: 'products',
@@ -1074,6 +1074,15 @@ async function initDB() {
         adjStore.createIndex('userId', 'userId');
         adjStore.createIndex('productId', 'productId');
         adjStore.createIndex('inventoryId', 'inventoryId');
+      }
+
+      // Stock Value Snapshots — Historique de la valeur du stock (v9.13)
+      // Un instantané par jour (capturé automatiquement, cf alerts-engine.js),
+      // pour que le pharmacien puisse suivre l'évolution de la valeur de son
+      // stock au fil du temps.
+      if (!database.objectStoreNames.contains('stockValueSnapshots')) {
+        const svs = database.createObjectStore('stockValueSnapshots', { keyPath: 'id', autoIncrement: true });
+        svs.createIndex('date', 'date', { unique: true });
       }
 
       // ── RH v6 ─────────────────────────────────────────────────────
@@ -2237,6 +2246,7 @@ async function _internalSyncToSupabase() {
       'patients', 'prescriptions', 'alerts', 'shifts', 'prep_transfers',
       'stock', 'lots', 'purchaseOrders', 'suppliers',
       'insurances', 'insurancePayments', // <-- Assurances synchronisées au cloud
+      'stockValueSnapshots', // <-- Historique de la valeur du stock
       'users', 'settings',
       'products' // Très lourd (33k+), toujours en dernier !
     ].filter(function (sn) { return !_missingTablesPush[sn]; });
@@ -2713,7 +2723,7 @@ async function _internalPullFromSupabase(isManual = false, onProgress = null) {
       'products', 'lots', 'stock', 'movements', 'suppliers', 'purchaseOrders',
       'sales', 'saleItems', 'patients', 'prescriptions', 'alerts',
       'cashRegister', 'auditLog', 'returns', 'invoices', 'shifts', 'prep_transfers',
-      'insurances', 'insurancePayments'
+      'insurances', 'insurancePayments', 'stockValueSnapshots'
     ].filter(function (sn) { return isManual || !_missingTables[sn]; });
 
     // ── PULL INCRÉMENTAL (Delta Sync) ──

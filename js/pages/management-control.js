@@ -64,6 +64,7 @@ async function renderManagementControl(container) {
       <button class="mc-tab ${window._mcTab === 'dashboard' ? 'mc-tab-active' : ''}" onclick="mcSwitchTab('dashboard')"><i data-lucide="layout-dashboard" style="width:16px;height:16px"></i> Tableau de bord</button>
       <button class="mc-tab ${window._mcTab === 'detail' ? 'mc-tab-active' : ''}" onclick="mcSwitchTab('detail')"><i data-lucide="list" style="width:16px;height:16px"></i> Detail des ventes</button>
       <button class="mc-tab ${window._mcTab === 'reorder' ? 'mc-tab-active' : ''}" onclick="mcSwitchTab('reorder')"><i data-lucide="shopping-cart" style="width:16px;height:16px"></i> Aide a la commande</button>
+      <button class="mc-tab ${window._mcTab === 'history' ? 'mc-tab-active' : ''}" onclick="mcSwitchTab('history')"><i data-lucide="history" style="width:16px;height:16px"></i> Historique Stock</button>
     </div>
 
     <div id="mc-content" style="margin-top:20px;"></div>
@@ -141,7 +142,7 @@ function mcSwitchTab(tab) {
   window._mcTab = tab;
   document.querySelectorAll('.mc-tab').forEach(el => {
     el.classList.toggle('mc-tab-active', el.textContent.trim().toLowerCase().includes(
-      tab === 'dashboard' ? 'tableau' : tab === 'detail' ? 'detail' : 'commande'
+      tab === 'dashboard' ? 'tableau' : tab === 'detail' ? 'detail' : tab === 'reorder' ? 'commande' : 'historique'
     ));
   });
   mcRenderCurrentTab();
@@ -149,10 +150,122 @@ function mcSwitchTab(tab) {
 
 function mcRenderCurrentTab() {
   const contentEl = document.getElementById('mc-content');
-  if (!contentEl || !window._mcData) return;
+  if (!contentEl) return;
+  if (window._mcTab === 'history') { mcRenderStockHistory(contentEl); return; }
+  if (!window._mcData) return;
   if (window._mcTab === 'dashboard') mcRenderDashboard(contentEl);
   else if (window._mcTab === 'detail') mcRenderDetail(contentEl);
   else if (window._mcTab === 'reorder') mcRenderReorder(contentEl);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ONGLET : HISTORIQUE DE LA VALEUR DU STOCK (demandé par l'utilisateur)
+// Un instantané/jour, capturé automatiquement (alerts-engine.js). Cet
+// onglet ne dépend pas de la période choisie en haut de page — il a sa
+// propre source de données (stockValueSnapshots), chargée à part.
+// ══════════════════════════════════════════════════════════════════════
+async function mcRenderStockHistory(contentEl) {
+  UI.loading(contentEl, 'Chargement de l\'historique...');
+
+  const snapshots = (await DB.dbGetAll('stockValueSnapshots')).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (snapshots.length === 0) {
+    contentEl.innerHTML = `
+      <div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+        <i data-lucide="history" style="width:48px;height:48px;margin:0 auto 16px;opacity:0.3;display:block"></i>
+        <h3>Aucun historique pour le moment</h3>
+        <p>Le premier instantané de la valeur du stock sera capturé automatiquement à la prochaine connexion. Revenez demain pour voir apparaître les premières données.</p>
+      </div>`;
+    if (window.lucide) lucide.createIcons({ root: contentEl });
+    return;
+  }
+
+  const latest = snapshots[snapshots.length - 1];
+  const previous = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
+  const deltaAchat = previous ? latest.purchaseValue - previous.purchaseValue : 0;
+  const deltaAchatPct = previous && previous.purchaseValue > 0 ? (deltaAchat / previous.purchaseValue * 100) : 0;
+
+  // Sparkline SVG — simple polyline sur la valeur d'achat, sans dépendance externe
+  const W = 600, H = 70, PAD = 4;
+  const values = snapshots.map(s => s.purchaseValue || 0);
+  const minV = Math.min(...values), maxV = Math.max(...values);
+  const range = (maxV - minV) || 1;
+  const pts = values.map((v, i) => {
+    const x = PAD + (i / Math.max(1, values.length - 1)) * (W - 2 * PAD);
+    const y = H - PAD - ((v - minV) / range) * (H - 2 * PAD);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const lastPt = pts.split(' ').pop().split(',');
+
+  contentEl.innerHTML = `
+    <div class="kpi-grid kpi-grid-3" style="margin-bottom:24px;">
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-icon"><i data-lucide="package"></i></div>
+        <div class="kpi-content">
+          <div class="kpi-value">${UI.formatCurrency(latest.purchaseValue)}</div>
+          <div class="kpi-label">Valeur du stock (achat)</div>
+          <div class="kpi-sub">Au ${UI.formatDate(latest.date)}</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
+        <div class="kpi-content">
+          <div class="kpi-value">${UI.formatCurrency(latest.saleValue)}</div>
+          <div class="kpi-label">Valeur du stock (vente)</div>
+          <div class="kpi-sub">Au ${UI.formatDate(latest.date)}</div>
+        </div>
+      </div>
+      <div class="kpi-card ${deltaAchat >= 0 ? 'kpi-green' : 'kpi-orange'}">
+        <div class="kpi-icon"><i data-lucide="${deltaAchat >= 0 ? 'arrow-up-right' : 'arrow-down-right'}"></i></div>
+        <div class="kpi-content">
+          <div class="kpi-value">${deltaAchat >= 0 ? '+' : ''}${UI.formatCurrency(deltaAchat)}</div>
+          <div class="kpi-label">Variation vs instantané précédent</div>
+          <div class="kpi-sub">${previous ? (deltaAchatPct >= 0 ? '+' : '') + deltaAchatPct.toFixed(1) + '% vs ' + UI.formatDate(previous.date) : 'Premier instantané'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border-radius:12px;padding:20px;border:1px solid var(--border);margin-bottom:24px;">
+      <h3 style="margin:0 0 14px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><i data-lucide="activity" style="width:18px;height:18px;color:var(--primary)"></i> Évolution de la valeur du stock (prix d'achat)</h3>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;" preserveAspectRatio="none">
+        <polyline points="${pts}" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx="${lastPt[0]}" cy="${lastPt[1]}" r="3.5" fill="var(--primary)" />
+      </svg>
+    </div>
+
+    <div style="background:var(--surface);border-radius:12px;padding:20px;border:1px solid var(--border);">
+      <h3 style="margin:0 0 14px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;"><i data-lucide="table" style="width:18px;height:18px;color:var(--primary)"></i> Détail par jour</h3>
+      <div id="mc-history-table"></div>
+    </div>
+  `;
+
+  // Tableau détaillé, du plus récent au plus ancien, avec variation jour par jour
+  const rowsDesc = [...snapshots].reverse();
+  const columns = [
+    { label: 'Date', render: r => `<strong>${UI.formatDate(r.date)}</strong>` },
+    { label: 'Valeur Achat', render: r => UI.formatCurrency(r.purchaseValue) },
+    { label: 'Valeur Vente', render: r => UI.formatCurrency(r.saleValue) },
+    { label: 'Nb Produits en Stock', render: r => (r.productCount ?? '—').toString() },
+    {
+      label: 'Variation (achat)',
+      render: r => {
+        const idx = snapshots.findIndex(s => s.date === r.date);
+        if (idx <= 0) return '<span class="text-muted">—</span>';
+        const prev = snapshots[idx - 1];
+        const d = r.purchaseValue - prev.purchaseValue;
+        if (d === 0) return '<span class="text-muted">0</span>';
+        return d > 0
+          ? `<span class="text-success">+${UI.formatCurrency(d)}</span>`
+          : `<span class="text-danger">${UI.formatCurrency(d)}</span>`;
+      }
+    }
+  ];
+  UI.table(document.getElementById('mc-history-table'), columns, rowsDesc, {
+    emptyMessage: 'Aucun instantané enregistré.',
+    emptyIcon: 'history'
+  });
+
+  if (window.lucide) lucide.createIcons({ root: contentEl });
 }
 
 function mcSetPeriod(preset) {

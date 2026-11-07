@@ -33,8 +33,39 @@ const AlertsEngine = {
         this.checkCaisseReminder(),
       ]);
       await this.cleanupOldAlerts();
+      await this.captureStockValueSnapshot();
     } catch (e) {
       console.warn('[AlertsEngine] Erreur:', e.message);
+    }
+  },
+
+  // Historique de la valeur du stock (demandé par l'utilisateur) : aucune
+  // tâche planifiée n'existe dans l'app (pas de cron) — on réutilise donc
+  // run(), déjà invoqué à chaque connexion puis toutes les 15 min, avec une
+  // garde simple sur la date du jour pour ne capturer qu'un seul instantané
+  // par jour, quel que soit le nombre de connexions/cycles.
+  async captureStockValueSnapshot() {
+    const today = new Date().toISOString().split('T')[0];
+    if (localStorage.getItem('pharma_last_stock_snapshot_date') === today) return;
+
+    try {
+      const stockAll = await DB.dbGetAll('stock');
+      const stockMap = {};
+      stockAll.forEach(s => { stockMap[s.productId] = s; });
+      const { purchaseValue, saleValue } = await DB.dbStockValue(stockMap);
+      const productCount = stockAll.filter(s => (s.quantity || 0) > 0).length;
+
+      await DB.dbAdd('stockValueSnapshots', { date: today, purchaseValue, saleValue, productCount });
+      localStorage.setItem('pharma_last_stock_snapshot_date', today);
+      console.log(`[AlertsEngine] Instantané de la valeur du stock enregistré pour ${today}.`);
+    } catch (e) {
+      // Contrainte d'unicité sur "date" (deux onglets ouverts en même temps,
+      // tous deux passés la garde localStorage avant que l'un n'écrive) :
+      // la seconde tentative échoue silencieusement, sans conséquence.
+      if (!/constraint|unique/i.test(e?.message || '')) {
+        console.warn('[AlertsEngine] Échec instantané valeur de stock:', e.message);
+      }
+      localStorage.setItem('pharma_last_stock_snapshot_date', today);
     }
   },
 
