@@ -531,11 +531,18 @@ window._renderPatientCredits = function(page) {
         </thead>
         <tbody>
           ${pageData.map(s => {
+            // Fiabilisation (signalé par l'utilisateur) : des badges
+            // inline-block dans un conteneur flex-wrap pouvaient s'entremêler
+            // sur une carte mobile étroite (chaque badge grandit avec son
+            // propre contenu, sans retour à la ligne garanti quand plusieurs
+            // médicaments ont des noms longs). Un médicament par ligne,
+            // largeur pleine, texte qui se coupe proprement si besoin —
+            // plus lisible, quelle que soit la largeur d'écran.
             const drugsList = (s.items || []).map(i => `
-              <div style="font-size:11px;background:var(--surface-2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;margin-bottom:2px;display:inline-block;">
+              <div style="font-size:11px;background:var(--surface-2);border:1px solid var(--border);padding:4px 8px;border-radius:4px;overflow-wrap:break-word;">
                 <strong>${i.quantity}x</strong> ${i.productName || i.name || '?'} <span class="text-muted">(${UI.formatCurrency(i.unitPrice || i.price || 0)})</span>
               </div>
-            `).join(' ');
+            `).join('');
 
             const isAssurance = s.paymentMethod === 'assurance';
             const debtAmount = _debtAmountForSale(s);
@@ -547,7 +554,7 @@ window._renderPatientCredits = function(page) {
                   ${isAssurance && debtAmount !== (s.total || 0) ? `<div class="text-muted text-sm">sur ${UI.formatCurrency(s.total || 0)} (part patient déjà réglée)</div>` : ''}
                 </td>
                 <td data-label="Médicaments détaillés" style="max-width:400px;text-align:left;">
-                  <div style="display:flex;flex-wrap:wrap;gap:4px;">${drugsList || '—'}</div>
+                  <div style="display:flex;flex-direction:column;gap:4px;">${drugsList || '—'}</div>
                 </td>
                 <td data-label="Statut">
                   <span class="badge badge-warning">${s.creditStatus || 'En attente'}</span>
