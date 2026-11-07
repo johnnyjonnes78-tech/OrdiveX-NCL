@@ -3245,12 +3245,18 @@ function imprimerTicket() {
     @page{size:72mm auto;margin:0}
     @media print{
       html,body{width:72mm}
-      /* Écriture volontairement très appuyée : les imprimantes thermiques
-         rendent le texte normal beaucoup trop pâle pour rester lisible. */
+      /* Fiabilisation (signalé par l'utilisateur) : font-weight:900 sur TOUS
+         les éléments écrasait la hiérarchie normal/gras définie plus bas
+         (.recu-orgname, .recu-tx-name, .recu-drug-name, .recu-tot-main...),
+         rendant tout le ticket indifféremment aussi gras - illisible sur
+         papier thermique. Le léger contour de trait (-webkit-text-stroke,
+         conservé) suffit à épaissir le rendu pour rester lisible sur une
+         imprimante thermique sans forcer un poids de police uniforme : le
+         texte courant reste normal, les titres/informations importantes
+         gardent leur font-weight:bold propre, déjà posé plus bas. */
       *{
         color:#000!important;
-        font-weight:900!important;
-        -webkit-text-stroke:0.3px #000;
+        -webkit-text-stroke:0.25px #000;
         -webkit-print-color-adjust:exact!important;
         print-color-adjust:exact!important;
       }
@@ -3259,7 +3265,7 @@ function imprimerTicket() {
     body{font-family:'Courier New',monospace;font-size:11px;width:72mm;margin:0 auto;padding:4px;color:#000;background:#fff}
     .recu-header{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:6px}
     .recu-logo{font-size:24px;margin-bottom:2px}
-    .recu-orgname{font-size:13px;font-weight:bold;margin:2px 0}
+    .recu-orgname{font-size:15px;font-weight:bold;margin:2px 0}
     .recu-orgdetail,.recu-orgdnpm{font-size:9px;color:#555;line-height:1.4}
     .recu-docblock{margin-top:4px;text-align:center}
     .recu-doctype{font-size:12px;font-weight:bold;letter-spacing:1px}
@@ -3268,7 +3274,7 @@ function imprimerTicket() {
     .recu-sep{border-top:1px dashed #999;margin:4px 0}
     .recu-transaction-grid{margin:4px 0}
     .recu-tx-block{margin-bottom:4px}
-    .recu-tx-label{font-size:8px;font-weight:bold;text-transform:uppercase;color:#999;letter-spacing:.5px}
+    .recu-tx-label{font-size:9px;font-weight:bold;text-transform:uppercase;color:#999;letter-spacing:.5px}
     .recu-tx-name{font-size:11px;font-weight:bold}
     .recu-tx-sub{font-size:9px;color:#666}
     .recu-tx-anon{color:#999;font-style:italic}
@@ -3986,10 +3992,15 @@ async function printProformaReceipt() {
     @page{size:72mm auto;margin:0}
     @media print{
       html,body{width:72mm}
+      /* Fiabilisation (signalé par l'utilisateur) : même correctif que
+         imprimerTicket() — font-weight:900 sur TOUS les éléments écrasait
+         la hiérarchie normal/gras déjà posée par les classes individuelles,
+         rendant tout le document indifféremment gras. Le contour de trait
+         (-webkit-text-stroke, conservé) suffit à rester lisible sur
+         thermique sans forcer un poids uniforme. */
       *{
         color:#000!important;
-        font-weight:900!important;
-        -webkit-text-stroke:0.3px #000;
+        -webkit-text-stroke:0.25px #000;
         -webkit-print-color-adjust:exact!important;
         print-color-adjust:exact!important;
       }
